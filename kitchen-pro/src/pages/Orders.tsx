@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
+import ExportPreviewModal from "../components/ExportPreviewModal";
 import { useKitchen, type ShoppingCategory } from "../store/kitchenStore";
 import type { Unit } from "../types/freezer";
-import { exportEconomatoCSV, exportKitchenDoc } from "../utils/export";
+import { buildKitchenReportHtml, exportEconomatoCSV } from "../utils/export";
 
 const CATS: { key: ShoppingCategory; label: string }[] = [
   { key: "economato", label: "Economato" },
@@ -10,6 +11,10 @@ const CATS: { key: ShoppingCategory; label: string }[] = [
 ];
 
 export default function Orders() {
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportHtml, setExportHtml] = useState("");
+  const [exportName, setExportName] = useState("kitchen-report.doc");
+
   const { state, getCurrentRole, shopAdd, shopToggle, shopRemove, shopClearChecked } = useKitchen();
   const role = getCurrentRole();
   const canEdit = role === "admin" || role === "chef" || role === "sous-chef" || role === "capo-partita";
@@ -65,7 +70,7 @@ export default function Orders() {
           <div className="flex gap-2">
             <button
               className="btn btn-ghost px-3 py-2 text-xs"
-              onClick={() => exportKitchenDoc(kitchen)}
+              onClick={() => /*removed*/(kitchen)}
             >
               Export DOC (Report)
             </button>
@@ -148,6 +153,14 @@ export default function Orders() {
           </div>
         ))}
       </div>
+    </div>
+      <ExportPreviewModal
+        open={exportOpen}
+        title="Export Report (DOC)"
+        defaultFilename={exportName}
+        initialHtml={exportHtml}
+        onClose={() => setExportOpen(false)}
+      />
     </div>
   );
 }
