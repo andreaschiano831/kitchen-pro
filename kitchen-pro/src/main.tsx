@@ -9,24 +9,27 @@ import Orders from "./pages/Orders";
 import MEP from "./pages/MEP";
 import Auth from "./pages/Auth";
 import Kitchen from "./pages/Kitchen";
+import { KitchenProvider } from "./store/kitchenStore";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <HashRouter>
-      <Routes>
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/kitchen" element={<Kitchen />} />
+    <KitchenProvider>
+      <HashRouter>
+        <Routes>
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/kitchen" element={<Kitchen />} />
 
-        <Route path="/" element={<AppLayout />}>
-          <Route index element={<Navigate to="/today" replace />} />
-          <Route path="today" element={<Today />} />
-          <Route path="freezer" element={<Freezer />} />
-          <Route path="orders" element={<Orders />} />
-          <Route path="mep" element={<MEP />} />
-        </Route>
+          <Route path="/" element={<AppLayout />}>
+            <Route index element={<Navigate to="/today" replace />} />
+            <Route path="today" element={<Today />} />
+            <Route path="freezer" element={<Freezer />} />
+            <Route path="orders" element={<Orders />} />
+            <Route path="mep" element={<MEP />} />
+          </Route>
 
-        <Route path="*" element={<Navigate to="/today" replace />} />
-      </Routes>
-    </HashRouter>
+          <Route path="*" element={<Navigate to="/today" replace />} />
+        </Routes>
+      </HashRouter>
+    </KitchenProvider>
   </React.StrictMode>
 );

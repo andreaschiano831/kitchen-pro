@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useKitchenStore } from "../store/useKitchenStore";
 import { v4 as uuid } from "uuid";
+import { useKitchen } from "../store/kitchenStore";
 
 export default function Freezer() {
-  const { freezer, addFreezerItem } = useKitchenStore();
+  const { state, addFreezerItem, removeFreezerItem } = useKitchen();
   const [name, setName] = useState("");
 
   function handleAdd() {
@@ -41,12 +41,27 @@ export default function Freezer() {
       </div>
 
       <div className="space-y-2">
-        {freezer.map((item) => (
-          <div key={item.id} className="rounded bg-neutral-900 p-3 text-sm">
-            {item.name}
+        {state.freezer.map((item) => (
+          <div
+            key={item.id}
+            className="flex items-center justify-between rounded bg-neutral-900 p-3 text-sm"
+          >
+            <span>{item.name}</span>
+            <button
+              onClick={() => removeFreezerItem(item.id)}
+              className="rounded bg-neutral-800 px-2 py-1 text-xs text-neutral-200 hover:bg-neutral-700"
+              aria-label="Remove"
+              title="Remove"
+            >
+              ✕
+            </button>
           </div>
         ))}
       </div>
+
+      <p className="text-xs text-neutral-500">
+        Persistenza: localStorage (kitchen-pro:v1)
+      </p>
     </div>
   );
 }
