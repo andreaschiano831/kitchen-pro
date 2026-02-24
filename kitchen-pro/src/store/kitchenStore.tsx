@@ -229,7 +229,41 @@ function reducer(state: KitchenState, action: Action): KitchenState {
         }),
       };
 
-    case "SHOP_CLEAR_CHECKED":
+    case "SHOP_ADD_OR_UPDATE_LOW": {
+        return {
+          ...state,
+          kitchens: state.kitchens.map(k => {
+            if (k.id !== state.currentKitchenId) return k;
+            const existing = k.shopping.find(s => s.name === action.name && s.category === "economato");
+            if (existing) {
+              return {
+                ...k,
+                shopping: k.shopping.map(s =>
+                  s.name === action.name && s.category === "economato"
+                    ? { ...s, quantity: action.quantity }
+                    : s
+                )
+              };
+            }
+            return {
+              ...k,
+              shopping: [
+                ...k.shopping,
+                {
+                  id: crypto.randomUUID(),
+                  name: action.name,
+                  quantity: action.quantity,
+                  unit: action.unit,
+                  category: "economato",
+                  checked: false
+                }
+              ]
+            };
+          })
+        };
+      }
+
+      case "SHOP_CLEAR_CHECKED":
       return {
         ...state,
         kitchens: state.kitchens.map((k) => {
@@ -278,6 +312,30 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
+
+  
+
+  function autoGenerateLowStock() {
+    if (!state.currentKitchenId) return;
+
+    const kitchen = state.kitchens.find(k => k.id === state.currentKitchenId);
+    if (!kitchen) return;
+
+    kitchen.freezer.forEach(item => {
+      if (item.unit !== "pz") return;
+      const min = item.parLevel ?? 5;
+      if (item.quantity >= min) return;
+
+      const diff = min - item.quantity;
+
+      dispatch({
+        type: "SHOP_ADD_OR_UPDATE_LOW",
+        name: item.name,
+        quantity: diff,
+        unit: "pz",
+      });
+    });
+  }
 
   const store = useMemo<KitchenStore>(() => {
     return {

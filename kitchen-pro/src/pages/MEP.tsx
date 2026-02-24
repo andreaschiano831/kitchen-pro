@@ -7,8 +7,27 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+
+
+  function handleCompleteWithStock(task: any) {
+    const qty = Number(prompt("Quantità prodotta?"));
+    if (!qty || qty <= 0) return;
+
+    const location = prompt("Destinazione? (fridge/freezer)", "fridge");
+    if (location !== "fridge" && location !== "freezer") return;
+
+    addFreezerItem({
+      id: crypto.randomUUID(),
+      name: task.title,
+      quantity: qty,
+      unit: "pz",
+      location,
+      insertedAt: new Date().toISOString(),
+    });
+  }
+
 export default function MEP() {
-  const { state, getCurrentRole } = useKitchen();
+  const { state, getCurrentRole, addFreezerItem } = useKitchen();
   const role = getCurrentRole();
 
   const kitchenId = state.currentKitchenId;
