@@ -1,32 +1,32 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { v4 as uuid } from "uuid";
-import { useSearchParams } from "react-router-dom";
 import { useKitchen } from "../store/kitchenStore";
-import { aggregateByName, formatSmart } from "../utils/unitConversion";
-import { loadParLevels, compareToPar } from "../utils/parLevels";
-import { quickAddParse } from "../utils/quickAdd";
-import { useSpeech } from "../hooks/useSpeech";
-import type { Location, Unit } from "../types/freezer";
 
-function daysLeft(iso?: string) {
-  if (!iso) return null;
-  const d = new Date(iso + "T00:00:00");
-  const now = new Date();
-  const diff = d.getTime() - new Date(now.toDateString()).getTime();
-  return Math.floor(diff / (1000 * 60 * 60 * 24));
+type ViewLoc = "freezer" | "fridge";
+type Unit = "pz" | "g" | "kg" | "ml" | "l";
+
+function daysUntil(iso?: string) {
+  if (!iso) return null as number | null;
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return null as number | null;
+  return Math.ceil((t - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
 function expBadgeClass(d: number | null) {
-  if (d === null) return "badge";
-  if (d <= 0) return "badge border border-[#8B0000] bg-[#fff1f1] text-[#8B0000]";
-  if (d <= 1) return "badge border border-[#C6A75E] bg-[#fff7e6] text-[#6b4f12]";
-  if (d <= 3) return "badge border border-[#C6A75E] bg-[#fff7e6] text-[#6b4f12]";
-  return "badge";
-
+  if (d === null) return "border-neutral-200 bg-white text-neutral-700";
+  if (d <= 0) return "border-red-300 bg-red-50 text-red-800";
+  if (d <= 1) return "border-red-200 bg-red-50 text-red-800";
+  if (d <= 3) return "border-amber-200 bg-amber-50 text-amber-900";
+  return "border-neutral-200 bg-white text-neutral-700";
 }
 
-
-function QuickAdjustButtons({ unit, onDelta }: { unit: string; onDelta: (d: number) => void }) {
+function QuickAdjustButtons({
+  unit,
+  onDelta,
+}: {
+  unit: Unit;
+  onDelta: (d: number) => void;
+}) {
   if (unit === "pz") {
     return (
       <div className="mt-2 flex flex-wrap gap-2">
@@ -49,274 +49,236 @@ function QuickAdjustButtons({ unit, onDelta }: { unit: string; onDelta: (d: numb
     );
   }
 
-  if (unit === "kg" || unit === "l") {
-    return (
-      <div className="mt-2 flex flex-wrap gap-2">
-        <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(-0.05)}>-0.05</button>
-        <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(-0.10)}>-0.10</button>
-        <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(-0.25)}>-0.25</button>
-        <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(+0.10)}>+0.10</button>
-      </div>
-    );
-  }
-
-  return null;
+  // kg/l: step piccoli
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(-0.05)}>-0.05</button>
+      <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(-0.1)}>-0.10</button>
+      <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(-0.25)}>-0.25</button>
+      <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(+0.1)}>+0.10</button>
+    </div>
+  );
 }
-
 
 export default function Freezer() {
   const { state, addFreezerItem, removeFreezerItem, adjustFreezerItem, getCurrentRole } = useKitchen();
   const role = getCurrentRole();
-  const [params] = useSearchParams();
+  const canEdit =
+    role === "admin" || role === "chef" || role === "sous-chef" || role === "capo-partita";
+
+  const [viewLoc, setViewLoc] = useState<ViewLoc>("freezer");
+  const [q, setQ] = useState("");
+  const [sectionFilter, setSectionFilter] = useState("");
+
+  // form add
+  const [name, setName] = useState("");
+  const [qty, setQty] = useState<number>(1);
+  const [unit, setUnit] = useState<Unit>("pz");
+  const [section, setSection] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
 
   const kitchen = useMemo(
     () => state.kitchens.find((k) => k.id === state.currentKitchenId),
     [state.kitchens, state.currentKitchenId]
   );
 
-  const canEdit = role === "admin" || role === "chef" || role === "sous-chef" || role === "capo-partita";
+  const items = useMemo(() => {
+    if (!kitchen) return [];
+    const qq = q.trim().toLowerCase();
+    const sf = sectionFilter.trim().toLowerCase();
 
-  const [location, setLocation] = useState<Location>("freezer"); // default
-  const [raw, setRaw] = useState("");
-  const { transcript, status, start } = useSpeech();
+    const list = (kitchen.freezer || [])
+      .filter((it: any) => String(it.location || "freezer") === viewLoc)
+      .filter((it: any) => (qq ? String(it.name || "").toLowerCase().includes(qq) : true))
+      .filter((it: any) => (sf ? String(it.section || "").toLowerCase().includes(sf) : true))
+      .slice();
 
-  useEffect(() => {
-    if (transcript) setRaw(transcript);
-  }, [transcript]);
+    // FEFO: scadenza prima, poi insertedAt desc
+    list.sort((a: any, b: any) => {
+      const ad = a.expiresAt ? Date.parse(a.expiresAt) : Infinity;
+      const bd = b.expiresAt ? Date.parse(b.expiresAt) : Infinity;
+      if (ad !== bd) return ad - bd;
+      const ai = a.insertedAt ? Date.parse(a.insertedAt) : 0;
+      const bi = b.insertedAt ? Date.parse(b.insertedAt) : 0;
+      return bi - ai;
+    });
 
-  useEffect(() => {
-    const q = params.get("q");
-    if (q) setRaw(decodeURIComponent(q));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return list;
+  }, [kitchen, viewLoc, q, sectionFilter]);
 
-  const draft = useMemo(() => quickAddParse(raw), [raw]);
+  function handleAdd() {
+    if (!canEdit) return;
+    const n = name.trim();
+    if (!n) return;
 
-  // se nel testo c'è loc, allinea la tab
-  useEffect(() => {
-    if (draft.location) setLocation(draft.location);
-  }, [draft.location]);
+    const qn = Number(qty);
+    if (!Number.isFinite(qn) || qn <= 0) return;
 
-  const [overrideQty, setOverrideQty] = useState<number | "">("");
-  const [overrideUnit, setOverrideUnit] = useState<Unit | "">("");
-  const [overrideSection, setOverrideSection] = useState("");
-  const [overrideExp, setOverrideExp] = useState("");
+    addFreezerItem({
+      id: uuid(),
+      name: n,
+      quantity: unit === "pz" ? Math.floor(qn) : qn,
+      unit,
+      location: viewLoc,
+      insertedAt: new Date().toISOString(),
+      expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
+      section: section.trim() || undefined,
+    } as any);
 
-  const aggregated = aggregateByName(kitchen?.freezer || []);
-  const parLevels = loadParLevels();
-  const parMap = new Map(parLevels.map(p => [p.name, p]));
+    setName("");
+    setQty(1);
+    setUnit("pz");
+    setSection("");
+    setExpiresAt("");
+  }
 
   if (!kitchen) {
     return (
       <div className="card p-5">
-        <div className="h1">Inventory</div>
-        <p className="p-muted mt-2">Seleziona una kitchen prima.</p>
+        <div className="h1">Inventario</div>
+        <p className="p-muted mt-2">Seleziona una kitchen prima (Kitchen).</p>
       </div>
     );
   }
 
-  const items = kitchen.freezer
-    .filter((x) => x.location === location)
-    .slice()
-    .sort((a, b) => (a.expiresAt || "9999-99-99").localeCompare(b.expiresAt || "9999-99-99"));
-
-  function handleAdd() {
-    if (!canEdit) return;
-    const name = (draft.name || "").trim();
-    if (!name) return;
-
-    const quantity = overrideQty === "" ? draft.quantity : Number(overrideQty);
-    const unit = (overrideUnit === "" ? draft.unit : overrideUnit) as Unit;
-
-    addFreezerItem({
-      id: uuid(),
-      name,
-      quantity: quantity > 0 ? quantity : 1,
-      unit,
-      location,
-      section: (overrideSection || draft.section || "").trim() || undefined,
-      expiresAt: (overrideExp || draft.expiresAt || "").trim() || undefined,
-      insertedAt: new Date().toISOString(),
-      notes: draft.notes?.trim() || undefined,
-    });
-
-    setRaw("");
-    setOverrideQty("");
-    setOverrideUnit("");
-    setOverrideSection("");
-    setOverrideExp("");
-  }
-
   return (
     <div className="space-y-4">
-      <div className="card p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="h1">Inventory</div>
-            <div className="p-muted">{kitchen.name}</div>
-          </div>
-          <div className="badge" style={{ borderColor: "rgba(198,167,94,.6)" }}>
-            <span className="text-xs font-medium">{role ?? "—"}</span>
-          </div>
-        </div>
-
-        <div className="mt-4 flex gap-2">
-          <button
-            className={`btn w-full ${location === "fridge" ? "btn-primary" : "btn-ghost"}`}
-            onClick={() => setLocation("fridge")}
-          >
-            Frigo
-          </button>
-          <button
-            className={`btn w-full ${location === "freezer" ? "btn-primary" : "btn-ghost"}`}
-            onClick={() => setLocation("freezer")}
-          >
-            Congelatore
-          </button>
-        </div>
-
-        <div className="mt-4 space-y-3">
-          <div className="text-xs" style={{ color: "var(--muted)" }}>
-            Esempio: <span className="font-medium">salmone 2 kg #pesce loc freezer exp 10/03/2026</span>
-          </div>
-
+      {/* Toolbar */}
+      <div className="card p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex gap-2">
-            <input
-              className="input flex-1"
-              value={raw}
-              onChange={(e) => setRaw(e.target.value)}
-              placeholder="Scrivi o parla: prodotto qty unit #sezione loc exp data note..."
-              disabled={!canEdit}
-            />
             <button
-              type="button"
-              onClick={start}
-              className={`btn px-3 ${status === "listening" ? "btn-primary" : "btn-ghost"}`}
-              disabled={!canEdit}
-              title="Parla"
+              className={`btn px-4 py-2 ${viewLoc === "freezer" ? "btn-primary" : "btn-ghost"}`}
+              onClick={() => setViewLoc("freezer")}
             >
-              🎤
+              Congelatore
+            </button>
+            <button
+              className={`btn px-4 py-2 ${viewLoc === "fridge" ? "btn-primary" : "btn-ghost"}`}
+              onClick={() => setViewLoc("fridge")}
+            >
+              Frigo
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <input
-              className="input"
-              value={overrideQty === "" ? String(draft.quantity) : String(overrideQty)}
-              onChange={(e) => setOverrideQty(e.target.value === "" ? "" : Number(e.target.value))}
-              placeholder="Qty"
-              disabled={!canEdit}
-            />
-            <select
-              className="input"
-              value={overrideUnit === "" ? draft.unit : overrideUnit}
-              onChange={(e) => setOverrideUnit(e.target.value as Unit)}
-              disabled={!canEdit}
-            >
-              <option value="pz">pz</option>
-              <option value="g">g</option>
-              <option value="kg">kg</option>
-              <option value="l">l</option>
-            </select>
-            <input
-              className="input"
-              value={overrideSection || draft.section || ""}
-              onChange={(e) => setOverrideSection(e.target.value)}
-              placeholder="Sezione (pesce, carni...)"
-              disabled={!canEdit}
-            />
-            <input
-              className="input"
-              value={overrideExp || draft.expiresAt || ""}
-              onChange={(e) => setOverrideExp(e.target.value)}
-              placeholder="Scadenza (YYYY-MM-DD)"
-              disabled={!canEdit}
-            />
+          <div className="text-xs" style={{ color: "var(--muted)" }}>
+            FEFO • {items.length} items • role: {role ?? "—"}
           </div>
+        </div>
 
-          <button className={`btn w-full ${canEdit ? "btn-gold" : "btn-ghost"}`} onClick={handleAdd} disabled={!canEdit}>
-            Registra lotto
+        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+          <input
+            className="input"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Cerca (es. branzino, fondo, burro...)"
+          />
+          <input
+            className="input"
+            value={sectionFilter}
+            onChange={(e) => setSectionFilter(e.target.value)}
+            placeholder="Filtro sezione (es. pesce, carne, salse...)"
+          />
+        </div>
+      </div>
+
+      {/* Add */}
+      <div className="card p-4">
+        <div className="flex items-center justify-between">
+          <div className="h1">Aggiungi</div>
+          {!canEdit && <div className="p-muted text-xs">Solo ruoli senior possono modificare</div>}
+        </div>
+
+        <div className="mt-3 grid grid-cols-1 md:grid-cols-6 gap-2">
+          <input
+            className="input md:col-span-2"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Prodotto"
+            disabled={!canEdit}
+          />
+          <input
+            className="input"
+            type="number"
+            value={qty}
+            onChange={(e) => setQty(Number(e.target.value))}
+            min={1}
+            step={unit === "pz" ? 1 : 0.01}
+            disabled={!canEdit}
+          />
+          <select className="input" value={unit} onChange={(e) => setUnit(e.target.value as Unit)} disabled={!canEdit}>
+            <option value="pz">pz</option>
+            <option value="g">g</option>
+            <option value="kg">kg</option>
+            <option value="ml">ml</option>
+            <option value="l">l</option>
+          </select>
+          <input
+            className="input"
+            value={section}
+            onChange={(e) => setSection(e.target.value)}
+            placeholder="Sezione"
+            disabled={!canEdit}
+          />
+          <input
+            className="input"
+            type="date"
+            value={expiresAt}
+            onChange={(e) => setExpiresAt(e.target.value)}
+            disabled={!canEdit}
+          />
+        </div>
+
+        <div className="mt-3">
+          <button className={`btn ${canEdit ? "btn-primary" : "btn-ghost"}`} onClick={handleAdd} disabled={!canEdit}>
+            Aggiungi a {viewLoc === "freezer" ? "Congelatore" : "Frigo"}
           </button>
-
-          {!canEdit && (
-            <div className="p-muted text-xs">
-              Non hai permessi di modifica (solo Admin/Chef/Sous-chef/Capo partita).
-            </div>
-          )}
         </div>
       </div>
 
-      <div className="card p-4 mb-6">
-  <h3 className="text-sm font-semibold mb-4 tracking-wide text-neutral-600">
-    STOCK TOTALE AGGREGATO
-  </h3>
-
-  {aggregated.length === 0 && (
-    <div className="text-sm text-neutral-400">
-      Nessun prodotto presente.
-    </div>
-  )}
-
-  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-    {aggregated.map((item) => (
-      <div
-        key={item.name}
-        className={`rounded-lg border px-4 py-3 shadow-sm ${(() => {
-          const par = parMap.get(item.name.toLowerCase());
-          if (!par) return "border-neutral-200 bg-white";
-          const c = compareToPar(item.quantity, item.baseUnit, par);
-          if (c.status === "low") return "border-[#8B0000] bg-[#fff1f1]";
-          if (c.status === "near") return "border-[#C6A75E] bg-[#fff7e6]";
-          return "border-neutral-200 bg-white";
-        })()}`}
-      >
-        <div className="text-xs uppercase tracking-wide text-neutral-400">
-          {item.name}
-        </div>
-        <div className="text-lg font-semibold mt-1">
-          {formatSmart(item.quantity, item.baseUnit)}
-        </div>
-      </div>
-    ))}
-  </div>
-</div>
-
-
+      {/* List */}
       <div className="space-y-2">
-        {items.map((item) => {
-          const d = daysLeft(item.expiresAt);
+        {items.length === 0 && (
+          <div className="card p-4">
+            <div className="p-muted">Nessun prodotto.</div>
+          </div>
+        )}
+
+        {items.map((item: any) => {
+          const du = daysUntil(item.expiresAt);
+          const u: Unit = (item.unit || "pz") as Unit;
           return (
             <div key={item.id} className="card p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <div className="font-semibold truncate">{item.name}</div>
-                    <span className={expBadgeClass(d)}>
-                      {d === null ? "no exp" : d <= 0 ? "EXP" : `${d}d`}
+                  <div className="font-semibold truncate">{item.name}</div>
+
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
+                    <span className="rounded-md border border-neutral-200 bg-white px-2 py-1 text-xs">
+                      {item.quantity} {u}
+                    </span>
+
+                    {item.section && (
+                      <span className="rounded-md border border-neutral-200 bg-white px-2 py-1 text-xs">
+                        {item.section}
+                      </span>
+                    )}
+
+                    <span className={`rounded-md border px-2 py-1 text-xs ${expBadgeClass(du)}`}>
+                      {du === null ? "no exp" : du <= 0 ? "SCADUTO" : `${du}d`}
                     </span>
                   </div>
-                  <div className="text-sm" style={{ color: "var(--muted)" }}>
-                    {item.quantity} {item.unit}
-                    {item.section ? ` • #${item.section}` : ""}
-                    {item.expiresAt ? ` • exp ${item.expiresAt}` : ""}
-                  </div>
-                </div>
+
+                  {canEdit && (
+                    <QuickAdjustButtons
+                      unit={u}
+                      onDelta={(d) => adjustFreezerItem(item.id, d)}
                     />
                   )}
-
-                onDelta={(d: number) => adjustFreezerItem(item.id, d)}
-                  />
-                )}
+                </div>
 
                 {canEdit && (
-                  <QuickAdjustButtons
-                    unit={String((item as any).unit ?? "pz")}
-                    onDelta={(d: number) => adjustFreezerItem(item.id, d)}
-                  />
-                )}
-
-                {canEdit && (
-                  <button className="btn btn-ghost px-3 py-2" onClick={() => removeFreezerItem(item.id)} title="Rimuovi lotto">
+                  <button className="btn btn-ghost px-3 py-2" onClick={() => removeFreezerItem(item.id)} title="Rimuovi">
                     ✕
                   </button>
                 )}
@@ -328,4 +290,3 @@ export default function Freezer() {
     </div>
   );
 }
-
