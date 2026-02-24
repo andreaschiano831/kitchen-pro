@@ -66,6 +66,10 @@ export default function Freezer() {
 
   // Add form
   const [name, setName] = useState("");
+
+  const [lowOpen, setLowOpen] = useState(false);
+  const [toast, setToast] = useState<ToastMsg | null>(null);
+
   const [quantity, setQuantity] = useState<number>(1);
   const [unit, setUnit] = useState<Unit>("pz");
   const [location, setLocation] = useState<"freezer" | "fridge">("freezer");
@@ -109,7 +113,18 @@ export default function Freezer() {
     return list;
   }, [kitchen, loc, q, soloUrgenti]);
 
-  function handleAdd() {
+  function runLowStock() {
+  const n = autoGenerateLowStockToEconomato();
+  setLowOpen(false);
+  setToast({
+    id: String(Date.now()),
+    type: n > 0 ? "success" : "warning",
+    title: n > 0 ? "Economato aggiornato" : "Nessun LOW stock",
+    message: n > 0 ? `Generati/aggiornati ${n} articoli in Economato.` : "Tutte le giacenze pz sono sopra il minimo.",
+  });
+}
+
+function handleAdd() {
     if (!kitchen || !canEdit) return;
     const n = name.trim();
     if (!n) return;
@@ -144,7 +159,7 @@ export default function Freezer() {
     return (
       <div className="card p-6">
         <div className="h1">Giacenze</div>
-          <button className="btn btn-gold mt-2" onClick={autoGenerateLowStockToEconomato}>
+          <button className="btn btn-gold mt-2" onClick={() => setLowOpen(true)}>
             Genera Spesa da LOW stock
           </button>
         <div className="p-muted mt-2">Seleziona una Kitchen prima.</div>
@@ -159,7 +174,7 @@ export default function Freezer() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <div className="h1">Giacenze</div>
-          <button className="btn btn-gold mt-2" onClick={autoGenerateLowStockToEconomato}>
+          <button className="btn btn-gold mt-2" onClick={() => setLowOpen(true)}>
             Genera Spesa da LOW stock
           </button>
             <div className="p-muted text-xs mt-1">FEFO • Filtro location • Urgenze • LOW stock (pz)</div>
@@ -298,6 +313,42 @@ export default function Freezer() {
           );
         })}
       </div>
+          <Modal open={lowOpen} title="LOW stock → Economato" onClose={() => setLowOpen(false)}>
+        <div className="space-y-3">
+          <div className="p-muted text-xs">
+            Mostro solo articoli in <b>pz</b> sotto la giacenza minima (default 5 se non impostata).
+          </div>
+
+          {lowItems.length === 0 ? (
+            <div className="card p-3">
+              <div className="text-sm font-semibold">Nessun LOW stock</div>
+              <div className="text-xs text-neutral-600 mt-1">Non verrà aggiunto nulla in Economato.</div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {lowItems.slice(0, 10).map((x: any) => (
+                <div key={x.id} className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white px-3 py-2">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold truncate">{x.name}</div>
+                    <div className="text-xs text-neutral-500">qty {x.qty} / min {x.min}</div>
+                  </div>
+                  <div className="text-sm font-semibold">+{x.diff} pz</div>
+                </div>
+              ))}
+              {lowItems.length > 10 ? (
+                <div className="text-xs text-neutral-500">…e altri {lowItems.length - 10} articoli</div>
+              ) : null}
+            </div>
+          )}
+
+          <button className="btn btn-primary w-full" onClick={runLowStock}>
+            Genera / Aggiorna Economato
+          </button>
+        </div>
+      </Modal>
+
+      {toast ? <Toast toast={toast} onClose={() => setToast(null)} /> : null}
     </div>
   );
 }
+

@@ -295,7 +295,7 @@ export type KitchenStore = {
   shopRemove: (id: string) => void;
   shopClearChecked: (category: ShoppingCategory) => void;
 
-  autoGenerateLowStockToEconomato: () => void;
+  autoGenerateLowStockToEconomato: () => number;
 
   switchUser: (userId: string) => void;
   getCurrentRole: () => Role | null;
@@ -311,9 +311,11 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
   }, [state]);
 
   function autoGenerateLowStockToEconomato() {
-    if (!state.currentKitchenId) return;
+    if (!state.currentKitchenId) return 0;
     const kitchen = state.kitchens.find((k) => k.id === state.currentKitchenId);
-    if (!kitchen) return;
+    if (!kitchen) return 0;
+
+    let count = 0;
 
     for (const it of kitchen.freezer || []) {
       if ((it.unit || "pz") !== "pz") continue;
@@ -328,6 +330,12 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
         unit: "pz",
         notes: "AUTO: reintegro da LOW stock",
       });
+
+      count += 1;
+    }
+
+    return count;
+  });
     }
   }
 
