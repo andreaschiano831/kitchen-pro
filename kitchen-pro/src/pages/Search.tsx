@@ -63,7 +63,7 @@ export default function Search() {
         <div className="mt-4">
           <input
             className="input"
-            placeholder="Es: branzino / fondo bruno / panna / tartufo…"
+            placeholder="Cerca ingrediente, ricetta o fornitore…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />

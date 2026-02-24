@@ -192,7 +192,7 @@ export default function Freezer() {
       <div className="space-y-2">
         {items.length == 0 ? (
           <div className="card p-4">
-            <div className="p-muted">Nessun prodotto.</div>
+            <div className="p-muted">Nessun prodotto in congelatore</div>
           </div>
         ) : null}
 

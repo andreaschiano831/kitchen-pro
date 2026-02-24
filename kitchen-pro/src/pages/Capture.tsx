@@ -132,7 +132,7 @@ export default function Capture() {
   if (!kitchen) {
     return (
       <div className="card p-6">
-        <div className="h1">Scanner rapido</div>
+        <div className="h1">Scanner</div>
         <div className="p-muted mt-2">Seleziona una Kitchen.</div>
       </div>
     );
@@ -141,8 +141,8 @@ export default function Capture() {
   return (
     <div className="space-y-4">
       <div className="card p-5">
-        <div className="h1">Scanner rapido</div>
-        <div className="p-muted text-xs mt-1">Text / Voice / Camera → preview editabile → carica</div>
+        <div className="h1">Scanner</div>
+        <div className="p-muted text-xs mt-1">Inquadra l’etichetta per registrare (preview editabile)</div>
 
         <div className="mt-4 flex flex-wrap gap-2">
           <button className={mode === "text" ? "btn btn-primary text-xs" : "btn btn-ghost text-xs"} onClick={() => setMode("text")}>Text</button>
@@ -187,7 +187,7 @@ export default function Capture() {
 
         {mode === "camera" ? (
           <div className="mt-4 space-y-3">
-            <div className="p-muted text-xs">Camera (reference). OCR/AI endpoint opzionale nel prossimo step.</div>
+            <div className="p-muted text-xs">Camera: inquadra come riferimento, poi detta/incolla. OCR/AI opzionale nello step successivo.</div>
             <div className="flex gap-2">
               {!camOn ? (
                 <button className="btn btn-primary text-xs" onClick={startCam}>Apri camera</button>

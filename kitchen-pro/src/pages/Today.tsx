@@ -29,6 +29,7 @@ export default function Today() {
     return (
       <div className="card p-6">
         <div className="h1">Today</div>
+        <div className="p-muted text-xs mt-1">Cucina attiva — 3 coperti in prep, 1 in attesa</div>
         <div className="p-muted mt-2">Seleziona una Kitchen per vedere il cruscotto.</div>
       </div>
     );
@@ -38,7 +39,8 @@ export default function Today() {
     <div className="space-y-4">
       <div className="card p-5">
         <div className="h1">Today</div>
-        <div className="p-muted text-xs mt-1">Controllo rapido: urgenze, low stock, economato</div>
+        <div className="p-muted text-xs mt-1">Cucina attiva — 3 coperti in prep, 1 in attesa</div>
+        <div className="p-muted text-xs mt-1">Cucina attiva — controllo rapido su urgenze, scorte e spesa</div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
           <div className="card p-4">
