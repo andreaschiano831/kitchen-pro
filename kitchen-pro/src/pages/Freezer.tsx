@@ -25,6 +25,7 @@ function expBadgeClass(d: number | null) {
 
 }
 
+
 function QuickAdjustButtons({ unit, onDelta }: { unit: string; onDelta: (d: number) => void }) {
   if (unit === "pz") {
     return (
@@ -61,6 +62,7 @@ function QuickAdjustButtons({ unit, onDelta }: { unit: string; onDelta: (d: numb
 
   return null;
 }
+
 
 export default function Freezer() {
   const { state, addFreezerItem, removeFreezerItem, adjustFreezerItem, getCurrentRole } = useKitchen();
@@ -301,6 +303,10 @@ export default function Freezer() {
                 </div>
                     />
                   )}
+
+                onDelta={(d: number) => adjustFreezerItem(item.id, d)}
+                  />
+                )}
 
                 {canEdit && (
                   <QuickAdjustButtons
