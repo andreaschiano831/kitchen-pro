@@ -58,7 +58,7 @@ type Action =
   | { type: "SHOP_TOGGLE"; id: string }
   | { type: "SHOP_REMOVE"; id: string }
   | { type: "SHOP_CLEAR_CHECKED"; category: ShoppingCategory }
-  | { type: "PAR_CATEGORY_SET"; category: string; value: number }
+  | { type: "PAR_CATEGORY_SET"; category: string; value: number}
   | { type: "SHOP_UPSERT_ECONOMATO"; name: string; quantity: number; unit: Unit; notes?: string };
 
 const NS = "kitchen-pro:v1";

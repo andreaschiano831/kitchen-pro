@@ -1,102 +1,123 @@
-import type { Unit } from "../types/freezer";
-
 export type QuickAddDraft = {
   name: string;
   quantity: number;
-  unit: Unit;
+  unit: "pz" | "g" | "kg" | "ml" | "l";
   location?: "freezer" | "fridge";
+  expiresAt?: string; // ISO date (YYYY-MM-DD ok)
   section?: string;
-  expiresAt?: string; // ISO
   notes?: string;
+  category?: string;
+  parLevel?: number; // solo per pz
 };
 
-// UNIT_MAP removed for pz-only mode
-const UNIT_MAP: Record<string, Unit> = {
-  kg: "kg",
-  g: "g",
-  gr: "g",
-  pz: "pz",
-  pezzi: "pz",
-  l: "l",
-  lt: "l",
-};
-
-function normalize(s: string) {
-  return s.trim().replace(/\s+/g, " ");
-}
-
-function parseDateToken(token: string): string | undefined {
-  // accepts: 2026-03-10, 10/03/2026, 10-03-2026
-  const iso = token.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
-
-  const dmy = token.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/);
-  if (dmy) return `${dmy[3]}-${dmy[2]}-${dmy[1]}`;
-
+function toISODate(s: string) {
+  // accetta YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
   return undefined;
 }
 
-export function quickAddParse(input: string): QuickAddDraft {
-  const raw = normalize(input);
-  if (!raw) return { name: "", quantity: 1, unit: "pz" };
+function parseLine(line: string): QuickAddDraft | null {
+  const raw = line.trim();
+  if (!raw) return null;
 
-  // pattern: "salmone 2 kg #pesce exp 2026-03-10 note affumicato"
-  const tokens = raw.split(" ");
+  // pattern base: "12 pz branzino frigo exp 2026-02-28 cat pesce note ..."
+  // oppure: "2 kg ossa vitello freezer"
+  const tokens = raw.split(/\s+/);
 
   let quantity = 1;
-  let unit: Unit = "pz"; // fixed
-  let section: string | undefined;
-  let expiresAt: string | undefined;
-  let notes: string | undefined;
+  let unit: QuickAddDraft["unit"] = "pz";
+  let i = 0;
 
-  // extract section via #tag
-  const hash = tokens.find((t) => t.startsWith("#"));
-  if (hash && hash.length > 1) section = hash.slice(1).toLowerCase();
+  // qty
+  if (i < tokens.length and tokens[i].isdigit()):
+      pass
+  # (no python tokens) -- keep TS only
 
-  // extract exp / scad
-  for (let i = 0; i < tokens.length - 1; i++) {
-    const t = tokens[i].toLowerCase();
-    if (t === "exp" || t === "scad" || t === "scadenza") {
-      const d = parseDateToken(tokens[i + 1]);
-      if (d) expiresAt = d;
-    }
+  if (i < tokens.length && /^\d+$/.test(tokens[i])) {
+    quantity = Math.max(1, parseInt(tokens[i], 10));
+    i++;
   }
 
-  // quantity + optional unit
-  for (let i = 0; i < tokens.length; i++) {
-    const maybeNum = Number(tokens[i].replace(",", "."));
-    if (!Number.isNaN(maybeNum) && maybeNum > 0) {
-      quantity = maybeNum;
-      const maybeUnit = tokens[i + 1]?.toLowerCase();
-      if (maybeUnit && UNIT_MAP[maybeUnit]) {
-        unit = UNIT_MAP[maybeUnit];
-      }
+  // unit
+  const u = (tokens[i] || "").toLowerCase();
+  if (u in { "pz":1, "g":1, "kg":1, "ml":1, "l":1 }) {
+    unit = u as any;
+    i++;
+  }
+
+  // scan rest for keywords
+  let location: QuickAddDraft["location"] | undefined;
+  let expiresAt: string | undefined;
+  let category: string | undefined;
+  let parLevel: number | undefined;
+  let section: string | undefined;
+
+  const nameParts: string[] = [];
+  let notesParts: string[] = [];
+
+  while (i < tokens.length) {
+    const t = tokens[i].toLowerCase();
+
+    if (t === "freezer" || t === "congelatore") {
+      location = "freezer"; i++; continue;
+    }
+    if (t === "fridge" || t === "frigo") {
+      location = "fridge"; i++; continue;
+    }
+
+    if (t === "exp" || t === "scad" || t === "scadenza") {
+      const d = toISODate(tokens[i+1] || "");
+      if (d) { expiresAt = d; i += 2; continue; }
+    }
+
+    if (t === "cat" || t === "categoria") {
+      const c = tokens[i+1];
+      if (c) { category = c; i += 2; continue; }
+    }
+
+    if (t === "min" || t === "par") {
+      const v = tokens[i+1];
+      if (v && /^\d+$/.test(v)) { parLevel = parseInt(v, 10); i += 2; continue; }
+    }
+
+    if (t === "sec" || t === "sezione") {
+      const v = tokens[i+1];
+      if (v) { section = v; i += 2; continue; }
+    }
+
+    // notes: tutto dopo "note"
+    if (t === "note" || t === "notes") {
+      notesParts = tokens.slice(i+1);
       break;
     }
+
+    nameParts.push(tokens[i]);
+    i++;
   }
 
-  // notes (after "note:")
-  const noteIdx = tokens.findIndex((t) => t.toLowerCase().startsWith("note"));
-  if (noteIdx !== -1) {
-    notes = tokens.slice(noteIdx + 1).join(" ");
-  }
+  const name = nameParts.join(" ").trim();
+  const notes = notesParts.join(" ").trim() || undefined;
 
-  // name = remove known tokens (#tag, exp/scad + date, quantity+unit, note...)
-  const cleaned = tokens.filter((t) => {
-    const low = t.toLowerCase();
-    if (t.startsWith("#")) return false;
-    if (low in UNIT_MAP) return false;
-    if (low === "exp" || low === "scad" || low === "scadenza") return false;
-    if (parseDateToken(t)) return false;
-    if (low.startsWith("note")) return false;
+  if (!name) return null;
 
-    // remove numeric if it's quantity (approx)
-    const n = Number(t.replace(",", "."));
-    if (!Number.isNaN(n) && n === quantity) return false;
+  return {
+    name,
+    quantity,
+    unit,
+    location,
+    expiresAt,
+    section,
+    notes,
+    category,
+    parLevel: unit === "pz" ? (parLevel ?? 5) : undefined,
+  };
+}
 
-    return true;
-  });
-
-  const name = cleaned.join(" ").trim();
-  return { name, quantity, unit, section, expiresAt, notes };
+export function parseQuickAddText(text: string): QuickAddDraft[] {
+  return text
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map(parseLine)
+    .filter((x): x is QuickAddDraft => Boolean(x));
 }
