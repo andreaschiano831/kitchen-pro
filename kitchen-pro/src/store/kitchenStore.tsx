@@ -13,11 +13,7 @@ export type Role =
   | "mm"
   | "staff";
 
-export type Member = {
-  id: string;
-  name: string;
-  role: Role;
-};
+export type Member = { id: string; name: string; role: Role };
 
 export type ShoppingCategory = "economato" | "giornaliero" | "settimanale";
 
@@ -60,7 +56,8 @@ type Action =
   | { type: "SHOP_ADD"; item: ShoppingItem }
   | { type: "SHOP_TOGGLE"; id: string }
   | { type: "SHOP_REMOVE"; id: string }
-  | { type: "SHOP_CLEAR_CHECKED"; category: ShoppingCategory };
+  | { type: "SHOP_CLEAR_CHECKED"; category: ShoppingCategory }
+  | { type: "SHOP_UPSERT_ECONOMATO"; name: string; quantity: number; unit: Unit; notes?: string };
 
 const STORAGE_KEY = "kitchen-pro:v1";
 
@@ -91,7 +88,7 @@ function loadInitial(): KitchenState {
 }
 
 function clampParLevelForPz(unit: Unit, v?: number) {
-  if (unit !== "pz") return undefined; // MIN solo pz
+  if (unit !== "pz") return undefined;
   if (v === undefined || v === null) return undefined;
   const n = Math.floor(Number(v));
   if (!Number.isFinite(n) || n <= 0) return undefined;
@@ -171,13 +168,10 @@ function reducer(state: KitchenState, action: Action): KitchenState {
           const next = (k.freezer || [])
             .map((it) => {
               if (it.id !== action.id) return it;
-
               const unit = it.unit || "pz";
               let q = Number(it.quantity ?? 0) + Number(action.delta);
-
               if (unit === "pz") q = Math.floor(q);
               if (unit === "g" || unit === "ml") q = Math.round(q);
-
               return { ...it, quantity: q };
             })
             .filter((it) => Number(it.quantity ?? 0) > 0);
@@ -191,13 +185,11 @@ function reducer(state: KitchenState, action: Action): KitchenState {
         ...state,
         kitchens: state.kitchens.map((k) => {
           if (k.id !== state.currentKitchenId) return k;
-
           const next = (k.freezer || []).map((it) => {
             if (it.id !== action.id) return it;
             const pl = clampParLevelForPz(it.unit, action.parLevel);
             return { ...it, parLevel: pl };
           });
-
           return { ...k, freezer: next };
         }),
       };
@@ -229,41 +221,7 @@ function reducer(state: KitchenState, action: Action): KitchenState {
         }),
       };
 
-    case "SHOP_ADD_OR_UPDATE_LOW": {
-        return {
-          ...state,
-          kitchens: state.kitchens.map(k => {
-            if (k.id !== state.currentKitchenId) return k;
-            const existing = k.shopping.find(s => s.name === action.name && s.category === "economato");
-            if (existing) {
-              return {
-                ...k,
-                shopping: k.shopping.map(s =>
-                  s.name === action.name && s.category === "economato"
-                    ? { ...s, quantity: action.quantity }
-                    : s
-                )
-              };
-            }
-            return {
-              ...k,
-              shopping: [
-                ...k.shopping,
-                {
-                  id: crypto.randomUUID(),
-                  name: action.name,
-                  quantity: action.quantity,
-                  unit: action.unit,
-                  category: "economato",
-                  checked: false
-                }
-              ]
-            };
-          })
-        };
-      }
-
-      case "SHOP_CLEAR_CHECKED":
+    case "SHOP_CLEAR_CHECKED":
       return {
         ...state,
         kitchens: state.kitchens.map((k) => {
@@ -272,6 +230,43 @@ function reducer(state: KitchenState, action: Action): KitchenState {
             ...k,
             shopping: (k.shopping || []).filter((it) => !(it.category === action.category && it.checked)),
           };
+        }),
+      };
+
+    case "SHOP_UPSERT_ECONOMATO":
+      return {
+        ...state,
+        kitchens: state.kitchens.map((k) => {
+          if (k.id !== state.currentKitchenId) return k;
+
+          const nameKey = action.name.trim().toLowerCase();
+          const idx = (k.shopping || []).findIndex(
+            (it) => it.category === "economato" && String(it.name).trim().toLowerCase() === nameKey
+          );
+
+          if (idx >= 0) {
+            const next = (k.shopping || []).slice();
+            next[idx] = {
+              ...next[idx],
+              quantity: action.quantity,
+              unit: action.unit,
+              notes: action.notes ?? next[idx].notes,
+            };
+            return { ...k, shopping: next };
+          }
+
+          const newItem: ShoppingItem = {
+            id: uuid(),
+            name: action.name.trim(),
+            quantity: action.unit === "pz" ? Math.floor(action.quantity) : action.quantity,
+            unit: action.unit,
+            category: "economato",
+            checked: false,
+            createdAt: new Date().toISOString(),
+            notes: action.notes,
+          };
+
+          return { ...k, shopping: [newItem, ...(k.shopping || [])] };
         }),
       };
 
@@ -300,6 +295,8 @@ export type KitchenStore = {
   shopRemove: (id: string) => void;
   shopClearChecked: (category: ShoppingCategory) => void;
 
+  autoGenerateLowStockToEconomato: () => void;
+
   switchUser: (userId: string) => void;
   getCurrentRole: () => Role | null;
 };
@@ -313,28 +310,25 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
 
-  
-
-  function autoGenerateLowStock() {
+  function autoGenerateLowStockToEconomato() {
     if (!state.currentKitchenId) return;
-
-    const kitchen = state.kitchens.find(k => k.id === state.currentKitchenId);
+    const kitchen = state.kitchens.find((k) => k.id === state.currentKitchenId);
     if (!kitchen) return;
 
-    kitchen.freezer.forEach(item => {
-      if (item.unit !== "pz") return;
-      const min = item.parLevel ?? 5;
-      if (item.quantity >= min) return;
-
-      const diff = min - item.quantity;
+    for (const it of kitchen.freezer || []) {
+      if ((it.unit || "pz") !== "pz") continue;
+      const min = it.parLevel ?? 5;
+      const qty = Number(it.quantity ?? 0);
+      if (qty >= min) continue;
 
       dispatch({
-        type: "SHOP_ADD_OR_UPDATE_LOW",
-        name: item.name,
-        quantity: diff,
+        type: "SHOP_UPSERT_ECONOMATO",
+        name: it.name,
+        quantity: Math.max(1, min - qty),
         unit: "pz",
+        notes: "AUTO: reintegro da LOW stock",
       });
-    });
+    }
   }
 
   const store = useMemo<KitchenStore>(() => {
@@ -352,8 +346,7 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
       updateMemberRole: (kitchenId: string, memberId: string, role: Role) =>
         dispatch({ type: "UPDATE_MEMBER_ROLE", kitchenId, memberId, role }),
 
-      removeMember: (kitchenId: string, memberId: string) =>
-        dispatch({ type: "REMOVE_MEMBER", kitchenId, memberId }),
+      removeMember: (kitchenId: string, memberId: string) => dispatch({ type: "REMOVE_MEMBER", kitchenId, memberId }),
 
       addFreezerItem: (item: FreezerItem) => dispatch({ type: "FREEZER_ADD", item }),
       adjustFreezerItem: (id: string, delta: number) => dispatch({ type: "FREEZER_ADJUST", id, delta }),
@@ -378,6 +371,8 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
       shopToggle: (id: string) => dispatch({ type: "SHOP_TOGGLE", id }),
       shopRemove: (id: string) => dispatch({ type: "SHOP_REMOVE", id }),
       shopClearChecked: (category: ShoppingCategory) => dispatch({ type: "SHOP_CLEAR_CHECKED", category }),
+
+      autoGenerateLowStockToEconomato,
 
       switchUser: (userId: string) => dispatch({ type: "USER_SELECT", userId }),
 

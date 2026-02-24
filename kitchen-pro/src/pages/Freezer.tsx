@@ -153,7 +153,7 @@ export default function Freezer() {
     return (
       <div className="card p-6">
         <div className="h1">Giacenze</div>
-          <button className="btn btn-gold mt-2" onClick={autoGenerateLowStock}>
+          <button className="btn btn-gold mt-2" onClick={autoGenerateLowStockToEconomato}>
             Genera Spesa da LOW stock
           </button>
         <div className="p-muted mt-2">Seleziona una Kitchen prima.</div>
@@ -168,7 +168,7 @@ export default function Freezer() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <div className="h1">Giacenze</div>
-          <button className="btn btn-gold mt-2" onClick={autoGenerateLowStock}>
+          <button className="btn btn-gold mt-2" onClick={autoGenerateLowStockToEconomato}>
             Genera Spesa da LOW stock
           </button>
             <div className="p-muted text-xs mt-1">FEFO • Filtro location • Urgenze • LOW stock (pz)</div>

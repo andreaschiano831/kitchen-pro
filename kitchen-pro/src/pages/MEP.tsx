@@ -159,6 +159,7 @@ export default function MEP() {
         </div>
 
         <div className="mt-3 flex gap-2">
+            <button className="btn btn-gold" onClick={() => handleCompleteWithStock(addFreezerItem, task.title)} disabled={!canEdit}>Completa + Carica</button>
           <button
             className={`btn flex-1 ${canEdit ? "btn-primary" : "btn-ghost"}`}
             onClick={addTask}
