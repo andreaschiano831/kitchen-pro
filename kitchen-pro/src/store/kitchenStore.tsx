@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useReducer } from "react";
 import { v4 as uuid } from "uuid";
-import type { FreezerItem } from "../types/freezer";
+import type { FreezerItem, Unit } from "../types/freezer";
 
 export type Role =
   | "admin"
@@ -19,16 +19,16 @@ export type Member = {
   role: Role;
 };
 
-type FreezerItemExt = FreezerItem & {
+export type ShoppingCategory = "economato" | "giornaliero" | "settimanale";
+
+export type ShoppingItem = {
   id: string;
   name: string;
   quantity: number;
-  unit: any; // unit union vive in ../types/freezer; qui restiamo tolleranti
-  location?: "freezer" | "fridge";
-  insertedAt: string;
-  expiresAt?: string;
-  section?: string;
-  parLevel?: number;
+  unit: Unit;
+  category: ShoppingCategory;
+  checked: boolean;
+  createdAt: string; // ISO
   notes?: string;
 };
 
@@ -36,7 +36,8 @@ export type Kitchen = {
   id: string;
   name: string;
   members: Member[];
-  freezer: FreezerItemExt[];
+  freezer: FreezerItem[];
+  shopping: ShoppingItem[];
 };
 
 export type KitchenState = {
@@ -52,9 +53,14 @@ type Action =
   | { type: "ADD_MEMBER"; kitchenId: string; member: Member }
   | { type: "UPDATE_MEMBER_ROLE"; kitchenId: string; memberId: string; role: Role }
   | { type: "REMOVE_MEMBER"; kitchenId: string; memberId: string }
-  | { type: "FREEZER_ADD"; item: FreezerItemExt }
+  | { type: "FREEZER_ADD"; item: FreezerItem }
   | { type: "FREEZER_REMOVE"; id: string }
-  | { type: "FREEZER_ADJUST"; id: string; delta: number };
+  | { type: "FREEZER_ADJUST"; id: string; delta: number }
+  | { type: "FREEZER_SET_PARLEVEL"; id: string; parLevel?: number }
+  | { type: "SHOP_ADD"; item: ShoppingItem }
+  | { type: "SHOP_TOGGLE"; id: string }
+  | { type: "SHOP_REMOVE"; id: string }
+  | { type: "SHOP_CLEAR_CHECKED"; category: ShoppingCategory };
 
 const STORAGE_KEY = "kitchen-pro:v1";
 
@@ -64,22 +70,39 @@ function loadInitial(): KitchenState {
     if (!raw) return { currentKitchenId: null, currentUserId: null, kitchens: [] };
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return { currentKitchenId: null, currentUserId: null, kitchens: [] };
-    if (!Array.isArray(parsed.kitchens)) return { currentKitchenId: null, currentUserId: null, kitchens: [] };
+    if (!Array.isArray((parsed as any).kitchens)) return { currentKitchenId: null, currentUserId: null, kitchens: [] };
+
+    const kitchens: Kitchen[] = (parsed as any).kitchens.map((k: any) => ({
+      id: String(k.id),
+      name: String(k.name || "Kitchen"),
+      members: Array.isArray(k.members) ? k.members : [],
+      freezer: Array.isArray(k.freezer) ? k.freezer : [],
+      shopping: Array.isArray(k.shopping) ? k.shopping : [],
+    }));
+
     return {
-      currentKitchenId: parsed.currentKitchenId ?? null,
-      currentUserId: parsed.currentUserId ?? null,
-      kitchens: parsed.kitchens,
+      currentKitchenId: (parsed as any).currentKitchenId ?? null,
+      currentUserId: (parsed as any).currentUserId ?? null,
+      kitchens,
     };
   } catch {
     return { currentKitchenId: null, currentUserId: null, kitchens: [] };
   }
 }
 
+function clampParLevelForPz(unit: Unit, v?: number) {
+  if (unit !== "pz") return undefined; // MIN solo pz
+  if (v === undefined || v === null) return undefined;
+  const n = Math.floor(Number(v));
+  if (!Number.isFinite(n) || n <= 0) return undefined;
+  return n;
+}
+
 function reducer(state: KitchenState, action: Action): KitchenState {
   switch (action.type) {
     case "KITCHEN_CREATE": {
       const owner: Member = { id: uuid(), name: action.ownerName, role: action.ownerRole };
-      const kitchen: Kitchen = { id: uuid(), name: action.name, members: [owner], freezer: [] };
+      const kitchen: Kitchen = { id: uuid(), name: action.name, members: [owner], freezer: [], shopping: [] };
       return {
         ...state,
         kitchens: [kitchen, ...state.kitchens],
@@ -109,10 +132,7 @@ function reducer(state: KitchenState, action: Action): KitchenState {
         ...state,
         kitchens: state.kitchens.map((k) =>
           k.id === action.kitchenId
-            ? {
-                ...k,
-                members: k.members.map((m) => (m.id === action.memberId ? { ...m, role: action.role } : m)),
-              }
+            ? { ...k, members: k.members.map((m) => (m.id === action.memberId ? { ...m, role: action.role } : m)) }
             : k
         ),
       };
@@ -123,8 +143,7 @@ function reducer(state: KitchenState, action: Action): KitchenState {
         kitchens: state.kitchens.map((k) =>
           k.id === action.kitchenId ? { ...k, members: k.members.filter((m) => m.id !== action.memberId) } : k
         ),
-        currentUserId:
-          state.currentUserId === action.memberId ? null : state.currentUserId,
+        currentUserId: state.currentUserId === action.memberId ? null : state.currentUserId,
       };
 
     case "FREEZER_ADD":
@@ -153,17 +172,72 @@ function reducer(state: KitchenState, action: Action): KitchenState {
             .map((it) => {
               if (it.id !== action.id) return it;
 
-              const unit = String((it as any).unit || "pz");
-              let q = Number((it as any).quantity ?? 0) + Number(action.delta);
+              const unit = it.unit || "pz";
+              let q = Number(it.quantity ?? 0) + Number(action.delta);
 
               if (unit === "pz") q = Math.floor(q);
               if (unit === "g" || unit === "ml") q = Math.round(q);
 
               return { ...it, quantity: q };
             })
-            .filter((it) => Number((it as any).quantity ?? 0) > 0);
+            .filter((it) => Number(it.quantity ?? 0) > 0);
 
           return { ...k, freezer: next };
+        }),
+      };
+
+    case "FREEZER_SET_PARLEVEL":
+      return {
+        ...state,
+        kitchens: state.kitchens.map((k) => {
+          if (k.id !== state.currentKitchenId) return k;
+
+          const next = (k.freezer || []).map((it) => {
+            if (it.id !== action.id) return it;
+            const pl = clampParLevelForPz(it.unit, action.parLevel);
+            return { ...it, parLevel: pl };
+          });
+
+          return { ...k, freezer: next };
+        }),
+      };
+
+    case "SHOP_ADD":
+      return {
+        ...state,
+        kitchens: state.kitchens.map((k) =>
+          k.id === state.currentKitchenId ? { ...k, shopping: [action.item, ...(k.shopping || [])] } : k
+        ),
+      };
+
+    case "SHOP_TOGGLE":
+      return {
+        ...state,
+        kitchens: state.kitchens.map((k) => {
+          if (k.id !== state.currentKitchenId) return k;
+          const next = (k.shopping || []).map((it) => (it.id === action.id ? { ...it, checked: !it.checked } : it));
+          return { ...k, shopping: next };
+        }),
+      };
+
+    case "SHOP_REMOVE":
+      return {
+        ...state,
+        kitchens: state.kitchens.map((k) => {
+          if (k.id !== state.currentKitchenId) return k;
+          return { ...k, shopping: (k.shopping || []).filter((it) => it.id !== action.id) };
+        }),
+      };
+
+    case "SHOP_CLEAR_CHECKED":
+      return {
+        ...state,
+        kitchens: state.kitchens.map((k) => {
+          if (k.id !== state.currentKitchenId) return k;
+          return {
+            ...k,
+            shopping: (k.shopping || []).filter((it) => !(it.category === action.category && it.checked)),
+          };
         }),
       };
 
@@ -182,9 +256,15 @@ export type KitchenStore = {
   updateMemberRole: (kitchenId: string, memberId: string, role: Role) => void;
   removeMember: (kitchenId: string, memberId: string) => void;
 
-  addFreezerItem: (item: FreezerItemExt) => void;
+  addFreezerItem: (item: FreezerItem) => void;
   adjustFreezerItem: (id: string, delta: number) => void;
   removeFreezerItem: (id: string) => void;
+  setFreezerParLevel: (id: string, parLevel?: number) => void;
+
+  shopAdd: (name: string, quantity: number, unit: Unit, category: ShoppingCategory, notes?: string) => void;
+  shopToggle: (id: string) => void;
+  shopRemove: (id: string) => void;
+  shopClearChecked: (category: ShoppingCategory) => void;
 
   switchUser: (userId: string) => void;
   getCurrentRole: () => Role | null;
@@ -217,9 +297,29 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
       removeMember: (kitchenId: string, memberId: string) =>
         dispatch({ type: "REMOVE_MEMBER", kitchenId, memberId }),
 
-      addFreezerItem: (item: FreezerItemExt) => dispatch({ type: "FREEZER_ADD", item }),
+      addFreezerItem: (item: FreezerItem) => dispatch({ type: "FREEZER_ADD", item }),
       adjustFreezerItem: (id: string, delta: number) => dispatch({ type: "FREEZER_ADJUST", id, delta }),
       removeFreezerItem: (id: string) => dispatch({ type: "FREEZER_REMOVE", id }),
+      setFreezerParLevel: (id: string, parLevel?: number) => dispatch({ type: "FREEZER_SET_PARLEVEL", id, parLevel }),
+
+      shopAdd: (name: string, quantity: number, unit: Unit, category: ShoppingCategory, notes?: string) =>
+        dispatch({
+          type: "SHOP_ADD",
+          item: {
+            id: uuid(),
+            name: name.trim(),
+            quantity: unit === "pz" ? Math.floor(quantity) : quantity,
+            unit,
+            category,
+            checked: false,
+            createdAt: new Date().toISOString(),
+            notes,
+          },
+        }),
+
+      shopToggle: (id: string) => dispatch({ type: "SHOP_TOGGLE", id }),
+      shopRemove: (id: string) => dispatch({ type: "SHOP_REMOVE", id }),
+      shopClearChecked: (category: ShoppingCategory) => dispatch({ type: "SHOP_CLEAR_CHECKED", category }),
 
       switchUser: (userId: string) => dispatch({ type: "USER_SELECT", userId }),
 
