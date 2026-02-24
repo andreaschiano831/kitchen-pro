@@ -5,18 +5,18 @@ import { useKitchen } from "../store/kitchenStore";
 type ViewLoc = "freezer" | "fridge";
 type Unit = "pz" | "g" | "kg" | "ml" | "l";
 
-function daysUntil(iso?: string) {
+function hoursUntil(iso?: string) {
   if (!iso) return null as number | null;
   const t = Date.parse(iso);
   if (Number.isNaN(t)) return null as number | null;
-  return Math.ceil((t - Date.now()) / (1000 * 60 * 60 * 24));
+  return Math.floor((t - Date.now()) / (1000 * 60 * 60));
 }
 
-function expBadgeClass(d: number | null) {
-  if (d === null) return "border-neutral-200 bg-white text-neutral-700";
-  if (d <= 0) return "border-red-300 bg-red-50 text-red-800";
-  if (d <= 1) return "border-red-200 bg-red-50 text-red-800";
-  if (d <= 3) return "border-amber-200 bg-amber-50 text-amber-900";
+function expBadgeClass(h: number | null) {
+  if (h === null) return "border-neutral-200 bg-white text-neutral-700";
+  if (h <= 0) return "border-red-500 bg-red-100 text-red-900";
+  if (h <= 24) return "border-red-300 bg-red-50 text-red-800";
+  if (h <= 72) return "border-amber-300 bg-amber-50 text-amber-900";
   return "border-neutral-200 bg-white text-neutral-700";
 }
 
@@ -69,6 +69,7 @@ export default function Freezer() {
   const [viewLoc, setViewLoc] = useState<ViewLoc>("freezer");
   const [q, setQ] = useState("");
   const [sectionFilter, setSectionFilter] = useState("");
+  const [soloUrgenti, setSoloUrgenti] = useState(false);
 
   // form add
   const [name, setName] = useState("");
@@ -76,6 +77,7 @@ export default function Freezer() {
   const [unit, setUnit] = useState<Unit>("pz");
   const [section, setSection] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
+  const [parLevel, setParLevel] = useState<number | undefined>(undefined);
 
   const kitchen = useMemo(
     () => state.kitchens.find((k) => k.id === state.currentKitchenId),
@@ -87,7 +89,7 @@ export default function Freezer() {
     const qq = q.trim().toLowerCase();
     const sf = sectionFilter.trim().toLowerCase();
 
-    const list = (kitchen.freezer || [])
+    let list = (kitchen.freezer || [])
       .filter((it: any) => String(it.location || "freezer") === viewLoc)
       .filter((it: any) => (qq ? String(it.name || "").toLowerCase().includes(qq) : true))
       .filter((it: any) => (sf ? String(it.section || "").toLowerCase().includes(sf) : true))
@@ -103,7 +105,16 @@ export default function Freezer() {
       return bi - ai;
     });
 
+    
+    if (soloUrgenti) {
+      list = list.filter((it: any) => {
+        const h = hoursUntil(it.expiresAt);
+        return h !== null && h <= 72;
+      });
+    }
+
     return list;
+
   }, [kitchen, viewLoc, q, sectionFilter]);
 
   function handleAdd() {
@@ -123,6 +134,7 @@ export default function Freezer() {
       insertedAt: new Date().toISOString(),
       expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
       section: section.trim() || undefined,
+      parLevel,
     } as any);
 
     setName("");
@@ -162,6 +174,12 @@ export default function Freezer() {
           </div>
 
           <div className="text-xs" style={{ color: "var(--muted)" }}>
+            <button
+              className="btn btn-ghost px-3 py-1 text-xs"
+              onClick={() => setSoloUrgenti(!soloUrgenti)}
+            >
+              {soloUrgenti ? "Mostra tutto" : "Solo urgenti"}
+            </button>
             FEFO • {items.length} items • role: {role ?? "—"}
           </div>
         </div>
@@ -222,6 +240,14 @@ export default function Freezer() {
           />
           <input
             className="input"
+            type="number"
+            placeholder="Par"
+            value={parLevel ?? ""}
+            onChange={(e) => setParLevel(e.target.value ? Number(e.target.value) : undefined)}
+            disabled={!canEdit}
+          />
+          <input
+            className="input"
             type="date"
             value={expiresAt}
             onChange={(e) => setExpiresAt(e.target.value)}
@@ -245,7 +271,7 @@ export default function Freezer() {
         )}
 
         {items.map((item: any) => {
-          const du = daysUntil(item.expiresAt);
+          const du = hoursUntil(item.expiresAt);
           const u: Unit = (item.unit || "pz") as Unit;
           return (
             <div key={item.id} className="card p-4">
@@ -256,6 +282,9 @@ export default function Freezer() {
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
                     <span className="rounded-md border border-neutral-200 bg-white px-2 py-1 text-xs">
                       {item.quantity} {u}
+                      {item.parLevel && item.quantity < item.parLevel && (
+                        <span className="ml-2 text-xs text-red-600 font-semibold">LOW</span>
+                      )}
                     </span>
 
                     {item.section && (

@@ -28,6 +28,7 @@ type FreezerItemExt = FreezerItem & {
   insertedAt: string;
   expiresAt?: string;
   section?: string;
+  parLevel?: number;
   notes?: string;
 };
 
