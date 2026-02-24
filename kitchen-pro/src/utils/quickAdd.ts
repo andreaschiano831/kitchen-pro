@@ -1,53 +1,29 @@
+export type QuickAddUnit =
+  | "kg" | "g" | "l" | "ml" | "pz"
+  | "vac" | "busta" | "brik" | "latta" | "box" | "vasch";
+
+export type QuickAddLocation = "freezer" | "fridge" | "dry" | "counter";
+
 export type QuickAddDraft = {
   name: string;
-  quantity: number; // decimale con .
-  unit: "kg" | "g" | "l" | "ml" | "pz" | "vac" | "busta" | "brik" | "latta" | "box" | "vasch";
-  location?: "freezer" | "fridge" | "dry" | "counter";
-  expiresAt?: string; // YYYY-MM-DD o "?"
-  category?: "meat" | "fish" | "dairy" | "egg" | "veg" | "fruit" | "bakery" | "pasta" | "sauce" | "oil" | "spice" | "beverage" | "prepared" | "condiment" | "other";
+  quantity: number;
+  unit: QuickAddUnit;
+  location?: QuickAddLocation;
+  expiresAt?: string; // YYYY-MM-DD oppure "?"
+  category?: string;  // chiave preset (proteine/pesce/...)
   notes?: string;
   section?: string;
-  parLevel?: number; // solo pz, default 5
+  parLevel?: number;  // solo pz, default 5
 };
 
-const STOP_PREFIX = new Set([
-  "del","della","dei","degli","delle","le","lo","la","i","gli","il","un","uno","una",
-]);
+const STOP_PREFIX = new Set(["del","della","dei","degli","delle","le","lo","la","i","gli","il","un","uno","una"]);
 
-const CAT_IT: Record<string, string> = {
-  "proteine": "proteine",
-  "proteina": "proteine",
-  "pesce": "pesce",
-  "molluschi": "pesce",
-  "verdure": "verdure",
-  "radici": "verdure",
-  "erbe": "erbe",
-  "fiori": "erbe",
-  "latticini": "latticini",
-  "uova": "latticini",
-  "cereali": "cereali",
-  "farine": "cereali",
-  "grassi": "grassi",
-  "oli": "grassi",
-  "fermentati": "fermentati",
-  "acidi": "fermentati",
-  "spezie": "spezie",
-  "aromi": "spezie",
-  "fondi": "fondi",
-  "riduzioni": "fondi",
-  "cantina": "cantina",
-  "beverage": "cantina",
-  "consumabili": "consumabili",
-  "secco": "consumabili",
-  "default": "default",
-};
-
-const UNIT_SYNONYMS: Record<string, QuickAddDraft["unit"]> = {
-  "kg":"kg","kilo":"kg","kili":"kg","chilo":"kg","chili":"kg",
+const UNIT: Record<string, QuickAddUnit> = {
+  "kg":"kg","kilo":"kg","chilo":"kg","chili":"kg","kili":"kg",
   "g":"g","gr":"g","grammo":"g","grammi":"g",
   "l":"l","litro":"l","litri":"l",
   "ml":"ml",
-  "pz":"pz","pezzi":"pz","pezzo":"pz","un":"pz","unità":"pz","unita":"pz",
+  "pz":"pz","pezzo":"pz","pezzi":"pz","un":"pz","unita":"pz","unità":"pz",
   "vac":"vac","sv":"vac","sottovuoto":"vac",
   "busta":"busta","buste":"busta","confezione":"busta","confezioni":"busta",
   "brik":"brik","brick":"brik",
@@ -56,24 +32,43 @@ const UNIT_SYNONYMS: Record<string, QuickAddDraft["unit"]> = {
   "vasch":"vasch","vaschetta":"vasch","vaschette":"vasch",
 };
 
-function isNumberToken(t: string) {
-  return /^(\d+(\.\d+)?)$/.test(t);
-}
+const CAT_IT: Record<string, string> = {
+  "proteine":"proteine",
+  "pesce":"pesce",
+  "verdure":"verdure",
+  "erbe":"erbe",
+  "latticini":"latticini",
+  "cereali":"cereali",
+  "grassi":"grassi",
+  "fermentati":"fermentati",
+  "spezie":"spezie",
+  "fondi":"fondi",
+  "cantina":"cantina",
+  "consumabili":"consumabili",
+  "default":"default",
+};
+
+function isNum(t: string) { return /^\d+(\.\d+)?$/.test(t); }
 
 function titleCase(s: string) {
-  const w = s.split(/\s+/).filter(Boolean);
+  const w = s.trim().split(/\s+/).filter(Boolean);
   const cleaned = w.filter((x, i) => !(i === 0 && STOP_PREFIX.has(x.toLowerCase())));
-  return cleaned.map((x) => x.charAt(0).toUpperCase() + x.slice(1).toLowerCase()).join(" ");
+  return cleaned.map(x => x.charAt(0).toUpperCase() + x.slice(1).toLowerCase()).join(" ");
+}
+
+function iso(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const dd = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${dd}`;
 }
 
 function endOfMonth(d: Date) {
-  const x = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-  return x;
+  return new Date(d.getFullYear(), d.getMonth()+1, 0);
 }
 
 function nextFriday(d: Date) {
-  // 0=Sun ... 5=Fri
-  const day = d.getDay();
+  const day = d.getDay(); // 0..6
   const delta = (5 - day + 7) % 7;
   const add = delta === 0 ? 7 : delta;
   const x = new Date(d);
@@ -81,131 +76,100 @@ function nextFriday(d: Date) {
   return x;
 }
 
-function isoDate(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${dd}`;
-}
-
 function parseExpiry(tokens: string[], i: number): { exp?: string; next: number } {
-  const t = tokens[i]?.toLowerCase();
-
+  const t = (tokens[i] || "").toLowerCase();
   const now = new Date();
 
-  // "domani"
   if (t === "domani") {
     const x = new Date(now);
-    x.setDate(now.getDate() + 1);
-    return { exp: isoDate(x), next: i + 1 };
+    x.setDate(now.getDate()+1);
+    return { exp: iso(x), next: i+1 };
   }
 
-  // "tra X giorni"
-  if (t === "tra" && tokens[i + 1] && isNumberToken(tokens[i + 1]) && (tokens[i + 2]?.toLowerCase() === "giorni" || tokens[i + 2]?.toLowerCase() === "giorno")) {
-    const n = Math.floor(Number(tokens[i + 1]));
+  if (t === "tra" && isNum(tokens[i+1] || "") && ((tokens[i+2]||"").toLowerCase() === "giorni" || (tokens[i+2]||"").toLowerCase() === "giorno")) {
+    const n = Math.floor(Number(tokens[i+1]));
     const x = new Date(now);
-    x.setDate(now.getDate() + n);
-    return { exp: isoDate(x), next: i + 3 };
+    x.setDate(now.getDate()+n);
+    return { exp: iso(x), next: i+3 };
   }
 
-  // "fine settimana" -> venerdì prossimo
-  if (t === "fine" && tokens[i + 1]?.toLowerCase() === "settimana") {
+  if (t === "fine" && (tokens[i+1]||"").toLowerCase() === "settimana") {
     const x = nextFriday(now);
-    return { exp: isoDate(x), next: i + 2 };
+    return { exp: iso(x), next: i+2 };
   }
 
-  // "entro fine mese"
-  if (t === "entro" && tokens[i + 1]?.toLowerCase() === "fine" && tokens[i + 2]?.toLowerCase() === "mese") {
+  if (t === "entro" && (tokens[i+1]||"").toLowerCase() === "fine" && (tokens[i+2]||"").toLowerCase() === "mese") {
     const x = endOfMonth(now);
-    return { exp: isoDate(x), next: i + 3 };
+    return { exp: iso(x), next: i+3 };
   }
 
-  // "scade il 2026-02-28" o "exp 2026-02-28"
-  const maybe = tokens[i + 1];
-  if ((t === "exp" || t === "scad" || t === "scade" || t === "scadenza") && maybe) {
-    // YYYY-MM-DD
-    if (/^\d{4}-\d{2}-\d{2}$/.test(maybe)) return { exp: maybe, next: i + 2 };
-
-    // solo giorno: "il 28" -> mese corrente o prossimo
-    if (/^\d{1,2}$/.test(maybe)) {
-      const day = Number(maybe);
+  if ((t === "exp" || t === "scad" || t === "scade" || t === "scadenza") && tokens[i+1]) {
+    const v = tokens[i+1];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return { exp: v, next: i+2 };
+    if (/^\d{1,2}$/.test(v)) {
+      const day = Number(v);
       const x = new Date(now.getFullYear(), now.getMonth(), day);
-      if (x.getTime() < now.getTime()) x.setMonth(x.getMonth() + 1);
-      return { exp: isoDate(x), next: i + 2 };
+      if (x.getTime() < now.getTime()) x.setMonth(x.getMonth()+1);
+      return { exp: iso(x), next: i+2 };
     }
   }
 
   return { next: i };
 }
 
-function inferLocation(name: string): QuickAddDraft["location"] {
+function inferLocation(name: string): QuickAddLocation {
   const n = name.toLowerCase();
-
-  const freezerHints = ["surgel", "gelato", "carne", "manzo", "vitello", "pollo", "pesce", "gamber", "calam", "tonno", "salm"];
-  const fridgeHints = ["latte", "panna", "burro", "yogurt", "uova", "salume", "prosci", "formagg", "verdur", "insalat"];
-  const dryHints = ["pasta", "riso", "farina", "olio", "spezie", "sale", "zucchero"];
-  const counterHints = ["pane", "frutta"];
-
-  if (freezerHints.some((h) => n.includes(h))) return "freezer";
-  if (fridgeHints.some((h) => n.includes(h))) return "fridge";
-  if (dryHints.some((h) => n.includes(h))) return "dry";
-  if (counterHints.some((h) => n.includes(h))) return "counter";
+  const freezer = ["surgel","carne","manzo","vitello","pollo","agnello","pesce","gamber","calam","tonno","salm","astice"];
+  const fridge  = ["latte","panna","burro","yogurt","uova","salume","prosci","formagg","parmig","verd","insalat"];
+  const dry     = ["pasta","riso","farina","olio","spezie","sale","zucchero"];
+  const counter = ["pane","frutta"];
+  if (freezer.some(h => n.includes(h))) return "freezer";
+  if (fridge.some(h => n.includes(h))) return "fridge";
+  if (dry.some(h => n.includes(h))) return "dry";
+  if (counter.some(h => n.includes(h))) return "counter";
   return "fridge";
 }
 
-function inferCategory(name: string): QuickAddDraft["category"] {
+function inferCategory(name: string): string {
   const n = name.toLowerCase();
-  if (/(manzo|vitello|pollo|agnello|maiale|carne)/.test(n)) return "meat";
-  if (/(pesce|gamber|calam|tonno|salm|orata|branz)/.test(n)) return "fish";
-  if (/(latte|panna|burro|yogurt|formagg|parmig)/.test(n)) return "dairy";
-  if (/(uov)/.test(n)) return "egg";
-  if (/(insalat|verd|pomodor|zucchin|melanz)/.test(n)) return "veg";
-  if (/(frutta|mela|pera|fragol|limon|aranc)/.test(n)) return "fruit";
-  if (/(pane|brioche|croissant|farin)/.test(n)) return "bakery";
-  if (/(pasta|riso)/.test(n)) return "pasta";
-  if (/(salsa|ragù|ragu|fondo|brodo)/.test(n)) return "sauce";
-  if (/(olio)/.test(n)) return "oil";
-  if (/(pepe|sale|spezie)/.test(n)) return "spice";
-  if (/(vino|birra|acqua|bevanda)/.test(n)) return "beverage";
-  if (/(prep|prepar|base|mise)/.test(n)) return "prepared";
-  if (/(senape|ketchup|maion|condim)/.test(n)) return "condiment";
-  return "other";
+  if (/(wagyu|piccione|animelle|carne|manzo|vitello|pollo|agnello|maiale)/.test(n)) return "proteine";
+  if (/(pesce|rombo|capesante|ricci|polpo|astice|gamber|calam|tonno|salm)/.test(n)) return "pesce";
+  if (/(topinambur|scorzonera|cavolo|verd)/.test(n)) return "verdure";
+  if (/(acetosella|borragine|fiori)/.test(n)) return "erbe";
+  if (/(burro|panna|uova|formagg|parmig)/.test(n)) return "latticini";
+  if (/(farina|cereali|farro|semola|riso|pasta)/.test(n)) return "cereali";
+  if (/(olio|lardo|grassi|chiarificato)/.test(n)) return "grassi";
+  if (/(koji|miso|kombucha|ferment)/.test(n)) return "fermentati";
+  if (/(pepe|sumac|cardamomo|sale|spezie)/.test(n)) return "spezie";
+  if (/(fondo|dashi|bisque|glace|riduz)/.test(n)) return "fondi";
+  if (/(vino|sake|distill|bevanda)/.test(n)) return "cantina";
+  if (/(carta|agar|lecitina|consum)/.test(n)) return "consumabili";
+  return "default";
 }
 
 function stripFiller(s: string) {
-  return s
-    .replace(/\b(allora|dunque|quindi|metti|tipo|per favore)\b/gi, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  return s.replace(/\b(allora|dunque|quindi|metti|tipo|per favore)\b/gi, "").replace(/\s+/g," ").trim();
 }
 
-function parseOne(line: string): QuickAddDraft | { unparsed: string } {
-  const raw = stripFiller(line);
-  if (!raw) return { unparsed: "" };
-
-  // Split in tokens
-  const tokens = raw.split(/\s+/);
+function parseOne(part: string): QuickAddDraft | null {
+  const raw = stripFiller(part);
+  if (!raw) return null;
+  const tokens = raw.split(/\s+/).filter(Boolean);
 
   let i = 0;
   let qty = 1.0;
 
-  // qty: numero o "mezzo"
-  const t0 = tokens[i]?.toLowerCase();
-  if (t0 === "mezzo" || t0 === "mezza") {
-    qty = 0.5; i++;
-  } else if (isNumberToken(tokens[i])) {
-    qty = Number(tokens[i]); i++;
-  }
+  const t0 = (tokens[i] || "").toLowerCase();
+  if (t0 === "mezzo" || t0 === "mezza") { qty = 0.5; i++; }
+  else if (isNum(tokens[i] || "")) { qty = Number(tokens[i]); i++; }
 
-  // unit
-  let unit: QuickAddDraft["unit"] = "pz";
-  const u = tokens[i]?.toLowerCase();
-  if (u && UNIT_SYNONYMS[u]) { unit = UNIT_SYNONYMS[u]; i++; }
+  let unit: QuickAddUnit = "pz";
+  const u = (tokens[i] || "").toLowerCase();
+  if (u && UNIT[u]) { unit = UNIT[u]; i++; }
 
-  // parse rest: location/exp/category/notes
-  let loc: QuickAddDraft["location"] | undefined;
+  let location: QuickAddLocation | undefined;
   let exp: string | undefined;
-  let cat: QuickAddDraft["category"] | undefined;
+  let category: string | undefined;
   let notes: string | undefined;
 
   const nameParts: string[] = [];
@@ -214,70 +178,58 @@ function parseOne(line: string): QuickAddDraft | { unparsed: string } {
   while (i < tokens.length) {
     const t = tokens[i].toLowerCase();
 
-    // location explicit
-    if (t in { "freezer":1, "fridge":1, "dry":1, "counter":1 }) {
-      loc = t as any; i++; continue;
-    }
-    if (t == "frigo") { loc = "fridge"; i++; continue; }
-    if (t == "congelatore") { loc = "freezer"; i++; continue; }
+    if (t === "freezer" || t === "fridge" || t === "dry" || t === "counter") { location = t as any; i++; continue; }
+    if (t === "frigo") { location = "fridge"; i++; continue; }
+    if (t === "congelatore") { location = "freezer"; i++; continue; }
 
-    // expiry
-    const parsed = parseExpiry(tokens, i);
-    if (parsed.next != i) {
-      exp = parsed.exp;
-      i = parsed.next;
-      continue;
-    }
+    const pe = parseExpiry(tokens, i);
+    if (pe.next !== i) { exp = pe.exp; i = pe.next; continue; }
 
-    // category explicit
-    if (t == "category" or t == "cat" or t == "categoria") {
+    if (t === "cat" || t === "categoria" || t === "category") {
       const v = tokens[i+1];
-      if (v) { const vv = v.toLowerCase(); cat = (CAT_IT[vv] || vv) as any; i += 2; continue; }
+      if (v) { const vv = v.toLowerCase(); category = CAT_IT[vv] || vv; i += 2; continue; }
     }
 
-    // notes begin
-    if (t == "note" or t == "notes") {
-      notesParts.extend(tokens[i+1:])
-      break
+    if (t === "note" || t === "notes") {
+      notesParts.push(...tokens.slice(i+1));
+      break;
     }
 
-    nameParts.push(tokens[i]); i++;
+    nameParts.push(tokens[i]);
+    i++;
   }
 
   const nameRaw = nameParts.join(" ").trim();
-  if (!nameRaw) return { unparsed: line };
+  if (!nameRaw) return null;
 
   const name = titleCase(nameRaw);
-  if (!cat) cat = inferCategory(name);
-  if (!loc) loc = inferLocation(name);
+  if (!category) category = inferCategory(name);
+  if (!location) location = inferLocation(name);
   if (!exp) exp = "?";
   if (notesParts.length) notes = titleCase(notesParts.join(" "));
-
-  const parLevel = unit == "pz" ? 5 : undefined;
 
   return {
     name,
     quantity: qty,
     unit,
-    location: loc,
+    location,
     expiresAt: exp,
-    category: cat,
+    category,
     notes,
-    parLevel,
+    parLevel: unit === "pz" ? 5 : undefined,
   };
 }
 
 export function parseQuickAddText(text: string): QuickAddDraft[] {
-  const lines = text.split(/\n+/).map((x) => x.trim()).filter(Boolean);
+  const lines = text.split(/\n+/).map(x => x.trim()).filter(Boolean);
   const out: QuickAddDraft[] = [];
 
-  for (const l of lines) {
-    // prova split su virgole per dettati "A, B, C"
-    const parts = l.split(/,\s*/).map((x) => x.trim()).filter(Boolean);
+  for (const line of lines) {
+    const parts = line.split(/,\s*/).map(x => x.trim()).filter(Boolean);
     for (const part of parts) {
       const r = parseOne(part);
-      if ("unparsed" in r) {
-        if (r.unparsed) out.push({ name: "⚠️ UNPARSED", quantity: 1, unit: "pz", expiresAt: "?", category: "other", notes: r.unparsed });
+      if (!r) {
+        out.push({ name: "⚠️ UNPARSED", quantity: 1, unit: "pz", expiresAt: "?", category: "default", notes: part });
       } else {
         out.push(r);
       }

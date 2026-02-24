@@ -187,7 +187,7 @@ export default function Capture() {
 
         {mode === "camera" ? (
           <div className="mt-4 space-y-3">
-            <div className="p-muted text-xs">Camera: inquadra come riferimento, poi detta/incolla. OCR/AI opzionale nello step successivo.</div>
+            <div className="p-muted text-xs">Inquadra l’etichetta per registrare. Se serve: detta/incolla e correggi in preview.</div>
             <div className="flex gap-2">
               {!camOn ? (
                 <button className="btn btn-primary text-xs" onClick={startCam}>Apri camera</button>

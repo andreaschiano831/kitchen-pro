@@ -201,6 +201,57 @@ export default function Kitchen() {
         })()}
       </div>
 
+
+      <div className="card p-4">
+        <div className="h2">Par Levels — Michelin preset (solo PZ)</div>
+        <div className="p-muted text-xs mt-1">
+          Sotto MIN: segnala in rosso + pronto per riordino.
+        </div>
+
+        {(() => {
+          const k = state.kitchens.find((x) => x.id === state.currentKitchenId);
+          const map = (k as any)?.parByCategory || { default: 5 };
+          const rows = [
+            ["proteine","Proteine animali"],
+            ["pesce","Pesce & molluschi"],
+            ["verdure","Verdure & radici"],
+            ["erbe","Erbe & fiori"],
+            ["latticini","Latticini & uova"],
+            ["cereali","Farine & cereali"],
+            ["grassi","Grassi & oli"],
+            ["fermentati","Acidi & fermentati"],
+            ["spezie","Spezie & aromi secchi"],
+            ["fondi","Fondi & riduzioni"],
+            ["cantina","Cantina & beverage"],
+            ["consumabili","Consumabili & secco"],
+            ["default","Default"],
+          ] as const;
+
+          return (
+            <div className="mt-3 space-y-2">
+              {rows.map(([key,label]) => (
+                <div key={key} className="row">
+                  <div className="min-w-0">
+                    <div className="font-semibold">{label}</div>
+                    <div className="p-muted text-xs">{key}</div>
+                  </div>
+                  <button
+                    className="btn btn-ghost text-xs"
+                    onClick={() => {
+                      const cur = Number(map[key] ?? 5);
+                      const v = Number(prompt(`MIN (pz) per ${label}`, String(cur)) || String(cur));
+                      setParCategory(key, v);
+                    }}
+                  >
+                    MIN: {Number(map[key] ?? 5)}
+                  </button>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+      </div>
+
 </div>
   );
 }
