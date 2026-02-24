@@ -20,6 +20,7 @@ const PAR_ROWS: { key: string; label: string; examples: string; def: number }[] 
 export default function Kitchen() {
   const { state, createKitchen, selectKitchen, setParCategory } = useKitchen();
   const [name, setName] = useState("");
+  const [ownerName, setOwnerName] = useState("Admin");
 
   const currentKitchen = useMemo(
     () => state.kitchens.find((k) => k.id === state.currentKitchenId),
@@ -31,7 +32,7 @@ export default function Kitchen() {
   function onCreate() {
     const trimmed = name.trim();
     if (!trimmed) return;
-    createKitchen(trimmed);
+    createKitchen(trimmed, (ownerName || "").trim() || "Admin");
     setName("");
   }
 

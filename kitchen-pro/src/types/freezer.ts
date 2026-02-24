@@ -1,16 +1,4 @@
-export type Unit =
-  | "pz"
-  | "g"
-  | "kg"
-  | "ml"
-  | "l"
-  | "vac"
-  | "busta"
-  | "brik"
-  | "latta"
-  | "box"
-  | "vasch";
-
+export type Unit = "pz" | "g" | "kg" | "ml" | "l";
 export type Location = "freezer" | "fridge" | "dry" | "counter";
 
 export type FreezerItem = {
@@ -19,12 +7,15 @@ export type FreezerItem = {
   quantity: number;
   unit: Unit;
   location: Location;
+
   insertedAt: string; // ISO
+  insertedDate?: string; // YYYY-MM-DD (UI)
+
   expiresAt?: string; // ISO
+  category?: string;  // es: proteine/pesce/verdure...
   section?: string;
   notes?: string;
-  category?: string;
 
-  // MIN stock: usato SOLO per unit === "pz"
-  parLevel?: number | null;
+  lot?: string;       // lotto/partita
+  parLevel?: number;  // SOLO per unit === "pz"
 };

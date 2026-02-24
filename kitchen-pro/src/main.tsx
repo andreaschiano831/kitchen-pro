@@ -9,6 +9,7 @@ import { KitchenProvider } from "./store/kitchenStore";
 import Today from "./pages/Today";
 import Freezer from "./pages/Freezer";
 import Orders from "./pages/Orders";
+import Line from "./pages/Line";
 import MEP from "./pages/MEP";
 import Kitchen from "./pages/Kitchen";
 import Members from "./pages/Members";
@@ -37,7 +38,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/capture" element={<Capture />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="*" element={<Navigate to="/today" replace />} />
-          </Route>
+            <Route path="/line" element={<Line />} />
+</Route>
         </Routes>
       </HashRouter>
     </KitchenProvider>

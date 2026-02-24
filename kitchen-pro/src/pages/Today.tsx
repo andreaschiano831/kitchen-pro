@@ -1,74 +1,109 @@
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useKitchen } from "../store/kitchenStore";
-import { expiryLevel, isUrgent } from "../utils/expiry";
+import { expiryLevel, expiryLabel, isUrgent } from "../utils/expiry";
 
 export default function Today() {
   const { state } = useKitchen();
+
   const kitchen = useMemo(
     () => state.kitchens.find((k) => k.id === state.currentKitchenId),
     [state.kitchens, state.currentKitchenId]
   );
 
-  const stats = useMemo(() => {
-    if (!kitchen) return { urgent: 0, low: 0, econ: 0 };
-    const items = kitchen.freezer || [];
+  const items = kitchen?.freezer ?? [];
 
-    const urgent = items.filter((it: any) => isUrgent(expiryLevel(it.expiresAt))).length;
+  const urgent = useMemo(() => {
+    return items
+      .filter((x) => isUrgent(expiryLevel(x.expiresAt)))
+      .slice(0, 6);
+  }, [items]);
 
-    const low = items.filter((it: any) => {
-      if (it.unit !== "pz") return false;
-      const min = (it.parLevel ?? 5);
-      return Number(it.quantity || 0) < Number(min);
-    }).length;
-
-    const econ = (kitchen.shopping || []).filter((x: any) => x.category === "economato" && !x.checked).length;
-    return { urgent, low, econ };
-  }, [kitchen]);
-
-  if (!kitchen) {
-    return (
-      <div className="card p-6">
-        <div className="h1">Today</div>
-        <div className="p-muted text-xs mt-1">Cucina attiva — 3 coperti in prep, 1 in attesa</div>
-        <div className="p-muted mt-2">Seleziona una Kitchen per vedere il cruscotto.</div>
-      </div>
-    );
-  }
+  const low = useMemo(() => {
+    return items
+      .filter((x: any) => x.unit === "pz" && (x.quantity ?? 0) < Number(x.parLevel ?? 5))
+      .slice(0, 6);
+  }, [items]);
 
   return (
     <div className="space-y-4">
-      <div className="card p-5">
-        <div className="h1">Today</div>
-        <div className="p-muted text-xs mt-1">Cucina attiva — 3 coperti in prep, 1 in attesa</div>
-        <div className="p-muted text-xs mt-1">Cucina attiva — controllo rapido su urgenze, scorte e spesa</div>
+      <div className="card p-4">
+        <div className="h2">Cucina attiva</div>
+        <div className="mt-1 text-sm">
+          {kitchen ? (
+            <>
+              <span className="font-semibold">{kitchen.name}</span>
+              <span className="p-muted"> — pronto per operatività</span>
+            </>
+          ) : (
+            <span className="p-muted">Seleziona una kitchen per iniziare.</span>
+          )}
+        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
-          <div className="card p-4">
-            <div className="p-muted text-xs">Scadenze urgenti</div>
-            <div className="text-3xl font-extrabold mt-1">{stats.urgent}</div>
-            <div className="p-muted text-xs mt-2">Oggi / 24h / 72h</div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Link className="btn btn-primary" to="/freezer">Vai a Stock</Link>
+          <Link className="btn btn-ghost" to="/orders">Apri Orders</Link>
+          <Link className="btn btn-ghost" to="/mep">Apri MEP</Link>
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="card p-4">
+          <div className="h2">Search</div>
+          <div className="p-muted text-sm mt-1">Cerca ingrediente, ricetta o fornitore…</div>
+          <div className="mt-3">
+            <Link to="/search" className="btn btn-ghost w-full">Apri Search</Link>
           </div>
+        </div>
 
-          <div className="card p-4">
-            <div className="p-muted text-xs">LOW stock (pz)</div>
-            <div className="text-3xl font-extrabold mt-1">{stats.low}</div>
-            <div className="p-muted text-xs mt-2">Sotto MIN (default 5)</div>
-          </div>
-
-          <div className="card p-4">
-            <div className="p-muted text-xs">Economato da comprare</div>
-            <div className="text-3xl font-extrabold mt-1">{stats.econ}</div>
-            <div className="p-muted text-xs mt-2">Non spuntati</div>
+        <div className="card p-4">
+          <div className="h2">Scanner</div>
+          <div className="p-muted text-sm mt-1">Inquadra l’etichetta per registrare</div>
+          <div className="mt-3">
+            <Link to="/capture" className="btn btn-gold w-full">Apri Scanner</Link>
           </div>
         </div>
       </div>
 
-      <div className="card p-5">
-        <div className="h2">Routine consigliata</div>
-        <div className="p-muted text-sm mt-2 space-y-1">
-          <div>1) Apri <b>Freezer</b> → attiva “Solo urgenti” e sistema le scadenze.</div>
-          <div>2) Verifica <b>LOW stock</b> → genera economato e conferma quantità.</div>
-          <div>3) Vai su <b>Orders</b> → export DOC per condividere.</div>
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="card p-4">
+          <div className="h2">Scadenze urgenti</div>
+          {urgent.length == 0 ? (
+            <div className="p-muted text-sm mt-2">Nessun urgente (oggi/24h/72h).</div>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {urgent.map((x: any) => (
+                <div key={x.id} className="row">
+                  <div className="min-w-0">
+                    <div className="font-semibold truncate">{x.name}</div>
+                    <div className="p-muted text-xs">{expiryLabel(expiryLevel(x.expiresAt))}</div>
+                  </div>
+                  <span className="badge">URGENTE</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="card p-4">
+          <div className="h2">Low stock (pz)</div>
+          {low.length == 0 ? (
+            <div className="p-muted text-sm mt-2">Nessuna giacenza sotto MIN.</div>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {low.map((x: any) => (
+                <div key={x.id} className="row">
+                  <div className="min-w-0">
+                    <div className="font-semibold truncate">{x.name}</div>
+                    <div className="p-muted text-xs">QTY: {x.quantity} • MIN: {x.parLevel ?? 5}</div>
+                  </div>
+                  <span className="badge" style={{ borderColor: "rgba(122,12,12,.35)", background: "rgba(122,12,12,.06)", color: "var(--accent)" }}>
+                    LOW
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

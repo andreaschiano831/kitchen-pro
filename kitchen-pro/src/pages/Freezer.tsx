@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { v4 as uuid } from "uuid";
 import { useKitchen } from "../store/kitchenStore";
+import StockIntake from "../components/StockIntake";
 import type { Unit } from "../types/freezer";
 import Modal from "../components/Modal";
 import { Toast, type ToastMsg } from "../components/Toast";
