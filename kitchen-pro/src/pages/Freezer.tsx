@@ -23,8 +23,9 @@ function expBadgeClass(d: number | null) {
   if (d <= 3) return "badge border border-[#C6A75E] bg-[#fff7e6] text-[#6b4f12]";
   return "badge";
 
+}
+
 function QuickAdjustButtons({ unit, onDelta }: { unit: string; onDelta: (d: number) => void }) {
-  // pz: servizio
   if (unit === "pz") {
     return (
       <div className="mt-2 flex flex-wrap gap-2">
@@ -36,7 +37,6 @@ function QuickAdjustButtons({ unit, onDelta }: { unit: string; onDelta: (d: numb
     );
   }
 
-  // g/ml: step realistici
   if (unit === "g" || unit === "ml") {
     return (
       <div className="mt-2 flex flex-wrap gap-2">
@@ -48,24 +48,22 @@ function QuickAdjustButtons({ unit, onDelta }: { unit: string; onDelta: (d: numb
     );
   }
 
-  // kg/l: step piccoli (0.05/0.10/0.25)
   if (unit === "kg" || unit === "l") {
     return (
       <div className="mt-2 flex flex-wrap gap-2">
         <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(-0.05)}>-0.05</button>
-        <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(-0.1)}>-0.10</button>
+        <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(-0.10)}>-0.10</button>
         <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(-0.25)}>-0.25</button>
-        <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(+0.1)}>+0.10</button>
+        <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(+0.10)}>+0.10</button>
       </div>
     );
   }
 
   return null;
 }
-}
 
 export default function Freezer() {
-  const { state, addFreezerItem, removeFreezerItem, getCurrentRole } = useKitchen();
+  const { state, addFreezerItem, removeFreezerItem, adjustFreezerItem, getCurrentRole } = useKitchen();
   const role = getCurrentRole();
   const [params] = useSearchParams();
 
@@ -301,13 +299,15 @@ export default function Freezer() {
                     {item.expiresAt ? ` • exp ${item.expiresAt}` : ""}
                   </div>
                 </div>
-
-                  {canEdit && (
-                    <QuickAdjustButtons
-                      unit={item.unit}
-                      onDelta={(d) => adjustFreezerItem(item.id, d)}
                     />
                   )}
+
+                {canEdit && (
+                  <QuickAdjustButtons
+                    unit={String((item as any).unit ?? "pz")}
+                    onDelta={(d: number) => adjustFreezerItem(item.id, d)}
+                  />
+                )}
 
                 {canEdit && (
                   <button className="btn btn-ghost px-3 py-2" onClick={() => removeFreezerItem(item.id)} title="Rimuovi lotto">
