@@ -4,6 +4,7 @@ export type QuickAddDraft = {
   name: string;
   quantity: number;
   unit: Unit;
+  location?: "freezer" | "fridge";
   section?: string;
   expiresAt?: string; // ISO
   notes?: string;

@@ -1,13 +1,31 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { v4 as uuid } from "uuid";
+import { useSearchParams } from "react-router-dom";
 import { useKitchen } from "../store/kitchenStore";
 import { quickAddParse } from "../utils/quickAdd";
 import { useSpeech } from "../hooks/useSpeech";
-import type { Unit } from "../types/freezer";
+import type { Location, Unit } from "../types/freezer";
+
+function daysLeft(iso?: string) {
+  if (!iso) return null;
+  const d = new Date(iso + "T00:00:00");
+  const now = new Date();
+  const diff = d.getTime() - new Date(now.toDateString()).getTime();
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
+}
+
+function expBadgeClass(d: number | null) {
+  if (d === null) return "badge";
+  if (d <= 0) return "badge border border-[#8B0000] bg-[#fff1f1] text-[#8B0000]";
+  if (d <= 1) return "badge border border-[#C6A75E] bg-[#fff7e6] text-[#6b4f12]";
+  if (d <= 3) return "badge border border-[#C6A75E] bg-[#fff7e6] text-[#6b4f12]";
+  return "badge";
+}
 
 export default function Freezer() {
   const { state, addFreezerItem, removeFreezerItem, getCurrentRole } = useKitchen();
   const role = getCurrentRole();
+  const [params] = useSearchParams();
 
   const kitchen = useMemo(
     () => state.kitchens.find((k) => k.id === state.currentKitchenId),
@@ -16,15 +34,28 @@ export default function Freezer() {
 
   const canEdit = role === "admin" || role === "chef" || role === "sous-chef" || role === "capo-partita";
 
+  const [location, setLocation] = useState<Location>("freezer"); // default
   const [raw, setRaw] = useState("");
   const { transcript, status, start } = useSpeech();
+
+  useEffect(() => {
+    if (transcript) setRaw(transcript);
+  }, [transcript]);
+
+  useEffect(() => {
+    const q = params.get("q");
+    if (q) setRaw(decodeURIComponent(q));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const draft = useMemo(() => quickAddParse(raw), [raw]);
 
-  if (transcript && transcript !== raw) {
-    setRaw(transcript);
-  }
+  // se nel testo c'è loc, allinea la tab
+  useEffect(() => {
+    if (draft.location) setLocation(draft.location);
+  }, [draft.location]);
 
-  const [overrideQty, setOverrideQty] = useState<number | "">( "");
+  const [overrideQty, setOverrideQty] = useState<number | "">("");
   const [overrideUnit, setOverrideUnit] = useState<Unit | "">("");
   const [overrideSection, setOverrideSection] = useState("");
   const [overrideExp, setOverrideExp] = useState("");
@@ -32,11 +63,16 @@ export default function Freezer() {
   if (!kitchen) {
     return (
       <div className="card p-5">
-        <div className="h1">Freezer</div>
+        <div className="h1">Inventory</div>
         <p className="p-muted mt-2">Seleziona una kitchen prima.</p>
       </div>
     );
   }
+
+  const items = kitchen.freezer
+    .filter((x) => x.location === location)
+    .slice()
+    .sort((a, b) => (a.expiresAt || "9999-99-99").localeCompare(b.expiresAt || "9999-99-99"));
 
   function handleAdd() {
     if (!canEdit) return;
@@ -51,6 +87,7 @@ export default function Freezer() {
       name,
       quantity: quantity > 0 ? quantity : 1,
       unit,
+      location,
       section: (overrideSection || draft.section || "").trim() || undefined,
       expiresAt: (overrideExp || draft.expiresAt || "").trim() || undefined,
       insertedAt: new Date().toISOString(),
@@ -69,7 +106,7 @@ export default function Freezer() {
       <div className="card p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="h1">Freezer</div>
+            <div className="h1">Inventory</div>
             <div className="p-muted">{kitchen.name}</div>
           </div>
           <div className="badge" style={{ borderColor: "rgba(198,167,94,.6)" }}>
@@ -77,32 +114,44 @@ export default function Freezer() {
           </div>
         </div>
 
+        <div className="mt-4 flex gap-2">
+          <button
+            className={`btn w-full ${location === "fridge" ? "btn-primary" : "btn-ghost"}`}
+            onClick={() => setLocation("fridge")}
+          >
+            Frigo
+          </button>
+          <button
+            className={`btn w-full ${location === "freezer" ? "btn-primary" : "btn-ghost"}`}
+            onClick={() => setLocation("freezer")}
+          >
+            Congelatore
+          </button>
+        </div>
+
         <div className="mt-4 space-y-3">
           <div className="text-xs" style={{ color: "var(--muted)" }}>
-            Quick Add (esempi):<br />
-            <span className="font-medium">salmone 2 kg #pesce exp 10/03/2026</span><br />
-            <span className="font-medium">demi-glace 3 l #salse scad 2026-03-01 note riduzione</span>
+            Esempio: <span className="font-medium">salmone 2 kg #pesce loc freezer exp 10/03/2026</span>
           </div>
 
           <div className="flex gap-2">
-          <input
-            className="input flex-1"
-            value={raw}
-            onChange={(e) => setRaw(e.target.value)}
-            placeholder="Scrivi o parla: prodotto quantità unità #sezione exp data note ..."
-            disabled={!canEdit}
-          />
-
-          <button
-            type="button"
-            onClick={start}
-            className={`btn px-3 ${status === "listening" ? "btn-primary" : "btn-ghost"}`}
-            disabled={!canEdit}
-            title="Parla"
-          >
-            🎤
-          </button>
-        </div>
+            <input
+              className="input flex-1"
+              value={raw}
+              onChange={(e) => setRaw(e.target.value)}
+              placeholder="Scrivi o parla: prodotto qty unit #sezione loc exp data note..."
+              disabled={!canEdit}
+            />
+            <button
+              type="button"
+              onClick={start}
+              className={`btn px-3 ${status === "listening" ? "btn-primary" : "btn-ghost"}`}
+              disabled={!canEdit}
+              title="Parla"
+            >
+              🎤
+            </button>
+          </div>
 
           <div className="grid grid-cols-2 gap-2">
             <input
@@ -127,7 +176,7 @@ export default function Freezer() {
               className="input"
               value={overrideSection || draft.section || ""}
               onChange={(e) => setOverrideSection(e.target.value)}
-              placeholder="Sezione (es. pesce, carni...)"
+              placeholder="Sezione (pesce, carni...)"
               disabled={!canEdit}
             />
             <input
@@ -139,8 +188,8 @@ export default function Freezer() {
             />
           </div>
 
-          <button className={`btn w-full ${canEdit ? "btn-primary" : "btn-ghost"}`} onClick={handleAdd} disabled={!canEdit}>
-            Aggiungi
+          <button className={`btn w-full ${canEdit ? "btn-gold" : "btn-ghost"}`} onClick={handleAdd} disabled={!canEdit}>
+            Registra lotto
           </button>
 
           {!canEdit && (
@@ -152,25 +201,33 @@ export default function Freezer() {
       </div>
 
       <div className="space-y-2">
-        {kitchen.freezer.map((item) => (
-          <div key={item.id} className="card p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="font-semibold truncate">{item.name}</div>
-                <div className="text-sm" style={{ color: "var(--muted)" }}>
-                  {item.quantity} {item.unit}
-                  {item.section ? ` • #${item.section}` : ""}
-                  {item.expiresAt ? ` • exp ${item.expiresAt}` : ""}
+        {items.map((item) => {
+          const d = daysLeft(item.expiresAt);
+          return (
+            <div key={item.id} className="card p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <div className="font-semibold truncate">{item.name}</div>
+                    <span className={expBadgeClass(d)}>
+                      {d === null ? "no exp" : d <= 0 ? "EXP" : `${d}d`}
+                    </span>
+                  </div>
+                  <div className="text-sm" style={{ color: "var(--muted)" }}>
+                    {item.quantity} {item.unit}
+                    {item.section ? ` • #${item.section}` : ""}
+                    {item.expiresAt ? ` • exp ${item.expiresAt}` : ""}
+                  </div>
                 </div>
+                {canEdit && (
+                  <button className="btn btn-ghost px-3 py-2" onClick={() => removeFreezerItem(item.id)} title="Rimuovi lotto">
+                    ✕
+                  </button>
+                )}
               </div>
-              {canEdit && (
-                <button className="btn btn-ghost px-3 py-2" onClick={() => removeFreezerItem(item.id)} title="Rimuovi">
-                  ✕
-                </button>
-              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

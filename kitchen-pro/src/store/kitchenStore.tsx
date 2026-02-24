@@ -133,6 +133,12 @@ function loadState(): KitchenState {
     if (!raw) return initialState;
     const parsed = JSON.parse(raw) as KitchenState;
     if (!parsed || !Array.isArray(parsed.kitchens)) return initialState;
+    // fixup legacy items: default location
+    for (const k of parsed.kitchens || []) {
+      for (const it of (k.freezer || []) as any[]) {
+        if (!it.location) it.location = "freezer";
+      }
+    }
     return parsed;
   } catch {
     return initialState;
