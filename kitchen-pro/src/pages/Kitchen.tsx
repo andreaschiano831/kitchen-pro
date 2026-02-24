@@ -148,28 +148,57 @@ export default function Kitchen() {
         </div>
       )}
     
+      
       <div className="card p-4">
-        <div className="h2">Par Levels per categoria (solo PZ)</div>
-        <div className="p-muted text-xs mt-1">Default MIN = 5. Imposta per categoria (es: carne, pesce, latticini…)</div>
-
-        <div className="mt-3 flex flex-wrap gap-2">
-          {["default","carne","pesce","latticini","verdure","pasticceria","salse"].map((c) => (
-            <button
-              key={c}
-              className="btn btn-ghost text-xs"
-              onClick={() => {
-                const v = Number(prompt(`MIN per categoria "${c}" (pz)`, "5") || "5");
-                setParCategory(c, v);
-              }}
-            >
-              Set {c}
-            </button>
-          ))}
+        <div className="h2">Par Levels — Michelin preset (solo PZ)</div>
+        <div className="p-muted text-xs mt-1">
+          Sotto MIN: badge rosso + suggerimento riordino. Default=5.
         </div>
 
-        <div className="p-muted text-xs mt-3">
-          Suggerimento: metti le categorie negli items (Freezer → Quick Add / Scanner).
-        </div>
+        {(() => {
+          const k = state.kitchens.find((x) => x.id === state.currentKitchenId);
+          const map = (k as any)?.parByCategory || { default: 5 };
+
+          const rows: { key: string; label: string }[] = [
+            { key: "proteine", label: "Proteine animali" },
+            { key: "pesce", label: "Pesce & molluschi" },
+            { key: "verdure", label: "Verdure & radici" },
+            { key: "erbe", label: "Erbe & fiori" },
+            { key: "latticini", label: "Latticini & uova" },
+            { key: "cereali", label: "Farine & cereali" },
+            { key: "grassi", label: "Grassi & oli" },
+            { key: "fermentati", label: "Acidi & fermentati" },
+            { key: "spezie", label: "Spezie & aromi secchi" },
+            { key: "fondi", label: "Fondi & riduzioni" },
+            { key: "cantina", label: "Cantina & beverage" },
+            { key: "consumabili", label: "Consumabili & secco" },
+            { key: "default", label: "Default" },
+          ];
+
+          return (
+            <div className="mt-3 space-y-2">
+              {rows.map((r) => (
+                <div key={r.key} className="row">
+                  <div className="min-w-0">
+                    <div className="font-semibold">{r.label}</div>
+                    <div className="p-muted text-xs">{r.key}</div>
+                  </div>
+
+                  <button
+                    className="btn btn-ghost text-xs"
+                    onClick={() => {
+                      const cur = Number(map[r.key] ?? 5);
+                      const v = Number(prompt(`MIN (pz) per ${r.label}`, String(cur)) || String(cur));
+                      setParCategory(r.key, v);
+                    }}
+                  >
+                    MIN: {Number(map[r.key] ?? 5)}
+                  </button>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
 </div>

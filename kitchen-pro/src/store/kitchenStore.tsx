@@ -307,7 +307,21 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
         members: [{ id: ownerId, name: ownerName.trim() || "Owner", role: "admin" }],
         freezer: [],
         shopping: [],
-        parByCategory: { default: 5 },
+        parByCategory: {
+          proteine: 6,
+          pesce: 4,
+          verdure: 8,
+          erbe: 12,
+          latticini: 6,
+          cereali: 3,
+          grassi: 4,
+          fermentati: 6,
+          spezie: 10,
+          fondi: 4,
+          cantina: 6,
+          consumabili: 5,
+          default: 5,
+        },
       };
       dispatch({ type: "KITCHEN_CREATE", kitchen, userId: ownerId });
     }

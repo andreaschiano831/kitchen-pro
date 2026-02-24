@@ -14,6 +14,34 @@ const STOP_PREFIX = new Set([
   "del","della","dei","degli","delle","le","lo","la","i","gli","il","un","uno","una",
 ]);
 
+const CAT_IT: Record<string, string> = {
+  "proteine": "proteine",
+  "proteina": "proteine",
+  "pesce": "pesce",
+  "molluschi": "pesce",
+  "verdure": "verdure",
+  "radici": "verdure",
+  "erbe": "erbe",
+  "fiori": "erbe",
+  "latticini": "latticini",
+  "uova": "latticini",
+  "cereali": "cereali",
+  "farine": "cereali",
+  "grassi": "grassi",
+  "oli": "grassi",
+  "fermentati": "fermentati",
+  "acidi": "fermentati",
+  "spezie": "spezie",
+  "aromi": "spezie",
+  "fondi": "fondi",
+  "riduzioni": "fondi",
+  "cantina": "cantina",
+  "beverage": "cantina",
+  "consumabili": "consumabili",
+  "secco": "consumabili",
+  "default": "default",
+};
+
 const UNIT_SYNONYMS: Record<string, QuickAddDraft["unit"]> = {
   "kg":"kg","kilo":"kg","kili":"kg","chilo":"kg","chili":"kg",
   "g":"g","gr":"g","grammo":"g","grammi":"g",
@@ -204,7 +232,7 @@ function parseOne(line: string): QuickAddDraft | { unparsed: string } {
     // category explicit
     if (t == "category" or t == "cat" or t == "categoria") {
       const v = tokens[i+1];
-      if (v) { cat = v.toLowerCase() as any; i += 2; continue; }
+      if (v) { const vv = v.toLowerCase(); cat = (CAT_IT[vv] || vv) as any; i += 2; continue; }
     }
 
     // notes begin
