@@ -6,6 +6,21 @@ export default function Freezer() {
   const { state, addFreezerItem, removeFreezerItem } = useKitchen();
   const [name, setName] = useState("");
 
+  const currentKitchen = state.kitchens.find(
+    (k) => k.id === state.currentKitchenId
+  );
+
+  if (!currentKitchen) {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold">Freezer</h2>
+        <p className="text-sm text-neutral-400">
+          Nessuna kitchen selezionata.
+        </p>
+      </div>
+    );
+  }
+
   function handleAdd() {
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -23,7 +38,9 @@ export default function Freezer() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Freezer</h2>
+      <h2 className="text-lg font-semibold">
+        Freezer — {currentKitchen.name}
+      </h2>
 
       <div className="flex gap-2">
         <input
@@ -41,7 +58,7 @@ export default function Freezer() {
       </div>
 
       <div className="space-y-2">
-        {state.freezer.map((item) => (
+        {currentKitchen.freezer.map((item) => (
           <div
             key={item.id}
             className="flex items-center justify-between rounded bg-neutral-900 p-3 text-sm"
@@ -49,19 +66,13 @@ export default function Freezer() {
             <span>{item.name}</span>
             <button
               onClick={() => removeFreezerItem(item.id)}
-              className="rounded bg-neutral-800 px-2 py-1 text-xs text-neutral-200 hover:bg-neutral-700"
-              aria-label="Remove"
-              title="Remove"
+              className="rounded bg-neutral-800 px-2 py-1 text-xs"
             >
               ✕
             </button>
           </div>
         ))}
       </div>
-
-      <p className="text-xs text-neutral-500">
-        Persistenza: localStorage (kitchen-pro:v1)
-      </p>
     </div>
   );
 }
