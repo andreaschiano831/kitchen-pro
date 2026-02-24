@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useKitchen, type ShoppingCategory } from "../store/kitchenStore";
 import type { Unit } from "../types/freezer";
-import { exportKitchenReportDoc } from "../utils/reportDoc";
+import { exportEconomatoCSV, exportKitchenDoc } from "../utils/export";
 
 const CATS: { key: ShoppingCategory; label: string }[] = [
   { key: "economato", label: "Economato" },
