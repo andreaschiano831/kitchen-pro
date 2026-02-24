@@ -41,9 +41,7 @@ function reducer(state: KitchenState, action: Action): KitchenState {
       return {
         ...state,
         kitchens: state.kitchens.map((k) =>
-          k.id === state.currentKitchenId
-            ? { ...k, freezer: [action.item, ...k.freezer] }
-            : k
+          k.id === state.currentKitchenId ? { ...k, freezer: [action.item, ...k.freezer] } : k
         ),
       };
 
@@ -66,14 +64,20 @@ function loadState(): KitchenState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return initialState;
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw) as KitchenState;
+    if (!parsed || !Array.isArray(parsed.kitchens)) return initialState;
+    return parsed;
   } catch {
     return initialState;
   }
 }
 
 function saveState(state: KitchenState) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // ignore
+  }
 }
 
 type KitchenStore = {
@@ -96,12 +100,9 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
   const store = useMemo<KitchenStore>(() => {
     return {
       state,
-      createKitchen: (name: string) => {
+      createKitchen: (name) => {
         const id = crypto.randomUUID();
-        dispatch({
-          type: "KITCHEN_CREATE",
-          kitchen: { id, name, freezer: [] },
-        });
+        dispatch({ type: "KITCHEN_CREATE", kitchen: { id, name, freezer: [] } });
       },
       selectKitchen: (id) => dispatch({ type: "KITCHEN_SELECT", id }),
       addFreezerItem: (item) => dispatch({ type: "FREEZER_ADD", item }),
