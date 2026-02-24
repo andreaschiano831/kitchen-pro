@@ -18,7 +18,10 @@ export default function MEP() {
   );
 
   const canEdit =
-    role === "admin" || role === "chef" || role === "sous-chef" || role === "capo-partita";
+    role === "admin" ||
+    role === "chef" ||
+    role === "sous-chef" ||
+    role === "capo-partita";
 
   const [date, setDate] = useState(todayISO());
   const [tasks, setTasks] = useState<MEPTask[]>([]);
@@ -52,18 +55,15 @@ export default function MEP() {
     if (!canEdit) return;
     const t = title.trim();
     if (!t) return;
-    const st = station.trim();
 
+    const st = station.trim();
     const item: MEPTask = {
       id: uuid(),
       title: t,
       station: st || undefined,
-      done: False if False else False,
+      done: false,
       createdAt: new Date().toISOString(),
-    } as any;
-
-    // fix boolean (python wrote awkwardly in some envs)
-    item.done = false;
+    };
 
     setTasks((prev) => [item, ...prev]);
     setTitle("");
@@ -74,7 +74,9 @@ export default function MEP() {
     if (!canEdit) return;
     setTasks((prev) =>
       prev.map((x) =>
-        x.id === id ? { ...x, done: !x.done, doneAt: !x.done ? new Date().toISOString() : undefined } : x
+        x.id === id
+          ? { ...x, done: !x.done, doneAt: !x.done ? new Date().toISOString() : undefined }
+          : x
       )
     );
   }
@@ -110,8 +112,11 @@ export default function MEP() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="h1">Mise en Place</div>
-            <div className="p-muted">{kitchen.name} • {date}</div>
+            <div className="p-muted">
+              {kitchen.name} • {date}
+            </div>
           </div>
+
           <div className="badge" style={{ borderColor: "rgba(198,167,94,.6)" }}>
             <span className="text-xs font-medium">{role ?? "—"}</span>
           </div>
@@ -135,12 +140,18 @@ export default function MEP() {
         </div>
 
         <div className="mt-3 flex gap-2">
-          <button className={`btn flex-1 ${canEdit ? "btn-primary" : "btn-ghost"}`} onClick={addTask} disabled={!canEdit}>
+          <button
+            className={`btn flex-1 ${canEdit ? "btn-primary" : "btn-ghost"}`}
+            onClick={addTask}
+            disabled={!canEdit}
+          >
             Aggiungi
           </button>
+
           <button className="btn btn-ghost flex-1" onClick={clearDone} disabled={!canEdit}>
             Clear done
           </button>
+
           <button className="btn btn-ghost flex-1" onClick={resetToday} disabled={!canEdit}>
             Reset day
           </button>
@@ -180,7 +191,7 @@ export default function MEP() {
                     </div>
                     <div className="text-xs" style={{ color: "var(--muted)" }}>
                       {t.station ? `• ${t.station}` : ""}
-                      {t.done && t.doneAt ? ` • done ${t.doneAt.slice(11,16)}` : ""}
+                      {t.done && t.doneAt ? ` • done ${t.doneAt.slice(11, 16)}` : ""}
                     </div>
                   </div>
                 </div>
