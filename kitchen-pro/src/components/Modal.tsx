@@ -12,7 +12,7 @@ export default function Modal({ open, title, onClose, children }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="card w-full max-w-md p-6 relative">
+      <div className="card w-full max-w-md p-6 relative animate-[fadeIn_.15s_ease-out]">
         <div className="flex items-center justify-between mb-4">
           <div className="h2">{title}</div>
           <button className="btn btn-ghost text-xs px-3 py-1" onClick={onClose}>

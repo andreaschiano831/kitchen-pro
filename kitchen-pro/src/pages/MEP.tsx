@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { v4 as uuid } from "uuid";
 import { useKitchen } from "../store/kitchenStore";
 import { loadMEP, saveMEP, type MEPTask } from "../utils/mepStorage";
 import Modal from "../components/Modal";
+import { v4 as uuid } from "uuid";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -11,24 +11,16 @@ function todayISO() {
 export default function MEP() {
   const { state, getCurrentRole, addFreezerItem } = useKitchen();
   const role = getCurrentRole();
-
   const canEdit =
     role === "admin" || role === "chef" || role === "sous-chef" || role === "capo-partita";
 
   const kitchenId = state.currentKitchenId;
 
-  const kitchen = useMemo(
-    () => state.kitchens.find((k) => k.id === kitchenId),
-    [state.kitchens, kitchenId]
-  );
-
-  const [date] = useState(todayISO());
   const [tasks, setTasks] = useState<MEPTask[]>([]);
   const [title, setTitle] = useState("");
 
-  // Modal state
-  const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState<MEPTask | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<MEPTask | null>(null);
   const [qty, setQty] = useState(1);
   const [location, setLocation] = useState<"fridge" | "freezer">("fridge");
 
@@ -40,22 +32,17 @@ export default function MEP() {
 
   useEffect(() => {
     if (!kitchenId) return;
-    saveMEP(kitchenId, { date, tasks });
-  }, [kitchenId, date, tasks]);
+    saveMEP(kitchenId, tasks);
+  }, [tasks, kitchenId]);
 
   function addTask() {
-    if (!canEdit) return;
-    const t = title.trim();
-    if (!t) return;
-
+    if (!canEdit || !title.trim()) return;
     const newTask: MEPTask = {
       id: uuid(),
-      title: t,
-      station: "",
+      title: title.trim(),
       done: false,
       createdAt: new Date().toISOString(),
     };
-
     setTasks((prev) => [newTask, ...prev]);
     setTitle("");
   }
@@ -64,61 +51,48 @@ export default function MEP() {
     setTasks((prev) =>
       prev.map((t) =>
         t.id === id
-          ? {
-              ...t,
-              done: !t.done,
-              doneAt: !t.done ? new Date().toISOString() : undefined,
-            }
+          ? { ...t, done: !t.done, doneAt: !t.done ? new Date().toISOString() : undefined }
           : t
       )
     );
   }
 
-  function openComplete(task: MEPTask) {
-    setSelected(task);
+  function openCompleteModal(task: MEPTask) {
+    setSelectedTask(task);
     setQty(1);
     setLocation("fridge");
-    setOpen(true);
+    setModalOpen(true);
   }
 
   function confirmComplete() {
-    if (!selected || !kitchen) return;
-
-    const q = Math.floor(Number(qty));
-    if (!Number.isFinite(q) || q <= 0) return;
+    if (!selectedTask || qty <= 0) return;
 
     addFreezerItem({
       id: uuid(),
-      name: selected.title,
-      quantity: q,
+      name: selectedTask.title,
+      quantity: Math.floor(qty),
       unit: "pz",
       location,
       insertedAt: new Date().toISOString(),
-    } as any);
+    });
 
-    toggleTask(selected.id);
-    setOpen(false);
+    toggleTask(selectedTask.id);
+    setModalOpen(false);
   }
 
-  if (!kitchenId || !kitchen) {
-    return (
-      <div className="card p-6">
-        <div className="h1">MEP</div>
-        <div className="p-muted mt-2">Seleziona una Kitchen.</div>
-      </div>
-    );
+  if (!kitchenId) {
+    return <div className="card p-6">Seleziona una Kitchen.</div>;
   }
 
   return (
     <div className="space-y-4">
       <div className="card p-4">
         <div className="h1">MEP Giornaliero</div>
-        <div className="p-muted text-xs mt-1">Reset automatico giornaliero • Carico in giacenze via modal</div>
 
         <div className="mt-3 flex gap-2">
           <input
             className="input flex-1"
-            placeholder="Nuova preparazione…"
+            placeholder="Nuova preparazione..."
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             disabled={!canEdit}
@@ -130,29 +104,21 @@ export default function MEP() {
       </div>
 
       <div className="space-y-2">
-        {tasks.length === 0 && (
-          <div className="card p-4">
-            <div className="p-muted">Nessuna preparazione.</div>
-          </div>
-        )}
-
         {tasks.map((task) => (
-          <div key={task.id} className="card p-4 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className={task.done ? "line-through text-neutral-400" : "font-semibold"}>
+          <div key={task.id} className="card p-4 flex items-center justify-between">
+            <div>
+              <div className={task.done ? "line-through text-neutral-400" : ""}>
                 {task.title}
-              </div>
-              <div className="p-muted text-xs mt-1">
-                {task.done ? "Completata" : "In corso"}
               </div>
             </div>
 
             <div className="flex gap-2">
               {!task.done && canEdit && (
-                <button className="btn btn-gold text-xs" onClick={() => openComplete(task)}>
+                <button className="btn btn-gold text-xs" onClick={() => openCompleteModal(task)}>
                   Completa + Carica
                 </button>
               )}
+
               <button className="btn btn-ghost text-xs" onClick={() => toggleTask(task.id)}>
                 {task.done ? "Ripristina" : "Toggle"}
               </button>
@@ -161,18 +127,14 @@ export default function MEP() {
         ))}
       </div>
 
-      <Modal open={open} title="Completa preparazione" onClose={() => setOpen(false)}>
+      <Modal open={modalOpen} title="Completa Preparazione" onClose={() => setModalOpen(false)}>
         <div className="space-y-3">
-          <div className="p-muted text-xs">Preparazione</div>
-          <div className="font-semibold">{selected?.title ?? ""}</div>
-
           <div>
             <div className="p-muted text-xs mb-1">Quantità prodotta (pz)</div>
             <input
               className="input w-full"
               type="number"
               min={1}
-              step={1}
               value={qty}
               onChange={(e) => setQty(Number(e.target.value))}
             />
