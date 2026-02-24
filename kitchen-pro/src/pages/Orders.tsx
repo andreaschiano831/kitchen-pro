@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import ExportPreviewModal from "../components/ExportPreviewModal";
 import { useKitchen, type ShoppingCategory } from "../store/kitchenStore";
 import type { Unit } from "../types/freezer";
+import ExportPreviewModal from "../components/ExportPreviewModal";
 import { buildKitchenReportHtml, buildUrgentReportHtml, exportEconomatoCSV } from "../utils/export";
 
 const CATS: { key: ShoppingCategory; label: string }[] = [
@@ -11,13 +11,10 @@ const CATS: { key: ShoppingCategory; label: string }[] = [
 ];
 
 export default function Orders() {
-  const [exportOpen, setExportOpen] = useState(false);
-  const [exportHtml, setExportHtml] = useState("");
-  const [exportName, setExportName] = useState("kitchen-report.doc");
-
   const { state, getCurrentRole, shopAdd, shopToggle, shopRemove, shopClearChecked } = useKitchen();
   const role = getCurrentRole();
-  const canEdit = role === "admin" || role === "chef" || role === "sous-chef" || role === "capo-partita";
+  const canEdit =
+    role === "admin" || role === "chef" || role === "sous-chef" || role === "capo-partita";
 
   const kitchen = useMemo(
     () => state.kitchens.find((k) => k.id === state.currentKitchenId),
@@ -30,33 +27,49 @@ export default function Orders() {
   const [unit, setUnit] = useState<Unit>("pz");
   const [notes, setNotes] = useState("");
 
-  const list = useMemo(() => {
-    if (!kitchen) return [];
-    return (kitchen.shopping || [])
-      .filter((x) => x.category === cat)
-      .slice()
-      .sort((a, b) => Number(a.checked) - Number(b.checked) || a.name.localeCompare(b.name));
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportHtml, setExportHtml] = useState("");
+  const [exportName, setExportName] = useState("kitchen-report.doc");
+
+  const items = useMemo(() => {
+    const list = (kitchen?.shopping || []).filter((x) => x.category === cat);
+    // ordina: non-checked prima, poi nome
+    return list.slice().sort((a, b) => {
+      if (a.checked !== b.checked) return a.checked ? 1 : -1;
+      return a.name.localeCompare(b.name);
+    });
   }, [kitchen, cat]);
 
   function add() {
-    if (!canEdit || !kitchen) return;
-    const n = name.trim();
-    if (!n) return;
-    const qn = Number(qty);
-    if (!Number.isFinite(qn) || qn <= 0) return;
-
-    shopAdd(n, qn, unit, cat, notes.trim() || undefined);
+    if (!kitchen || !canEdit) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const q = Math.max(1, Math.floor(Number(qty) || 1));
+    shopAdd(trimmed, q, unit, cat, notes.trim() || undefined);
     setName("");
     setQty(1);
     setUnit("pz");
     setNotes("");
   }
 
+  function openReport(kind: "full" | "urgent") {
+    if (!kitchen) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const html = kind === "full" ? buildKitchenReportHtml(kitchen) : buildUrgentReportHtml(kitchen);
+    setExportHtml(html);
+    setExportName(
+      kind === "full"
+        ? `kitchen-report-${kitchen.name}-${today}.doc`
+        : `kitchen-urgent-${kitchen.name}-${today}.doc`
+    );
+    setExportOpen(true);
+  }
+
   if (!kitchen) {
     return (
-      <div className="card p-5">
-        <div className="h1">Liste Spesa</div>
-        <div className="p-muted mt-2">Seleziona una kitchen prima (Kitchen).</div>
+      <div className="card p-6">
+        <div className="h1">Orders</div>
+        <div className="p-muted mt-2">Seleziona una Kitchen.</div>
       </div>
     );
   }
@@ -64,96 +77,128 @@ export default function Orders() {
   return (
     <div className="space-y-4">
       <div className="card p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="h1">Liste Spesa</div>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="h1">Orders</div>
+            <div className="p-muted text-xs mt-1">Liste spesa + export professionale</div>
+          </div>
 
-          <div className="flex gap-2">
-            <button
-              className="btn btn-ghost px-3 py-2 text-xs"
-              onClick={() => /*removed*/(kitchen)}
-            >
-              Export DOC (Report)
+          <div className="flex flex-wrap gap-2">
+            <button className="btn btn-ghost text-xs" onClick={() => exportEconomatoCSV(kitchen)}>
+              Export CSV (Economato)
             </button>
-            <button
-              className="btn btn-ghost px-3 py-2 text-xs"
-              onClick={() => shopClearChecked(cat)}
-              disabled={!canEdit}
-            >
-              Clear checked
+            <button className="btn btn-gold text-xs" onClick={() => openReport("full")}>
+              Anteprima DOC (Report)
+            </button>
+            <button className="btn btn-primary text-xs" onClick={() => openReport("urgent")}>
+              Anteprima DOC (Urgenti)
             </button>
           </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
           {CATS.map((c) => (
             <button
               key={c.key}
-              className={`btn px-4 py-2 ${cat === c.key ? "btn-primary" : "btn-ghost"}`}
+              className={cat === c.key ? "btn btn-primary text-xs" : "btn btn-ghost text-xs"}
               onClick={() => setCat(c.key)}
             >
               {c.label}
             </button>
           ))}
+
+          <div className="flex-1" />
+
+          <button
+            className="btn btn-ghost text-xs"
+            onClick={() => shopClearChecked(cat)}
+            disabled={!canEdit}
+          >
+            Pulisci spuntati
+          </button>
         </div>
 
-        <div className="mt-3 grid grid-cols-1 md:grid-cols-6 gap-2">
-          <input className="input md:col-span-2" value={name} onChange={(e) => setName(e.target.value)} placeholder="Prodotto" disabled={!canEdit} />
-          <input className="input" type="number" min={1} step={unit === "pz" ? 1 : 0.01} value={qty} onChange={(e) => setQty(Number(e.target.value))} disabled={!canEdit} />
-          <select className="input" value={unit} onChange={(e) => setUnit(e.target.value as Unit)} disabled={!canEdit}>
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-10 gap-2">
+          <input
+            className="input md:col-span-4"
+            placeholder="Nuovo articolo…"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            disabled={!canEdit}
+          />
+          <input
+            className="input md:col-span-1"
+            type="number"
+            min={1}
+            step={1}
+            value={qty}
+            onChange={(e) => setQty(Number(e.target.value))}
+            disabled={!canEdit}
+          />
+          <select
+            className="input md:col-span-1"
+            value={unit}
+            onChange={(e) => setUnit(e.target.value as Unit)}
+            disabled={!canEdit}
+          >
             <option value="pz">pz</option>
             <option value="g">g</option>
             <option value="kg">kg</option>
             <option value="ml">ml</option>
             <option value="l">l</option>
           </select>
-          <input className="input md:col-span-2" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Note (marca, pezzatura, consegna...)" disabled={!canEdit} />
-        </div>
 
-        <div className="mt-3">
-          <button className={`btn ${canEdit ? "btn-primary" : "btn-ghost"}`} onClick={add} disabled={!canEdit}>
-            Aggiungi
+          <input
+            className="input md:col-span-3"
+            placeholder="Note (opzionale)…"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            disabled={!canEdit}
+          />
+
+          <button className="btn btn-primary md:col-span-1" onClick={add} disabled={!canEdit}>
+            +
           </button>
-          {!canEdit && <div className="p-muted text-xs mt-2">Solo ruoli senior possono modificare</div>}
         </div>
       </div>
 
       <div className="space-y-2">
-        {list.length === 0 && (
+        {items.length === 0 ? (
           <div className="card p-4">
-            <div className="p-muted">Lista vuota.</div>
+            <div className="p-muted">Nessun elemento in lista.</div>
           </div>
-        )}
+        ) : null}
 
-        {list.map((it) => (
-          <div key={it.id} className="card p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <button className={`btn px-3 py-2 ${it.checked ? "btn-gold" : "btn-ghost"}`} onClick={() => shopToggle(it.id)} disabled={!canEdit}>
-                    {it.checked ? "✓" : "○"}
-                  </button>
-
-                  <div className="min-w-0">
-                    <div className={`font-semibold truncate ${it.checked ? "line-through opacity-70" : ""}`}>
-                      {it.name}
-                    </div>
-                    <div className="text-xs" style={{ color: "var(--muted)" }}>
-                      {it.quantity} {it.unit}{it.notes ? ` • ${it.notes}` : ""}
-                    </div>
-                  </div>
+        {items.map((x) => (
+          <div key={x.id} className="card p-4 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={x.checked}
+                  onChange={() => shopToggle(x.id)}
+                  disabled={!canEdit}
+                />
+                <div className={x.checked ? "line-through opacity-60 font-semibold" : "font-semibold"}>
+                  {x.name}
                 </div>
               </div>
-
-              {canEdit && (
-                <button className="btn btn-ghost px-3 py-2" onClick={() => shopRemove(it.id)} title="Rimuovi">
-                  ✕
-                </button>
-              )}
+              <div className="p-muted text-xs mt-1">
+                {x.quantity} {x.unit} {x.notes ? `• ${x.notes}` : ""}
+              </div>
             </div>
+
+            {canEdit ? (
+              <button className="btn btn-ghost text-xs" onClick={() => shopRemove(x.id)}>
+                Rimuovi
+              </button>
+            ) : (
+              <div className="p-muted text-xs">Solo lettura</div>
+            )}
           </div>
         ))}
       </div>
-    </div>
+
       <ExportPreviewModal
         open={exportOpen}
         title="Export Report (DOC)"
