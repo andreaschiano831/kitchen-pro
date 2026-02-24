@@ -3,6 +3,7 @@ import { v4 as uuid } from "uuid";
 import { useSearchParams } from "react-router-dom";
 import { useKitchen } from "../store/kitchenStore";
 import { aggregateByName, formatSmart } from "../utils/unitConversion";
+import { loadParLevels, compareToPar } from "../utils/parLevels";
 import { quickAddParse } from "../utils/quickAdd";
 import { useSpeech } from "../hooks/useSpeech";
 import type { Location, Unit } from "../types/freezer";
@@ -62,6 +63,8 @@ export default function Freezer() {
   const [overrideExp, setOverrideExp] = useState("");
 
   const aggregated = aggregateByName(kitchen?.freezer || []);
+  const parLevels = loadParLevels();
+  const parMap = new Map(parLevels.map(p => [p.name, p]));
 
   if (!kitchen) {
     return (
@@ -218,7 +221,14 @@ export default function Freezer() {
     {aggregated.map((item) => (
       <div
         key={item.name}
-        className="rounded-lg border border-neutral-200 bg-white px-4 py-3 shadow-sm"
+        className={`rounded-lg border px-4 py-3 shadow-sm ${(() => {
+          const par = parMap.get(item.name.toLowerCase());
+          if (!par) return "border-neutral-200 bg-white";
+          const c = compareToPar(item.quantity, item.baseUnit, par);
+          if (c.status === "low") return "border-[#8B0000] bg-[#fff1f1]";
+          if (c.status === "near") return "border-[#C6A75E] bg-[#fff7e6]";
+          return "border-neutral-200 bg-white";
+        })()}`}
       >
         <div className="text-xs uppercase tracking-wide text-neutral-400">
           {item.name}

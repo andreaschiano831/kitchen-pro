@@ -10,6 +10,7 @@ export type QuickAddDraft = {
   notes?: string;
 };
 
+// UNIT_MAP removed for pz-only mode
 const UNIT_MAP: Record<string, Unit> = {
   kg: "kg",
   g: "g",
@@ -43,7 +44,7 @@ export function quickAddParse(input: string): QuickAddDraft {
   const tokens = raw.split(" ");
 
   let quantity = 1;
-  let unit: Unit = "pz";
+  let unit: Unit = "pz"; // fixed
   let section: string | undefined;
   let expiresAt: string | undefined;
   let notes: string | undefined;
@@ -61,13 +62,15 @@ export function quickAddParse(input: string): QuickAddDraft {
     }
   }
 
-  // quantity + unit (first occurrence)
-  for (let i = 0; i < tokens.length - 1; i++) {
+  // quantity + optional unit
+  for (let i = 0; i < tokens.length; i++) {
     const maybeNum = Number(tokens[i].replace(",", "."));
-    const maybeUnit = tokens[i + 1].toLowerCase();
-    if (!Number.isNaN(maybeNum) && maybeNum > 0 && UNIT_MAP[maybeUnit]) {
+    if (!Number.isNaN(maybeNum) && maybeNum > 0) {
       quantity = maybeNum;
-      unit = UNIT_MAP[maybeUnit];
+      const maybeUnit = tokens[i + 1]?.toLowerCase();
+      if (maybeUnit && UNIT_MAP[maybeUnit]) {
+        unit = UNIT_MAP[maybeUnit];
+      }
       break;
     }
   }

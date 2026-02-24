@@ -1,4 +1,5 @@
-export type Unit = "kg" | "g" | "pz" | "l";
+export type Unit = "pz" | "g" | "kg" | "ml" | "l";
+
 export type Location = "freezer" | "fridge";
 
 export type FreezerItem = {
@@ -7,10 +8,9 @@ export type FreezerItem = {
   quantity: number;
   unit: Unit;
   insertedAt: string;
-
   location: Location;
 
-  expiresAt?: string;   // YYYY-MM-DD
-  section?: string;     // es: pesce, carni...
+  expiresAt?: string;
+  section?: string;
   notes?: string;
 };
