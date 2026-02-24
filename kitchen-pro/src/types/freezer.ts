@@ -1,9 +1,13 @@
+export type Unit = "kg" | "g" | "pz" | "l";
+
 export type FreezerItem = {
   id: string;
   name: string;
   quantity: number;
-  unit: "kg" | "g" | "pz" | "l";
+  unit: Unit;
   insertedAt: string;
-  expiresAt?: string;
-  section?: string;
+
+  expiresAt?: string;   // ISO date
+  section?: string;     // es: "carni", "pesce", "salse"
+  notes?: string;
 };
