@@ -39,7 +39,9 @@ type Action =
   | { type: "UPDATE_MEMBER_ROLE"; kitchenId: string; memberId: string; role: Role }
   | { type: "REMOVE_MEMBER"; kitchenId: string; memberId: string }
   | { type: "FREEZER_ADD"; item: FreezerItem }
-  | { type: "FREEZER_REMOVE"; id: string };
+  
+  | { type: "FREEZER_ADJUST"; id: string; delta: number }
+| { type: "FREEZER_REMOVE"; id: string };
 
 const STORAGE_KEY = "kitchen-pro:v4";
 
@@ -114,7 +116,35 @@ function reducer(state: KitchenState, action: Action): KitchenState {
         ),
       };
 
-    case "FREEZER_REMOVE":
+    case "FREEZER_ADJUST": {
+      const id = action.id;
+      const delta = action.delta;
+
+      return {
+        ...state,
+        kitchens: state.kitchens.map((k) => {
+          if (k.id !== state.currentKitchenId) return k;
+
+          const next = (k.freezer || [])
+            .map((it: any) => {
+              if (it.id !== id) return it;
+
+              const unit = it.unit as string;
+              let q = Number(it.quantity) + Number(delta);
+
+              if (unit === "pz") q = Math.floor(q); // pz sempre intero
+              // g/ml preferibilmente interi
+              if (unit === "g" || unit === "ml") q = Math.round(q);
+
+              return { ...it, quantity: q };
+            })
+            .filter((it: any) => Number(it.quantity) > 0);
+
+          return { ...k, freezer: next };
+        }),
+      };
+    }
+case "FREEZER_REMOVE":
       return {
         ...state,
         kitchens: state.kitchens.map((k) =>
@@ -163,7 +193,9 @@ export type KitchenStore = {
   removeMember: (kitchenId: string, memberId: string) => void;
 
   addFreezerItem: (item: FreezerItem) => void;
-  removeFreezerItem: (id: string) => void;
+  adjustFreezerItem: (id: string, delta: number) => dispatch({ type: "FREEZER_ADJUST", id, delta }),
+
+    removeFreezerItem: (id: string) => void;
 
   getCurrentRole: () => Role | null;
 };

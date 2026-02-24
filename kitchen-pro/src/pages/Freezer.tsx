@@ -22,6 +22,46 @@ function expBadgeClass(d: number | null) {
   if (d <= 1) return "badge border border-[#C6A75E] bg-[#fff7e6] text-[#6b4f12]";
   if (d <= 3) return "badge border border-[#C6A75E] bg-[#fff7e6] text-[#6b4f12]";
   return "badge";
+
+function QuickAdjustButtons({ unit, onDelta }: { unit: string; onDelta: (d: number) => void }) {
+  // pz: servizio
+  if (unit === "pz") {
+    return (
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(-1)}>-1</button>
+        <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(-5)}>-5</button>
+        <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(+1)}>+1</button>
+        <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(+5)}>+5</button>
+      </div>
+    );
+  }
+
+  // g/ml: step realistici
+  if (unit === "g" || unit === "ml") {
+    return (
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(-50)}>-50</button>
+        <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(-100)}>-100</button>
+        <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(-250)}>-250</button>
+        <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(+100)}>+100</button>
+      </div>
+    );
+  }
+
+  // kg/l: step piccoli (0.05/0.10/0.25)
+  if (unit === "kg" || unit === "l") {
+    return (
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(-0.05)}>-0.05</button>
+        <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(-0.1)}>-0.10</button>
+        <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(-0.25)}>-0.25</button>
+        <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => onDelta(+0.1)}>+0.10</button>
+      </div>
+    );
+  }
+
+  return null;
+}
 }
 
 export default function Freezer() {
@@ -261,6 +301,14 @@ export default function Freezer() {
                     {item.expiresAt ? ` • exp ${item.expiresAt}` : ""}
                   </div>
                 </div>
+
+                  {canEdit && (
+                    <QuickAdjustButtons
+                      unit={item.unit}
+                      onDelta={(d) => adjustFreezerItem(item.id, d)}
+                    />
+                  )}
+
                 {canEdit && (
                   <button className="btn btn-ghost px-3 py-2" onClick={() => removeFreezerItem(item.id)} title="Rimuovi lotto">
                     ✕
