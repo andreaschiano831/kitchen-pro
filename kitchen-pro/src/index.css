@@ -1,3 +1,38 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Base */
+:root {
+  --bg: #FAFAF8;
+  --ink: #111111;
+  --red: #8B0000;
+  --gold: #C6A75E;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial;
+}
+
+/* Components */
+.card {
+  @apply rounded-xl border border-neutral-200 bg-white shadow-sm;
+}
+
+.btn-primary {
+  @apply rounded-lg px-4 py-2 text-sm font-medium;
+  background: var(--red);
+  color: white;
+}
+
+.btn-gold {
+  @apply rounded-lg px-4 py-2 text-sm font-medium;
+  background: var(--gold);
+  color: var(--ink);
+}
+
+.badge-role {
+  @apply inline-flex items-center rounded-full bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-700;
+}
