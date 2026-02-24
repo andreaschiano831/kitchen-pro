@@ -1,5 +1,17 @@
-export type Unit = "pz" | "g" | "kg" | "ml" | "l";
-export type Location = "freezer" | "fridge";
+export type Unit =
+  | "pz"
+  | "g"
+  | "kg"
+  | "ml"
+  | "l"
+  | "vac"
+  | "busta"
+  | "brik"
+  | "latta"
+  | "box"
+  | "vasch";
+
+export type Location = "freezer" | "fridge" | "dry" | "counter";
 
 export type FreezerItem = {
   id: string;
@@ -14,5 +26,5 @@ export type FreezerItem = {
   category?: string;
 
   // MIN stock: usato SOLO per unit === "pz"
-  parLevel?: number | null;
+  parLevel?: number;
 };

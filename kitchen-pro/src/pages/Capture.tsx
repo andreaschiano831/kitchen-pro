@@ -61,7 +61,7 @@ export default function Capture() {
         name: d.name,
         quantity: d.quantity,
         unit: (d.unit as Unit) || "pz",
-        location,
+        location: (d.location as any) || location,
         insertedAt: new Date().toISOString(),
         expiresAt: d.expiresAt,
         section: d.section,
