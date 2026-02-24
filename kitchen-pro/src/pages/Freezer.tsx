@@ -30,14 +30,6 @@ function minStock(item: any) {
   return n;
 }
 
-function unitStep(u: Unit) {
-  if (u === "pz") return 1;
-  if (u === "kg") return 100; // delta in g base? (qui lavoriamo in unità “native”: kg/l)
-  if (u === "g") return 100;
-  if (u === "l") return 0.5;
-  if (u === "ml") return 100;
-  return 1;
-}
 
 function quickDeltas(u: Unit) {
   // delta in unità nativa del record
@@ -50,15 +42,14 @@ function quickDeltas(u: Unit) {
 }
 
 export default function Freezer() {
-  const {
-    state,
-    autoGenerateLowStock,
+  const { state,
+    
     addFreezerItem,
     removeFreezerItem,
     adjustFreezerItem,
     setFreezerParLevel,
-    getCurrentRole,
-  } = useKitchen();
+    autoGenerateLowStockToEconomato, getCurrentRole,
+   } = useKitchen();
 
   const role = getCurrentRole();
   const canEdit = role === "admin" || role === "chef" || role === "sous-chef" || role === "capo-partita";
