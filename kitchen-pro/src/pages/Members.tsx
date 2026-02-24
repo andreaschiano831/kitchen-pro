@@ -1,16 +1,6 @@
 import { useMemo } from "react";
 import { useKitchen } from "../store/kitchenStore";
-
-type Role =
-  | "admin"
-  | "chef"
-  | "sous-chef"
-  | "capo-partita"
-  | "commis"
-  | "stagista"
-  | "fb"
-  | "mm"
-  | "staff";
+import type { Role } from "../store/kitchenStore";
 
 const ROLES: Role[] = [
   "admin",
@@ -84,7 +74,7 @@ export default function Members() {
               <div className="min-w-0">
                 <div className="text-base font-semibold truncate">{m.name}</div>
                 <div className="mt-2">
-                  <span className={roleBadge(m.role as Role)}>{m.role}</span>
+                  <span className={roleBadge(m.role)}>{m.role}</span>
                 </div>
               </div>
 
@@ -92,9 +82,7 @@ export default function Members() {
                 <div className="flex items-center gap-2">
                   <select
                     value={m.role}
-                    onChange={(e) =>
-                      updateMemberRole(kitchen.id, m.id, e.target.value as Role)
-                    }
+                    onChange={(e) => updateMemberRole(kitchen.id, m.id, e.target.value as Role)}
                     className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm"
                   >
                     {ROLES.map((r) => (
@@ -106,9 +94,7 @@ export default function Members() {
 
                   <button
                     onClick={() => {
-                      if (confirm(`Rimuovere ${m.name}?`)) {
-                        removeMember(kitchen.id, m.id);
-                      }
+                      if (confirm(`Rimuovere ${m.name}?`)) removeMember(kitchen.id, m.id);
                     }}
                     className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm hover:bg-neutral-50"
                     title="Rimuovi membro"

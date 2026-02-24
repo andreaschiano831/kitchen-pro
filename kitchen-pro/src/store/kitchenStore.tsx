@@ -1,22 +1,31 @@
 import React, { createContext, useContext, useEffect, useMemo, useReducer } from "react";
 import type { FreezerItem } from "../types/freezer";
 
-type Role = "admin" | "chef" | "sous-chef" | "capo-partita" | "commis" | "stagista" | "fb" | "mm" | "staff";
+export type Role =
+  | "admin"
+  | "chef"
+  | "sous-chef"
+  | "capo-partita"
+  | "commis"
+  | "stagista"
+  | "fb"
+  | "mm"
+  | "staff";
 
-type Member = {
+export type Member = {
   id: string;
   name: string;
   role: Role;
 };
 
-type Kitchen = {
+export type Kitchen = {
   id: string;
   name: string;
   freezer: FreezerItem[];
   members: Member[];
 };
 
-type KitchenState = {
+export type KitchenState = {
   currentKitchenId: string | null;
   currentUserId: string | null;
   kitchens: Kitchen[];
@@ -42,62 +51,12 @@ const initialState: KitchenState = {
 
 function reducer(state: KitchenState, action: Action): KitchenState {
   switch (action.type) {
-
     case "KITCHEN_CREATE":
       return {
         ...state,
         kitchens: [...state.kitchens, action.kitchen],
         currentKitchenId: action.kitchen.id,
-        currentUserId: action.kitchen.members[0].id,
-      };
-
-    case "ADD_MEMBER":
-      return {
-        ...state,
-        kitchens: state.kitchens.map(k =>
-          k.id === action.kitchenId
-            ? { ...k, members: [...k.members, action.member] }
-            : k
-        ),
-        currentKitchenId: action.kitchenId,
-        currentUserId: action.member.id,
-      };
-
-    case "UPDATE_MEMBER_ROLE":
-      return {
-        ...state,
-        kitchens: state.kitchens.map(k =>
-          k.id === action.kitchenId
-            ? {
-                ...k,
-                members: k.members.map(m =>
-                  m.id === action.memberId ? { ...m, role: action.role } : m
-                ),
-              }
-            : k
-        ),
-      };
-
-    case "REMOVE_MEMBER":
-      return {
-        ...state,
-        kitchens: state.kitchens.map(k =>
-          k.id === action.kitchenId
-            ? { ...k, members: k.members.filter(m => m.id !== action.memberId) }
-            : k
-        ),
-      };
-
-    case "ADD_MEMBER":
-      return {
-        ...state,
-        kitchens: state.kitchens.map(k =>
-          k.id === action.kitchenId
-            ? { ...k, members: [...k.members, action.member] }
-            : k
-        ),
-        currentKitchenId: action.kitchenId,
-        currentUserId: action.member.id,
+        currentUserId: action.kitchen.members[0]?.id ?? null,
       };
 
     case "KITCHEN_SELECT":
@@ -106,23 +65,60 @@ function reducer(state: KitchenState, action: Action): KitchenState {
     case "SET_USER":
       return { ...state, currentUserId: action.id };
 
+    case "ADD_MEMBER":
+      return {
+        ...state,
+        kitchens: state.kitchens.map((k) =>
+          k.id === action.kitchenId ? { ...k, members: [...k.members, action.member] } : k
+        ),
+        currentKitchenId: action.kitchenId,
+        currentUserId: action.member.id,
+      };
+
+    case "UPDATE_MEMBER_ROLE":
+      return {
+        ...state,
+        kitchens: state.kitchens.map((k) =>
+          k.id === action.kitchenId
+            ? {
+                ...k,
+                members: k.members.map((m) => (m.id === action.memberId ? { ...m, role: action.role } : m)),
+              }
+            : k
+        ),
+      };
+
+    case "REMOVE_MEMBER": {
+      const kitchens = state.kitchens.map((k) =>
+        k.id === action.kitchenId ? { ...k, members: k.members.filter((m) => m.id !== action.memberId) } : k
+      );
+
+      // Se rimuovi l'utente corrente, fallback al primo membro rimasto
+      let currentUserId = state.currentUserId;
+      let currentKitchenId = state.currentKitchenId;
+
+      const affected = kitchens.find((k) => k.id === action.kitchenId);
+      if (affected && state.currentUserId === action.memberId) {
+        currentUserId = affected.members[0]?.id ?? null;
+        currentKitchenId = affected.members.length ? action.kitchenId : null;
+      }
+
+      return { ...state, kitchens, currentUserId, currentKitchenId };
+    }
+
     case "FREEZER_ADD":
       return {
         ...state,
-        kitchens: state.kitchens.map(k =>
-          k.id === state.currentKitchenId
-            ? { ...k, freezer: [action.item, ...k.freezer] }
-            : k
+        kitchens: state.kitchens.map((k) =>
+          k.id === state.currentKitchenId ? { ...k, freezer: [action.item, ...k.freezer] } : k
         ),
       };
 
     case "FREEZER_REMOVE":
       return {
         ...state,
-        kitchens: state.kitchens.map(k =>
-          k.id === state.currentKitchenId
-            ? { ...k, freezer: k.freezer.filter(x => x.id !== action.id) }
-            : k
+        kitchens: state.kitchens.map((k) =>
+          k.id === state.currentKitchenId ? { ...k, freezer: k.freezer.filter((x) => x.id !== action.id) } : k
         ),
       };
 
@@ -144,18 +140,25 @@ function loadState(): KitchenState {
 }
 
 function saveState(state: KitchenState) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // ignore
+  }
 }
 
-type KitchenStore = {
+export type KitchenStore = {
   state: KitchenState;
   createKitchen: (name: string, ownerName: string) => void;
   selectKitchen: (id: string) => void;
+
   addMember: (kitchenId: string, name: string, role: Role) => void;
   updateMemberRole: (kitchenId: string, memberId: string, role: Role) => void;
   removeMember: (kitchenId: string, memberId: string) => void;
+
   addFreezerItem: (item: FreezerItem) => void;
   removeFreezerItem: (id: string) => void;
+
   getCurrentRole: () => Role | null;
 };
 
@@ -171,10 +174,10 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
   const store = useMemo<KitchenStore>(() => {
     return {
       state,
+
       createKitchen: (name, ownerName) => {
         const kitchenId = crypto.randomUUID();
         const ownerId = crypto.randomUUID();
-
         dispatch({
           type: "KITCHEN_CREATE",
           kitchen: {
@@ -185,23 +188,31 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
           },
         });
       },
+
       selectKitchen: (id) => dispatch({ type: "KITCHEN_SELECT", id }),
+
       addMember: (kitchenId, name, role) => {
         const memberId = crypto.randomUUID();
-        dispatch({
-          type: "ADD_MEMBER",
-          kitchenId,
-          member: { id: memberId, name, role },
-        });
+        dispatch({ type: "ADD_MEMBER", kitchenId, member: { id: memberId, name, role } });
       },
+
+      updateMemberRole: (kitchenId, memberId, role) => {
+        dispatch({ type: "UPDATE_MEMBER_ROLE", kitchenId, memberId, role });
+      },
+
+      removeMember: (kitchenId, memberId) => {
+        dispatch({ type: "REMOVE_MEMBER", kitchenId, memberId });
+      },
+
       addFreezerItem: (item) => dispatch({ type: "FREEZER_ADD", item }),
       removeFreezerItem: (id) => dispatch({ type: "FREEZER_REMOVE", id }),
+
       getCurrentRole: () => {
-        const kitchen = state.kitchens.find(k => k.id === state.currentKitchenId);
+        const kitchen = state.kitchens.find((k) => k.id === state.currentKitchenId);
         if (!kitchen) return null;
-        const member = kitchen.members.find(m => m.id === state.currentUserId);
+        const member = kitchen.members.find((m) => m.id === state.currentUserId);
         return member?.role ?? null;
-      }
+      },
     };
   }, [state]);
 
