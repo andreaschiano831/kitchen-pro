@@ -10,6 +10,8 @@ import ParLevels from "./pages/ParLevels";
 import Members from "./pages/Members";
 import Freezer from "./pages/Freezer";
 import Orders from "./pages/Orders";
+import Search from "./pages/Search";
+import Capture from "./pages/Capture";
 import MEP from "./pages/MEP";
 import Auth from "./pages/Auth";
 import Kitchen from "./pages/Kitchen";

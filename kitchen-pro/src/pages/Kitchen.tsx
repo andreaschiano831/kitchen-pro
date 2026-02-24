@@ -147,6 +147,31 @@ export default function Kitchen() {
           </button>
         </div>
       )}
-    </div>
+    
+      <div className="card p-4">
+        <div className="h2">Par Levels per categoria (solo PZ)</div>
+        <div className="p-muted text-xs mt-1">Default MIN = 5. Imposta per categoria (es: carne, pesce, latticini…)</div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {["default","carne","pesce","latticini","verdure","pasticceria","salse"].map((c) => (
+            <button
+              key={c}
+              className="btn btn-ghost text-xs"
+              onClick={() => {
+                const v = Number(prompt(`MIN per categoria "${c}" (pz)`, "5") || "5");
+                setParCategory(c, v);
+              }}
+            >
+              Set {c}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-muted text-xs mt-3">
+          Suggerimento: metti le categorie negli items (Freezer → Quick Add / Scanner).
+        </div>
+      </div>
+
+</div>
   );
 }

@@ -34,6 +34,7 @@ export type Kitchen = {
   members: Member[];
   freezer: FreezerItem[];     // include freezer+fridge via item.location
   shopping: ShoppingItem[];
+  parByCategory: Record<string, number>;
 };
 
 export type KitchenState = {
@@ -57,6 +58,7 @@ type Action =
   | { type: "SHOP_TOGGLE"; id: string }
   | { type: "SHOP_REMOVE"; id: string }
   | { type: "SHOP_CLEAR_CHECKED"; category: ShoppingCategory }
+  | { type: "PAR_CATEGORY_SET"; category: string; value: number }
   | { type: "SHOP_UPSERT_ECONOMATO"; name: string; quantity: number; unit: Unit; notes?: string };
 
 const NS = "kitchen-pro:v1";
@@ -195,6 +197,19 @@ function reducer(state: KitchenState, action: Action): KitchenState {
         }),
       };
 
+    case "PAR_CATEGORY_SET": {
+      const kitchenId = state.currentKitchenId;
+      if (!kitchenId) return state;
+      const cat = action.category.trim() || "default";
+      const val = Math.max(1, Math.floor(action.value || 5));
+      return {
+        ...state,
+        kitchens: state.kitchens.map((k) =>
+          k.id === kitchenId ? { ...k, parByCategory: { ...(k.parByCategory || { default: 5 }), [cat]: val } } : k
+        ),
+      };
+    }
+
     case "SHOP_CLEAR_CHECKED":
       return {
         ...state,
@@ -292,6 +307,7 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
         members: [{ id: ownerId, name: ownerName.trim() || "Owner", role: "admin" }],
         freezer: [],
         shopping: [],
+        parByCategory: { default: 5 },
       };
       dispatch({ type: "KITCHEN_CREATE", kitchen, userId: ownerId });
     }
@@ -318,8 +334,12 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
     }
 
     function addFreezerItem(item: FreezerItem) {
-      dispatch({ type: "FREEZER_ADD", item });
-    }
+    const kitchen = state.kitchens.find((k) => k.id === state.currentKitchenId);
+    const cat = (item as any).category?.trim() || "default";
+    const parMap = (kitchen as any)?.parByCategory || { default: 5 };
+    const autoPar = item.unit === "pz" ? (item.parLevel ?? parMap[cat] ?? parMap.default ?? 5) : undefined;
+    dispatch({ type: "FREEZER_ADD", item: { ...item, parLevel: autoPar } as any });
+  }
 
     function removeFreezerItem(id: string) {
       dispatch({ type: "FREEZER_REMOVE", id });

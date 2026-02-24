@@ -11,6 +11,7 @@ export type FreezerItem = {
   expiresAt?: string; // ISO
   section?: string;
   notes?: string;
+  category?: string;
 
   // MIN stock: usato SOLO per unit === "pz"
   parLevel?: number | null;

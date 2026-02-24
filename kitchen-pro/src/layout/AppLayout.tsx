@@ -30,7 +30,7 @@ export default function AppLayout() {
           <Brand />
 
           <div className="flex items-center gap-2">
-            <Link to="/kitchen" className="btn btn-ghost px-3 py-2 text-xs">Kitchen</Link>
+            <Link to="/search" className="btn btn-ghost px-3 py-2 text-xs">Kitchen</Link>
             <Link to="/par" className="btn btn-ghost px-3 py-2 text-xs">Par</Link>
             <Link to="/switch" className="btn btn-ghost px-3 py-2 text-xs">Switch</Link>
           </div>
