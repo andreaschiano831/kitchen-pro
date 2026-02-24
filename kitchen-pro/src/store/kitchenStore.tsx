@@ -427,6 +427,7 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
 
     return {
       state,
+    setParCategory: (category: string, value: number) => dispatch({ type: \"PAR_CATEGORY_SET\", category, value }),
       createKitchen,
       selectKitchen,
       addMember,

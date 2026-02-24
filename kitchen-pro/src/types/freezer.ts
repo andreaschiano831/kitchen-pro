@@ -26,5 +26,5 @@ export type FreezerItem = {
   category?: string;
 
   // MIN stock: usato SOLO per unit === "pz"
-  parLevel?: number;
+  parLevel?: number | null;
 };
