@@ -24,8 +24,7 @@ export function expiryLabel(level: ExpiryLevel) {
 }
 
 export function expiryClass(level: ExpiryLevel) {
-  if (level === "expired") return "badge badge-expired";
-  if (level === "h24") return "badge badge-expired";
+  if (level === "expired" || level === "h24") return "badge badge-expired";
   if (level === "h72") return "badge badge-urgent";
   return "badge";
 }

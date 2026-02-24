@@ -1,10 +1,4 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useReducer,
-} from "react";
+import React, { createContext, useContext, useEffect, useMemo, useReducer } from "react";
 import { v4 as uuid } from "uuid";
 import type { FreezerItem, Unit } from "../types/freezer";
 
@@ -19,12 +13,7 @@ export type Role =
   | "mm"
   | "staff";
 
-export type Member = {
-  id: string;
-  name: string;
-  role: Role;
-  createdAt: string; // ISO
-};
+export type Member = { id: string; name: string; role: Role };
 
 export type ShoppingCategory = "economato" | "giornaliero" | "settimanale";
 
@@ -32,21 +21,19 @@ export type ShoppingItem = {
   id: string;
   name: string;
   quantity: number;
-  unit: Unit; // per ora usiamo Unit di freezer
+  unit: Unit;
   category: ShoppingCategory;
   checked: boolean;
   notes?: string;
-  createdAt: string; // ISO (OBBLIGATORIO)
-  updatedAt?: string; // ISO
+  createdAt: string; // ISO
 };
 
 export type Kitchen = {
   id: string;
   name: string;
   members: Member[];
-  freezer: FreezerItem[];
+  freezer: FreezerItem[];     // include freezer+fridge via item.location
   shopping: ShoppingItem[];
-  createdAt: string;
 };
 
 export type KitchenState = {
@@ -55,127 +42,81 @@ export type KitchenState = {
   kitchens: Kitchen[];
 };
 
-const NS = "kitchen-pro:v2";
-const STORAGE_KEY = `${NS}:state`;
+type Action =
+  | { type: "KITCHEN_CREATE"; kitchen: Kitchen; userId: string }
+  | { type: "KITCHEN_SELECT"; id: string }
+  | { type: "SET_CURRENT_USER"; userId: string | null }
+  | { type: "ADD_MEMBER"; kitchenId: string; member: Member }
+  | { type: "UPDATE_MEMBER_ROLE"; kitchenId: string; memberId: string; role: Role }
+  | { type: "REMOVE_MEMBER"; kitchenId: string; memberId: string }
+  | { type: "FREEZER_ADD"; item: FreezerItem }
+  | { type: "FREEZER_REMOVE"; id: string }
+  | { type: "FREEZER_ADJUST"; id: string; delta: number }
+  | { type: "FREEZER_SET_PAR"; id: string; parLevel: number | null }
+  | { type: "SHOP_ADD"; item: ShoppingItem }
+  | { type: "SHOP_TOGGLE"; id: string }
+  | { type: "SHOP_REMOVE"; id: string }
+  | { type: "SHOP_CLEAR_CHECKED"; category: ShoppingCategory }
+  | { type: "SHOP_UPSERT_ECONOMATO"; name: string; quantity: number; unit: Unit; notes?: string };
 
-function nowISO() {
-  return new Date().toISOString();
-}
+const NS = "kitchen-pro:v1";
 
-function safeLoad(): KitchenState {
+function loadState(): KitchenState {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(NS);
     if (!raw) return { currentKitchenId: null, currentUserId: null, kitchens: [] };
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") throw new Error("bad state");
-    return parsed as KitchenState;
+    const s = JSON.parse(raw);
+    if (!s || typeof s !== "object") return { currentKitchenId: null, currentUserId: null, kitchens: [] };
+    return {
+      currentKitchenId: s.currentKitchenId ?? null,
+      currentUserId: s.currentUserId ?? null,
+      kitchens: Array.isArray(s.kitchens) ? s.kitchens : [],
+    };
   } catch {
     return { currentKitchenId: null, currentUserId: null, kitchens: [] };
   }
 }
 
-function safeSave(state: KitchenState) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    // ignore
-  }
+function saveState(state: KitchenState) {
+  localStorage.setItem(NS, JSON.stringify(state));
 }
-
-type Action =
-  | { type: "KITCHEN_CREATE"; name: string; ownerName: string; ownerRole: Role }
-  | { type: "KITCHEN_SELECT"; id: string }
-  | { type: "USER_SELECT"; userId: string }
-
-  | { type: "ADD_MEMBER"; kitchenId: string; name: string; role: Role }
-  | { type: "UPDATE_MEMBER_ROLE"; kitchenId: string; memberId: string; role: Role }
-  | { type: "REMOVE_MEMBER"; kitchenId: string; memberId: string }
-
-  | { type: "FREEZER_ADD"; item: FreezerItem }
-  | { type: "FREEZER_REMOVE"; id: string }
-  | { type: "FREEZER_ADJUST"; id: string; delta: number }
-  | { type: "FREEZER_SET_PARLEVEL"; id: string; parLevel: number }
-
-  | { type: "SHOP_ADD"; item: ShoppingItem }
-  | { type: "SHOP_TOGGLE"; id: string }
-  | { type: "SHOP_REMOVE"; id: string }
-  | { type: "SHOP_CLEAR_CHECKED"; category: ShoppingCategory }
-  | {
-      type: "SHOP_UPSERT_ECONOMATO";
-      name: string;
-      quantity: number;
-      unit: Unit;
-      notes?: string;
-    };
 
 function reducer(state: KitchenState, action: Action): KitchenState {
   switch (action.type) {
-    case "KITCHEN_CREATE": {
-      const kitchenId = uuid();
-      const ownerId = uuid();
-      const createdAt = nowISO();
-
-      const kitchen: Kitchen = {
-        id: kitchenId,
-        name: action.name.trim(),
-        createdAt,
-        members: [
-          {
-            id: ownerId,
-            name: action.ownerName.trim() || "Admin",
-            role: action.ownerRole,
-            createdAt,
-          },
-        ],
-        freezer: [],
-        shopping: [],
-      };
-
+    case "KITCHEN_CREATE":
       return {
         ...state,
-        kitchens: [kitchen, ...state.kitchens],
-        currentKitchenId: kitchenId,
-        currentUserId: ownerId,
+        kitchens: [...state.kitchens, action.kitchen],
+        currentKitchenId: action.kitchen.id,
+        currentUserId: action.userId,
       };
-    }
 
     case "KITCHEN_SELECT":
       return { ...state, currentKitchenId: action.id };
 
-    case "USER_SELECT":
+    case "SET_CURRENT_USER":
       return { ...state, currentUserId: action.userId };
 
-    case "ADD_MEMBER": {
-      const createdAt = nowISO();
-      const member: Member = {
-        id: uuid(),
-        name: action.name.trim(),
-        role: action.role,
-        createdAt,
-      };
-
+    case "ADD_MEMBER":
       return {
         ...state,
         kitchens: state.kitchens.map((k) =>
-          k.id === action.kitchenId
-            ? { ...k, members: [...k.members, member] }
-            : k
+          k.id === action.kitchenId ? { ...k, members: [...k.members, action.member] } : k
         ),
+        currentKitchenId: action.kitchenId,
+        currentUserId: action.member.id,
       };
-    }
 
     case "UPDATE_MEMBER_ROLE":
       return {
         ...state,
         kitchens: state.kitchens.map((k) =>
-          k.id === action.kitchenId
-            ? {
+          k.id !== action.kitchenId
+            ? k
+            : {
                 ...k,
-                members: k.members.map((m) =>
-                  m.id === action.memberId ? { ...m, role: action.role } : m
-                ),
+                members: k.members.map((m) => (m.id === action.memberId ? { ...m, role: action.role } : m)),
               }
-            : k
         ),
       };
 
@@ -183,199 +124,146 @@ function reducer(state: KitchenState, action: Action): KitchenState {
       return {
         ...state,
         kitchens: state.kitchens.map((k) =>
-          k.id === action.kitchenId
-            ? { ...k, members: k.members.filter((m) => m.id !== action.memberId) }
-            : k
+          k.id !== action.kitchenId ? k : { ...k, members: k.members.filter((m) => m.id !== action.memberId) }
         ),
+        currentUserId: state.currentUserId === action.memberId ? null : state.currentUserId,
       };
 
-    case "FREEZER_ADD": {
-      const kid = state.currentKitchenId;
-      if (!kid) return state;
+    case "FREEZER_ADD":
       return {
         ...state,
         kitchens: state.kitchens.map((k) =>
-          k.id === kid ? { ...k, freezer: [action.item, ...k.freezer] } : k
+          k.id === state.currentKitchenId ? { ...k, freezer: [...(k.freezer || []), action.item] } : k
         ),
       };
-    }
 
-    case "FREEZER_REMOVE": {
-      const kid = state.currentKitchenId;
-      if (!kid) return state;
+    case "FREEZER_REMOVE":
       return {
         ...state,
         kitchens: state.kitchens.map((k) =>
-          k.id === kid ? { ...k, freezer: k.freezer.filter((x) => x.id !== action.id) } : k
+          k.id === state.currentKitchenId ? { ...k, freezer: (k.freezer || []).filter((it) => it.id !== action.id) } : k
         ),
       };
-    }
 
-    case "FREEZER_ADJUST": {
-      const kid = state.currentKitchenId;
-      if (!kid) return state;
-
+    case "FREEZER_ADJUST":
       return {
         ...state,
         kitchens: state.kitchens.map((k) => {
-          if (k.id !== kid) return k;
-
-          const next = k.freezer
-            .map((it) => {
-              if (it.id !== action.id) return it;
-              const q = Math.max(0, Number(it.quantity ?? 0) + action.delta);
-              return { ...it, quantity: q };
-            })
-            .filter((it) => Number(it.quantity ?? 0) > 0);
-
+          if (k.id !== state.currentKitchenId) return k;
+          const next = (k.freezer || [])
+            .map((it) => (it.id === action.id ? { ...it, quantity: Math.max(0, Number(it.quantity || 0) + action.delta) } : it))
+            .filter((it) => Number(it.quantity || 0) > 0); // auto-remove at zero
           return { ...k, freezer: next };
         }),
       };
-    }
 
-    case "FREEZER_SET_PARLEVEL": {
-      const kid = state.currentKitchenId;
-      if (!kid) return state;
-
+    case "FREEZER_SET_PAR":
       return {
         ...state,
         kitchens: state.kitchens.map((k) => {
-          if (k.id !== kid) return k;
+          if (k.id !== state.currentKitchenId) return k;
           return {
             ...k,
-            freezer: k.freezer.map((it: any) =>
-              it.id === action.id ? { ...it, parLevel: Math.max(0, Math.floor(action.parLevel)) } : it
-            ),
+            freezer: (k.freezer || []).map((it) => (it.id === action.id ? { ...it, parLevel: action.parLevel } : it)),
           };
         }),
       };
-    }
 
-    case "SHOP_ADD": {
-      const kid = state.currentKitchenId;
-      if (!kid) return state;
+    case "SHOP_ADD":
       return {
         ...state,
         kitchens: state.kitchens.map((k) =>
-          k.id === kid ? { ...k, shopping: [action.item, ...k.shopping] } : k
+          k.id === state.currentKitchenId ? { ...k, shopping: [...(k.shopping || []), action.item] } : k
         ),
       };
-    }
 
-    case "SHOP_TOGGLE": {
-      const kid = state.currentKitchenId;
-      if (!kid) return state;
-      return {
-        ...state,
-        kitchens: state.kitchens.map((k) =>
-          k.id === kid
-            ? {
-                ...k,
-                shopping: k.shopping.map((s) =>
-                  s.id === action.id ? { ...s, checked: !s.checked, updatedAt: nowISO() } : s
-                ),
-              }
-            : k
-        ),
-      };
-    }
-
-    case "SHOP_REMOVE": {
-      const kid = state.currentKitchenId;
-      if (!kid) return state;
-      return {
-        ...state,
-        kitchens: state.kitchens.map((k) =>
-          k.id === kid ? { ...k, shopping: k.shopping.filter((s) => s.id !== action.id) } : k
-        ),
-      };
-    }
-
-    case "SHOP_CLEAR_CHECKED": {
-      const kid = state.currentKitchenId;
-      if (!kid) return state;
+    case "SHOP_TOGGLE":
       return {
         ...state,
         kitchens: state.kitchens.map((k) => {
-          if (k.id !== kid) return k;
+          if (k.id !== state.currentKitchenId) return k;
+          return { ...k, shopping: (k.shopping || []).map((s) => (s.id === action.id ? { ...s, checked: !s.checked } : s)) };
+        }),
+      };
+
+    case "SHOP_REMOVE":
+      return {
+        ...state,
+        kitchens: state.kitchens.map((k) => {
+          if (k.id !== state.currentKitchenId) return k;
+          return { ...k, shopping: (k.shopping || []).filter((s) => s.id !== action.id) };
+        }),
+      };
+
+    case "SHOP_CLEAR_CHECKED":
+      return {
+        ...state,
+        kitchens: state.kitchens.map((k) => {
+          if (k.id !== state.currentKitchenId) return k;
           return {
             ...k,
-            shopping: k.shopping.filter(
-              (s) => !(s.category === action.category and s.checked)
-            ),
+            shopping: (k.shopping || []).filter((s) => !(s.category === action.category && s.checked)),
           };
         }),
       };
-    }
 
-    case "SHOP_UPSERT_ECONOMATO": {
-      const kid = state.currentKitchenId;
-      if (!kid) return state;
-
-      const nameKey = action.name.trim().toLowerCase();
-      const delta = Math.max(1, Math.floor(action.quantity));
-
+    case "SHOP_UPSERT_ECONOMATO":
       return {
         ...state,
         kitchens: state.kitchens.map((k) => {
-          if (k.id !== kid) return k;
-
-          const idx = k.shopping.findIndex(
-            (s) => s.category === "economato" && s.name.trim().toLowerCase() === nameKey
-          );
-
+          if (k.id !== state.currentKitchenId) return k;
+          const list = k.shopping || [];
+          const key = action.name.trim().toLowerCase();
+          const idx = list.findIndex((x) => x.category === "economato" && x.name.trim().toLowerCase() === key);
           if (idx === -1) {
             const item: ShoppingItem = {
               id: uuid(),
-              name: action.name.trim(),
-              quantity: delta,
+              name: action.name,
+              quantity: Math.max(1, Math.trunc(action.quantity)),
               unit: action.unit,
               category: "economato",
               checked: false,
               notes: action.notes,
-              createdAt: nowISO(),
+              createdAt: new Date().toISOString(),
             };
-            return { ...k, shopping: [item, ...k.shopping] };
+            return { ...k, shopping: [...list, item] };
           }
-
-          const existing = k.shopping[idx];
-          const updated: ShoppingItem = {
-            ...existing,
-            quantity: Math.max(1, Math.floor(Number(existing.quantity ?? 0) + delta)),
+          const cur = list[idx];
+          const upd: ShoppingItem = {
+            ...cur,
+            quantity: Math.max(1, Math.trunc(Number(cur.quantity || 0) + Number(action.quantity || 0))),
             unit: action.unit,
-            notes: existing.notes || action.notes,
-            updatedAt: nowISO(),
+            notes: action.notes || cur.notes,
+            checked: false,
           };
-
-          const next = k.shopping.slice();
-          next[idx] = updated;
+          const next = list.slice();
+          next[idx] = upd;
           return { ...k, shopping: next };
         }),
       };
-    }
 
     default:
       return state;
   }
 }
 
-type KitchenStore = {
+export type KitchenStore = {
   state: KitchenState;
 
-  createKitchen: (name: string, ownerName?: string, ownerRole?: Role) => void;
+  createKitchen: (name: string, ownerName: string) => void;
   selectKitchen: (id: string) => void;
-  selectUser: (userId: string) => void;
 
   addMember: (kitchenId: string, name: string, role: Role) => void;
   updateMemberRole: (kitchenId: string, memberId: string, role: Role) => void;
   removeMember: (kitchenId: string, memberId: string) => void;
+  setCurrentUser: (userId: string | null) => void;
 
   addFreezerItem: (item: FreezerItem) => void;
   removeFreezerItem: (id: string) => void;
   adjustFreezerItem: (id: string, delta: number) => void;
-  setFreezerParLevel: (id: string, parLevel: number) => void;
+  setFreezerParLevel: (id: string, parLevel: number | null) => void;
 
-  shopAdd: (category: ShoppingCategory, name: string, quantity: number, unit: Unit, notes?: string) => void;
+  shopAdd: (name: string, quantity: number, unit: Unit, category: ShoppingCategory, notes?: string) => void;
   shopToggle: (id: string) => void;
   shopRemove: (id: string) => void;
   shopClearChecked: (category: ShoppingCategory) => void;
@@ -388,27 +276,37 @@ type KitchenStore = {
 const Ctx = createContext<KitchenStore | null>(null);
 
 export function KitchenProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, safeLoad);
+  const [state, dispatch] = useReducer(reducer, undefined, loadState);
 
   useEffect(() => {
-    safeSave(state);
+    saveState(state);
   }, [state]);
 
   const store = useMemo<KitchenStore>(() => {
-    function createKitchen(name: string, ownerName = "Admin", ownerRole: Role = "admin") {
-      dispatch({ type: "KITCHEN_CREATE", name, ownerName, ownerRole });
+    function createKitchen(name: string, ownerName: string) {
+      const kitchenId = uuid();
+      const ownerId = uuid();
+      const kitchen: Kitchen = {
+        id: kitchenId,
+        name: name.trim(),
+        members: [{ id: ownerId, name: ownerName.trim() || "Owner", role: "admin" }],
+        freezer: [],
+        shopping: [],
+      };
+      dispatch({ type: "KITCHEN_CREATE", kitchen, userId: ownerId });
     }
 
     function selectKitchen(id: string) {
       dispatch({ type: "KITCHEN_SELECT", id });
     }
 
-    function selectUser(userId: string) {
-      dispatch({ type: "USER_SELECT", userId });
+    function setCurrentUser(userId: string | null) {
+      dispatch({ type: "SET_CURRENT_USER", userId });
     }
 
     function addMember(kitchenId: string, name: string, role: Role) {
-      dispatch({ type: "ADD_MEMBER", kitchenId, name, role });
+      const member: Member = { id: uuid(), name: name.trim(), role };
+      dispatch({ type: "ADD_MEMBER", kitchenId, member });
     }
 
     function updateMemberRole(kitchenId: string, memberId: string, role: Role) {
@@ -431,22 +329,21 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: "FREEZER_ADJUST", id, delta });
     }
 
-    function setFreezerParLevel(id: string, parLevel: number) {
-      dispatch({ type: "FREEZER_SET_PARLEVEL", id, parLevel });
+    function setFreezerParLevel(id: string, parLevel: number | null) {
+      dispatch({ type: "FREEZER_SET_PAR", id, parLevel });
     }
 
-    function shopAdd(category: ShoppingCategory, name: string, quantity: number, unit: Unit, notes?: string) {
+    function shopAdd(name: string, quantity: number, unit: Unit, category: ShoppingCategory, notes?: string) {
       const item: ShoppingItem = {
         id: uuid(),
         name: name.trim(),
-        quantity: Math.max(1, Math.floor(Number(quantity))),
+        quantity: Math.max(1, Math.trunc(quantity)),
         unit,
         category,
         checked: false,
-        createdAt: nowISO(),
         notes,
-      } as any;
-      item.checked = false;
+        createdAt: new Date().toISOString(),
+      };
       dispatch({ type: "SHOP_ADD", item });
     }
 
@@ -462,25 +359,22 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: "SHOP_CLEAR_CHECKED", category });
     }
 
-    function autoGenerateLowStockToEconomato(): number {
-      const kid = state.currentKitchenId;
-      if (!kid) return 0;
-      const kitchen = state.kitchens.find((k) => k.id === kid);
+    function autoGenerateLowStockToEconomato() {
+      const kitchen = state.kitchens.find((k) => k.id === state.currentKitchenId);
       if (!kitchen) return 0;
 
       let count = 0;
-      for (const it of kitchen.freezer as any[]) {
-        const unit = (it.unit || "pz") as Unit;
-        if (unit !== "pz") continue;
-
-        const min = it.parLevel ?? 5;
+      for (const it of kitchen.freezer || []) {
+        if ((it.unit || "pz") !== "pz") continue;
+        const min = (it as any).parLevel ?? 5;
         const qty = Number(it.quantity ?? 0);
         if (qty >= min) continue;
+        const diff = Math.max(1, min - qty);
 
         dispatch({
           type: "SHOP_UPSERT_ECONOMATO",
           name: it.name,
-          quantity: Math.max(1, min - qty),
+          quantity: diff,
           unit: "pz",
           notes: "AUTO: reintegro da LOW stock",
         });
@@ -491,31 +385,20 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
     }
 
     function getCurrentRole(): Role | null {
-      const kid = state.currentKitchenId;
-      const uid = state.currentUserId;
-      if (!kid || !uid) return null;
-      return null;
-    }
-
-    // clean placeholders above without risking TS parser:
-    const getRoleSafe = () => {
-      const kid = state.currentKitchenId;
-      const uid = state.currentUserId;
-      if (!kid || !uid) return null;
-      const kitchen = state.kitchens.find((k) => k.id === kid);
+      const kitchen = state.kitchens.find((k) => k.id === state.currentKitchenId);
       if (!kitchen) return null;
-      const m = kitchen.members.find((x) => x.id === uid);
-      return (m?.role ?? null) as Role | null;
-    };
+      const me = kitchen.members.find((m) => m.id === state.currentUserId);
+      return me?.role ?? null;
+    }
 
     return {
       state,
       createKitchen,
       selectKitchen,
-      selectUser,
       addMember,
       updateMemberRole,
       removeMember,
+      setCurrentUser,
       addFreezerItem,
       removeFreezerItem,
       adjustFreezerItem,
@@ -525,7 +408,7 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
       shopRemove,
       shopClearChecked,
       autoGenerateLowStockToEconomato,
-      getCurrentRole: getRoleSafe,
+      getCurrentRole,
     };
   }, [state]);
 
