@@ -1,27 +1,39 @@
 import React, { createContext, useContext, useEffect, useMemo, useReducer } from "react";
 import type { FreezerItem } from "../types/freezer";
 
+type Role = "admin" | "chef" | "staff";
+
+type Member = {
+  id: string;
+  name: string;
+  role: Role;
+};
+
 type Kitchen = {
   id: string;
   name: string;
   freezer: FreezerItem[];
+  members: Member[];
 };
 
 type KitchenState = {
   currentKitchenId: string | null;
+  currentUserId: string | null;
   kitchens: Kitchen[];
 };
 
 type Action =
   | { type: "KITCHEN_CREATE"; kitchen: Kitchen }
   | { type: "KITCHEN_SELECT"; id: string }
+  | { type: "SET_USER"; id: string }
   | { type: "FREEZER_ADD"; item: FreezerItem }
   | { type: "FREEZER_REMOVE"; id: string };
 
-const STORAGE_KEY = "kitchen-pro:v2";
+const STORAGE_KEY = "kitchen-pro:v3";
 
 const initialState: KitchenState = {
   currentKitchenId: null,
+  currentUserId: null,
   kitchens: [],
 };
 
@@ -32,16 +44,22 @@ function reducer(state: KitchenState, action: Action): KitchenState {
         ...state,
         kitchens: [...state.kitchens, action.kitchen],
         currentKitchenId: action.kitchen.id,
+        currentUserId: action.kitchen.members[0].id,
       };
 
     case "KITCHEN_SELECT":
       return { ...state, currentKitchenId: action.id };
 
+    case "SET_USER":
+      return { ...state, currentUserId: action.id };
+
     case "FREEZER_ADD":
       return {
         ...state,
         kitchens: state.kitchens.map((k) =>
-          k.id === state.currentKitchenId ? { ...k, freezer: [action.item, ...k.freezer] } : k
+          k.id === state.currentKitchenId
+            ? { ...k, freezer: [action.item, ...k.freezer] }
+            : k
         ),
       };
 
@@ -73,19 +91,17 @@ function loadState(): KitchenState {
 }
 
 function saveState(state: KitchenState) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    // ignore
-  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 type KitchenStore = {
   state: KitchenState;
-  createKitchen: (name: string) => void;
+  createKitchen: (name: string, ownerName: string) => void;
   selectKitchen: (id: string) => void;
+  setUser: (id: string) => void;
   addFreezerItem: (item: FreezerItem) => void;
   removeFreezerItem: (id: string) => void;
+  getCurrentRole: () => Role | null;
 };
 
 const KitchenContext = createContext<KitchenStore | null>(null);
@@ -100,13 +116,36 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
   const store = useMemo<KitchenStore>(() => {
     return {
       state,
-      createKitchen: (name) => {
-        const id = crypto.randomUUID();
-        dispatch({ type: "KITCHEN_CREATE", kitchen: { id, name, freezer: [] } });
+      createKitchen: (name, ownerName) => {
+        const kitchenId = crypto.randomUUID();
+        const ownerId = crypto.randomUUID();
+
+        dispatch({
+          type: "KITCHEN_CREATE",
+          kitchen: {
+            id: kitchenId,
+            name,
+            freezer: [],
+            members: [
+              {
+                id: ownerId,
+                name: ownerName,
+                role: "admin",
+              },
+            ],
+          },
+        });
       },
       selectKitchen: (id) => dispatch({ type: "KITCHEN_SELECT", id }),
+      setUser: (id) => dispatch({ type: "SET_USER", id }),
       addFreezerItem: (item) => dispatch({ type: "FREEZER_ADD", item }),
       removeFreezerItem: (id) => dispatch({ type: "FREEZER_REMOVE", id }),
+      getCurrentRole: () => {
+        const kitchen = state.kitchens.find(k => k.id === state.currentKitchenId);
+        if (!kitchen) return null;
+        const member = kitchen.members.find(m => m.id === state.currentUserId);
+        return member?.role ?? null;
+      }
     };
   }, [state]);
 
