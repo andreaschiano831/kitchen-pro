@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { v4 as uuid } from "uuid";
 import { useKitchen } from "../store/kitchenStore";
 import { quickAddParse } from "../utils/quickAdd";
+import { useSpeech } from "../hooks/useSpeech";
 import type { Unit } from "../types/freezer";
 
 export default function Freezer() {
@@ -16,7 +17,12 @@ export default function Freezer() {
   const canEdit = role === "admin" || role === "chef" || role === "sous-chef" || role === "capo-partita";
 
   const [raw, setRaw] = useState("");
+  const { transcript, status, start } = useSpeech();
   const draft = useMemo(() => quickAddParse(raw), [raw]);
+
+  if (transcript && transcript !== raw) {
+    setRaw(transcript);
+  }
 
   const [overrideQty, setOverrideQty] = useState<number | "">( "");
   const [overrideUnit, setOverrideUnit] = useState<Unit | "">("");
@@ -78,13 +84,25 @@ export default function Freezer() {
             <span className="font-medium">demi-glace 3 l #salse scad 2026-03-01 note riduzione</span>
           </div>
 
+          <div className="flex gap-2">
           <input
-            className="input"
+            className="input flex-1"
             value={raw}
             onChange={(e) => setRaw(e.target.value)}
-            placeholder="Scrivi: prodotto quantità unità #sezione exp data note ..."
+            placeholder="Scrivi o parla: prodotto quantità unità #sezione exp data note ..."
             disabled={!canEdit}
           />
+
+          <button
+            type="button"
+            onClick={start}
+            className={`btn px-3 ${status === "listening" ? "btn-primary" : "btn-ghost"}`}
+            disabled={!canEdit}
+            title="Parla"
+          >
+            🎤
+          </button>
+        </div>
 
           <div className="grid grid-cols-2 gap-2">
             <input
