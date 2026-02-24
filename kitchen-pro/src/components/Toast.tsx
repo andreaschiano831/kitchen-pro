@@ -1,46 +1,35 @@
 import { useEffect } from "react";
 
-export type ToastType = "success" | "warning" | "error";
-
 export type ToastMsg = {
   id: string;
-  type: ToastType;
+  type: "success" | "warning" | "error";
   title: string;
   message?: string;
 };
 
 export function Toast({ toast, onClose }: { toast: ToastMsg; onClose: () => void }) {
   useEffect(() => {
-    const t = window.setTimeout(onClose, 2600);
-    return () => window.clearTimeout(t);
-  }, [onClose]);
+    const t = setTimeout(onClose, 2800);
+    return () => clearTimeout(t);
+  }, [toast.id]);
 
-  const base = "fixed bottom-5 left-1/2 -translate-x-1/2 z-[60] w-[92%] max-w-md rounded-xl border p-4 shadow-lg";
-  const theme =
+  const cls =
     toast.type === "success"
-      ? "border-emerald-200 bg-white"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-900"
       : toast.type === "warning"
-      ? "border-amber-200 bg-white"
-      : "border-rose-200 bg-white";
-
-  const dot =
-    toast.type === "success"
-      ? "bg-emerald-500"
-      : toast.type === "warning"
-      ? "bg-amber-500"
-      : "bg-rose-600";
+      ? "border-amber-200 bg-amber-50 text-amber-900"
+      : "border-rose-200 bg-rose-50 text-rose-900";
 
   return (
-    <div className={`${base} ${theme}`}>
-      <div className="flex items-start gap-3">
-        <div className={`mt-1 h-2.5 w-2.5 rounded-full ${dot}`} />
-        <div className="min-w-0">
-          <div className="text-sm font-semibold">{toast.title}</div>
-          {toast.message ? <div className="text-xs text-neutral-600 mt-1">{toast.message}</div> : null}
+    <div className="fixed bottom-20 left-1/2 z-50 w-[92vw] max-w-md -translate-x-1/2">
+      <div className={`card p-4 border ${cls}`}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold">{toast.title}</div>
+            {toast.message ? <div className="text-xs opacity-80 mt-1">{toast.message}</div> : null}
+          </div>
+          <button className="btn btn-ghost text-xs" onClick={onClose}>OK</button>
         </div>
-        <button className="ml-auto text-xs text-neutral-500 hover:text-neutral-900" onClick={onClose}>
-          Chiudi
-        </button>
       </div>
     </div>
   );

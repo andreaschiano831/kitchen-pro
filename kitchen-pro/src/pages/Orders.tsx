@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import ExportPreviewModal from "../components/ExportPreviewModal";
 import { useKitchen, type ShoppingCategory } from "../store/kitchenStore";
 import type { Unit } from "../types/freezer";
-import { buildKitchenReportHtml, exportEconomatoCSV } from "../utils/export";
+import { buildKitchenReportHtml, buildUrgentReportHtml, exportEconomatoCSV } from "../utils/export";
 
 const CATS: { key: ShoppingCategory; label: string }[] = [
   { key: "economato", label: "Economato" },
