@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { v4 as uuid } from "uuid";
 import { useSearchParams } from "react-router-dom";
 import { useKitchen } from "../store/kitchenStore";
+import { aggregateByName, formatSmart } from "../utils/unitConversion";
 import { quickAddParse } from "../utils/quickAdd";
 import { useSpeech } from "../hooks/useSpeech";
 import type { Location, Unit } from "../types/freezer";
@@ -59,6 +60,8 @@ export default function Freezer() {
   const [overrideUnit, setOverrideUnit] = useState<Unit | "">("");
   const [overrideSection, setOverrideSection] = useState("");
   const [overrideExp, setOverrideExp] = useState("");
+
+  const aggregated = aggregateByName(kitchen?.freezer || []);
 
   if (!kitchen) {
     return (
@@ -200,6 +203,35 @@ export default function Freezer() {
         </div>
       </div>
 
+      <div className="card p-4 mb-6">
+  <h3 className="text-sm font-semibold mb-4 tracking-wide text-neutral-600">
+    STOCK TOTALE AGGREGATO
+  </h3>
+
+  {aggregated.length === 0 && (
+    <div className="text-sm text-neutral-400">
+      Nessun prodotto presente.
+    </div>
+  )}
+
+  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+    {aggregated.map((item) => (
+      <div
+        key={item.name}
+        className="rounded-lg border border-neutral-200 bg-white px-4 py-3 shadow-sm"
+      >
+        <div className="text-xs uppercase tracking-wide text-neutral-400">
+          {item.name}
+        </div>
+        <div className="text-lg font-semibold mt-1">
+          {formatSmart(item.quantity, item.baseUnit)}
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
+
+
       <div className="space-y-2">
         {items.map((item) => {
           const d = daysLeft(item.expiresAt);
@@ -232,3 +264,4 @@ export default function Freezer() {
     </div>
   );
 }
+
