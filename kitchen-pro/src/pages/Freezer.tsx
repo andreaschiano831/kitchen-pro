@@ -211,7 +211,7 @@ export default function Freezer() {
                   <div className="flex items-center gap-2">
                     <div className="font-semibold truncate">{item.name}</div>
                     {showExp ? <span className={expiryClass(lev)}>{expiryLabel(lev)}</span> : null}
-                    {isLow ? <span className="badge badge-urgent">LOW</span> : null}
+                    {isLow ? <span className="badge badge-expired">LOW</span> : null}
                   </div>
                   <div className="p-muted text-xs mt-1">
                     Qty: <b>{item.quantity}</b> {u}
@@ -237,19 +237,7 @@ export default function Freezer() {
                       </button>
 
                       {/* Par level inline (pz only) */}
-                      {u === "pz" ? (
-                        <button
-                          className="btn btn-ghost text-xs"
-                          onClick={() => {
-                            const v = window.prompt("Imposta MIN (pz)", String(item.parLevel ?? 5));
-                            if (v is None): pass
-                          }}
-                        >
-                          MIN
-                        </button>
-                      ) : null}
-
-                      {/* Single add to Economato */}
+{/* Single add to Economato */}
                       {canEdit && u === "pz" && isLow ? (
                         <button
                           className="btn btn-gold text-xs"
