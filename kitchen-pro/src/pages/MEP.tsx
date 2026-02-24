@@ -2,230 +2,199 @@ import { useEffect, useMemo, useState } from "react";
 import { v4 as uuid } from "uuid";
 import { useKitchen } from "../store/kitchenStore";
 import { loadMEP, saveMEP, type MEPTask } from "../utils/mepStorage";
+import Modal from "../components/Modal";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-
-
-  function handleCompleteWithStock(task: any) {
-    const qty = Number(prompt("Quantità prodotta?"));
-    if (!qty || qty <= 0) return;
-
-    const location = prompt("Destinazione? (fridge/freezer)", "fridge");
-    if (location !== "fridge" && location !== "freezer") return;
-
-    addFreezerItem({
-      id: crypto.randomUUID(),
-      name: task.title,
-      quantity: qty,
-      unit: "pz",
-      location,
-      insertedAt: new Date().toISOString(),
-    });
-  }
-
 export default function MEP() {
   const { state, getCurrentRole, addFreezerItem } = useKitchen();
   const role = getCurrentRole();
 
+  const canEdit =
+    role === "admin" || role === "chef" || role === "sous-chef" || role === "capo-partita";
+
   const kitchenId = state.currentKitchenId;
+
   const kitchen = useMemo(
     () => state.kitchens.find((k) => k.id === kitchenId),
     [state.kitchens, kitchenId]
   );
 
-  const canEdit =
-    role === "admin" ||
-    role === "chef" ||
-    role === "sous-chef" ||
-    role === "capo-partita";
-
-  const [date, setDate] = useState(todayISO());
+  const [date] = useState(todayISO());
   const [tasks, setTasks] = useState<MEPTask[]>([]);
   const [title, setTitle] = useState("");
-  const [station, setStation] = useState("");
 
-  // load when kitchen changes
+  // Modal state
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<MEPTask | null>(null);
+  const [qty, setQty] = useState(1);
+  const [location, setLocation] = useState<"fridge" | "freezer">("fridge");
+
   useEffect(() => {
     if (!kitchenId) return;
-    const loaded = loadMEP(kitchenId);
-    setDate(loaded.date);
-    setTasks(loaded.tasks);
+    const data = loadMEP(kitchenId);
+    setTasks(data.tasks);
   }, [kitchenId]);
 
-  // persist
   useEffect(() => {
     if (!kitchenId) return;
-    saveMEP(kitchenId, date, tasks);
+    saveMEP(kitchenId, { date, tasks });
   }, [kitchenId, date, tasks]);
-
-  const ordered = useMemo(() => {
-    const copy = tasks.slice();
-    copy.sort((a, b) => {
-      if (a.done !== b.done) return a.done ? 1 : -1;
-      return (a.station || "").localeCompare(b.station || "") || a.title.localeCompare(b.title);
-    });
-    return copy;
-  }, [tasks]);
 
   function addTask() {
     if (!canEdit) return;
     const t = title.trim();
     if (!t) return;
 
-    const st = station.trim();
-    const item: MEPTask = {
+    const newTask: MEPTask = {
       id: uuid(),
       title: t,
-      station: st || undefined,
+      station: "",
       done: false,
       createdAt: new Date().toISOString(),
     };
 
-    setTasks((prev) => [item, ...prev]);
+    setTasks((prev) => [newTask, ...prev]);
     setTitle("");
-    setStation("");
   }
 
-  function toggle(id: string) {
-    if (!canEdit) return;
+  function toggleTask(id: string) {
     setTasks((prev) =>
-      prev.map((x) =>
-        x.id === id
-          ? { ...x, done: !x.done, doneAt: !x.done ? new Date().toISOString() : undefined }
-          : x
+      prev.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              done: !t.done,
+              doneAt: !t.done ? new Date().toISOString() : undefined,
+            }
+          : t
       )
     );
   }
 
-  function remove(id: string) {
-    if (!canEdit) return;
-    setTasks((prev) => prev.filter((x) => x.id !== id));
+  function openComplete(task: MEPTask) {
+    setSelected(task);
+    setQty(1);
+    setLocation("fridge");
+    setOpen(true);
   }
 
-  function clearDone() {
-    if (!canEdit) return;
-    setTasks((prev) => prev.filter((x) => !x.done));
+  function confirmComplete() {
+    if (!selected || !kitchen) return;
+
+    const q = Math.floor(Number(qty));
+    if (!Number.isFinite(q) || q <= 0) return;
+
+    addFreezerItem({
+      id: uuid(),
+      name: selected.title,
+      quantity: q,
+      unit: "pz",
+      location,
+      insertedAt: new Date().toISOString(),
+    } as any);
+
+    toggleTask(selected.id);
+    setOpen(false);
   }
 
-  function resetToday() {
-    if (!canEdit) return;
-    setDate(todayISO());
-    setTasks([]);
-  }
-
-  if (!kitchen) {
+  if (!kitchenId || !kitchen) {
     return (
-      <div className="card p-5">
-        <div className="h1">Mise en Place</div>
-        <p className="p-muted mt-2">Seleziona una kitchen prima (Kitchen).</p>
+      <div className="card p-6">
+        <div className="h1">MEP</div>
+        <div className="p-muted mt-2">Seleziona una Kitchen.</div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="card p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="h1">Mise en Place</div>
-            <div className="p-muted">
-              {kitchen.name} • {date}
-            </div>
-          </div>
-
-          <div className="badge" style={{ borderColor: "rgba(198,167,94,.6)" }}>
-            <span className="text-xs font-medium">{role ?? "—"}</span>
-          </div>
-        </div>
-
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <input
-            className="input"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Task (es. porzionare branzino)"
-            disabled={!canEdit}
-          />
-          <input
-            className="input"
-            value={station}
-            onChange={(e) => setStation(e.target.value)}
-            placeholder="Stazione (es. pesce, carne, pasticceria)"
-            disabled={!canEdit}
-          />
-        </div>
+      <div className="card p-4">
+        <div className="h1">MEP Giornaliero</div>
+        <div className="p-muted text-xs mt-1">Reset automatico giornaliero • Carico in giacenze via modal</div>
 
         <div className="mt-3 flex gap-2">
-            <button className="btn btn-gold" onClick={() => handleCompleteWithStock(addFreezerItem, task.title)} disabled={!canEdit}>Completa + Carica</button>
-          <button
-            className={`btn flex-1 ${canEdit ? "btn-primary" : "btn-ghost"}`}
-            onClick={addTask}
+          <input
+            className="input flex-1"
+            placeholder="Nuova preparazione…"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
             disabled={!canEdit}
-          >
+          />
+          <button className="btn btn-primary" onClick={addTask} disabled={!canEdit}>
             Aggiungi
           </button>
-
-          <button className="btn btn-ghost flex-1" onClick={clearDone} disabled={!canEdit}>
-            Clear done
-          </button>
-
-          <button className="btn btn-ghost flex-1" onClick={resetToday} disabled={!canEdit}>
-            Reset day
-          </button>
         </div>
-
-        {!canEdit && (
-          <div className="p-muted text-xs mt-2">
-            Solo Admin/Chef/Sous-chef/Capo partita possono modificare.
-          </div>
-        )}
       </div>
 
       <div className="space-y-2">
-        {ordered.length === 0 && (
+        {tasks.length === 0 && (
           <div className="card p-4">
-            <div className="p-muted">Nessun task oggi.</div>
+            <div className="p-muted">Nessuna preparazione.</div>
           </div>
         )}
 
-        {ordered.map((t) => (
-          <div key={t.id} className="card p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <button
-                    className={`btn px-3 py-2 ${t.done ? "btn-gold" : "btn-ghost"}`}
-                    onClick={() => toggle(t.id)}
-                    disabled={!canEdit}
-                    title="Toggle"
-                  >
-                    {t.done ? "✓" : "○"}
-                  </button>
-
-                  <div className="min-w-0">
-                    <div className={`font-semibold truncate ${t.done ? "line-through opacity-70" : ""}`}>
-                      {t.title}
-                    </div>
-                    <div className="text-xs" style={{ color: "var(--muted)" }}>
-                      {t.station ? `• ${t.station}` : ""}
-                      {t.done && t.doneAt ? ` • done ${t.doneAt.slice(11, 16)}` : ""}
-                    </div>
-                  </div>
-                </div>
+        {tasks.map((task) => (
+          <div key={task.id} className="card p-4 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className={task.done ? "line-through text-neutral-400" : "font-semibold"}>
+                {task.title}
               </div>
+              <div className="p-muted text-xs mt-1">
+                {task.done ? "Completata" : "In corso"}
+              </div>
+            </div>
 
-              {canEdit && (
-                <button className="btn btn-ghost px-3 py-2" onClick={() => remove(t.id)} title="Rimuovi">
-                  ✕
+            <div className="flex gap-2">
+              {!task.done && canEdit && (
+                <button className="btn btn-gold text-xs" onClick={() => openComplete(task)}>
+                  Completa + Carica
                 </button>
               )}
+              <button className="btn btn-ghost text-xs" onClick={() => toggleTask(task.id)}>
+                {task.done ? "Ripristina" : "Toggle"}
+              </button>
             </div>
           </div>
         ))}
       </div>
+
+      <Modal open={open} title="Completa preparazione" onClose={() => setOpen(false)}>
+        <div className="space-y-3">
+          <div className="p-muted text-xs">Preparazione</div>
+          <div className="font-semibold">{selected?.title ?? ""}</div>
+
+          <div>
+            <div className="p-muted text-xs mb-1">Quantità prodotta (pz)</div>
+            <input
+              className="input w-full"
+              type="number"
+              min={1}
+              step={1}
+              value={qty}
+              onChange={(e) => setQty(Number(e.target.value))}
+            />
+          </div>
+
+          <div>
+            <div className="p-muted text-xs mb-1">Destinazione</div>
+            <select
+              className="input w-full"
+              value={location}
+              onChange={(e) => setLocation(e.target.value as any)}
+            >
+              <option value="fridge">Frigo</option>
+              <option value="freezer">Congelatore</option>
+            </select>
+          </div>
+
+          <button className="btn btn-primary w-full" onClick={confirmComplete}>
+            Conferma
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
