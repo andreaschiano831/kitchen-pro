@@ -12,6 +12,16 @@ function hoursUntil(iso?: string) {
   return Math.floor((t - Date.now()) / (1000 * 60 * 60));
 }
 
+function minStock(item: any) {
+  const unit = String(item.unit || "pz");
+  if (unit !== "pz") return null as number | null;
+  const v = item.parLevel;
+  if (v === undefined || v === null) return 5; // default
+  const n = Math.floor(Number(v));
+  if (!Number.isFinite(n) || n <= 0) return 5;
+  return n;
+}
+
 function expBadgeClass(h: number | null) {
   if (h === null) return "border-neutral-200 bg-white text-neutral-700";
   if (h <= 0) return "border-red-500 bg-red-100 text-red-900";
@@ -61,7 +71,7 @@ function QuickAdjustButtons({
 }
 
 export default function Freezer() {
-  const { state, addFreezerItem, removeFreezerItem, adjustFreezerItem, getCurrentRole } = useKitchen();
+  const { state, addFreezerItem, removeFreezerItem, adjustFreezerItem, setFreezerParLevel, getCurrentRole } = useKitchen();
   const role = getCurrentRole();
   const canEdit =
     role === "admin" || role === "chef" || role === "sous-chef" || role === "capo-partita";
@@ -297,6 +307,20 @@ export default function Freezer() {
                       {du === null ? "no exp" : du <= 0 ? "SCADUTO" : `${du}d`}
                     </span>
                   </div>
+
+                  {canEdit && u === "pz" && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-xs" style={{ color: "var(--muted)" }}>MIN</span>
+                      <input
+                        className="input w-24"
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={minStock(item) ?? 5}
+                        onChange={(e) => setFreezerParLevel(item.id, Number(e.target.value))}
+                      />
+                    </div>
+                  )}
 
                   {canEdit && (
                     <QuickAdjustButtons
