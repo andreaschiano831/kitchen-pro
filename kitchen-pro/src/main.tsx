@@ -4,6 +4,7 @@ import "./index.css";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import AppLayout from "./layout/AppLayout";
 import Today from "./pages/Today";
+import Join from "./pages/Join";
 import Freezer from "./pages/Freezer";
 import Orders from "./pages/Orders";
 import MEP from "./pages/MEP";
@@ -27,7 +28,8 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
             <Route path="mep" element={<MEP />} />
           </Route>
 
-          <Route path="*" element={<Navigate to="/today" replace />} />
+            <Route path="/join" element={<Join />} />
+    <Route path="*" element={<Navigate to="/today" replace />} />
         </Routes>
       </HashRouter>
     </KitchenProvider>

@@ -9,7 +9,9 @@ export default function Join() {
   const [name, setName] = useState("");
 
   const kitchenId = params.get("k");
-  const role = (params.get("r") || "staff") as "admin" | "chef" | "staff";
+  const rawRole = (params.get("r") || "staff").toLowerCase();
+  const allowed = ["admin","chef","sous-chef","capo-partita","commis","stagista","fb","mm","staff"] as const;
+  const role = (allowed.includes(rawRole as any) ? rawRole : "staff") as typeof allowed[number];
 
   function handleJoin() {
     if (!kitchenId || !name.trim()) return;
