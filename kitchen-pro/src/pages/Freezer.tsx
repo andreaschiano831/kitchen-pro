@@ -2,220 +2,174 @@ import { useMemo, useState } from "react";
 import { v4 as uuid } from "uuid";
 import { useKitchen } from "../store/kitchenStore";
 import type { Unit } from "../types/freezer";
-
-type LocFilter = "all" | "freezer" | "fridge";
-
-function hoursUntil(iso?: string) {
-  if (!iso) return null as number | null;
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return null as number | null;
-  return Math.floor((t - Date.now()) / (1000 * 60 * 60));
-}
-
-function expBadge(h: number | null) {
-  if (h === null) return null;
-  if (h <= 0) return { cls: "badge badge-expired", label: "SCADUTO/OGGI" };
-  if (h <= 24) return { cls: "badge badge-expired", label: "<24h" };
-  if (h <= 72) return { cls: "badge badge-urgent", label: "<72h" };
-  return null;
-}
+import Modal from "../components/Modal";
+import { Toast, type ToastMsg } from "../components/Toast";
+import { expiryClass, expiryLabel, expiryLevel, isUrgent } from "../utils/expiry";
 
 function minStock(item: any) {
   const unit = String(item.unit || "pz");
   if (unit !== "pz") return null as number | null;
   const v = item.parLevel;
-  if (v === undefined || v === null) return 5;
+  if (v === undefined || v === null) return 5; // default
   const n = Math.floor(Number(v));
   if (!Number.isFinite(n) || n <= 0) return 5;
   return n;
 }
 
-
-function quickDeltas(u: Unit) {
-  // delta in unità nativa del record
-  if (u === "pz") return [-5, -1, +1, +5];
-  if (u === "g") return [-500, -100, +100, +500];
-  if (u === "kg") return [-1, -0.5, +0.5, +1];
-  if (u === "ml") return [-500, -100, +100, +500];
-  if (u === "l") return [-1, -0.5, +0.5, +1];
-  return [-1, +1];
-}
-
 export default function Freezer() {
-  const { state,
-    
+  const {
+    state,
     addFreezerItem,
     removeFreezerItem,
     adjustFreezerItem,
     setFreezerParLevel,
-    autoGenerateLowStockToEconomato, getCurrentRole,
-   } = useKitchen();
+    autoGenerateLowStockToEconomato,
+    shopAdd,
+    getCurrentRole,
+  } = useKitchen();
 
   const role = getCurrentRole();
-  const canEdit = role === "admin" || role === "chef" || role === "sous-chef" || role === "capo-partita";
+  const canEdit =
+    role === "admin" || role === "chef" || role === "sous-chef" || role === "capo-partita";
 
   const kitchen = useMemo(
     () => state.kitchens.find((k) => k.id === state.currentKitchenId),
     [state.kitchens, state.currentKitchenId]
   );
 
-  // UI state
-  const [loc, setLoc] = useState<LocFilter>("all");
+  const [name, setName] = useState("");
+  const [unit, setUnit] = useState<Unit>("pz");
+  const [qty, setQty] = useState<number>(1);
+  const [location, setLocation] = useState<"freezer" | "fridge">("freezer");
+  const [expiresAt, setExpiresAt] = useState<string>("");
+
   const [q, setQ] = useState("");
   const [soloUrgenti, setSoloUrgenti] = useState(false);
-
-  // Add form
-  const [name, setName] = useState("");
 
   const [lowOpen, setLowOpen] = useState(false);
   const [toast, setToast] = useState<ToastMsg | null>(null);
 
-  const [quantity, setQuantity] = useState<number>(1);
-  const [unit, setUnit] = useState<Unit>("pz");
-  const [location, setLocation] = useState<"freezer" | "fridge">("freezer");
-  const [section, setSection] = useState("");
-  const [expiresAt, setExpiresAt] = useState("");
-  const [parLevel, setParLevel] = useState<number>(5);
-
   const items = useMemo(() => {
-    if (!kitchen) return [];
-    let list = (kitchen.freezer || []).slice();
+    const list = (kitchen?.freezer || []).slice();
 
-    // filtro location
-    if (loc !== "all") {
-      list = list.filter((it: any) => String(it.location || "freezer") === loc);
-    }
+    // filter by location
+    let filtered = list.filter((it: any) => (it.location || "freezer") === location);
 
-    // ricerca
+    // search
     const qq = q.trim().toLowerCase();
-    if (qq) {
-      list = list.filter((it: any) => String(it.name || "").toLowerCase().includes(qq));
-    }
+    if (qq) filtered = filtered.filter((it: any) => String(it.name || "").toLowerCase().includes(qq));
 
-    // urgenti
+    // urgent filter (expiry urgent OR low stock pz)
     if (soloUrgenti) {
-      list = list.filter((it: any) => {
-        const h = hoursUntil(it.expiresAt);
-        return h !== null && h <= 72;
+      filtered = filtered.filter((it: any) => {
+        const lev = expiryLevel(it.expiresAt);
+        const urgentExp = isUrgent(lev);
+
+        const u = String(it.unit || "pz");
+        const min = u === "pz" ? (it.parLevel ?? 5) : null;
+        const low = min !== null && Number(it.quantity ?? 0) < Number(min);
+
+        return urgentExp || low;
       });
     }
 
-    // FEFO (expiresAt asc, poi insertedAt desc)
-    list.sort((a: any, b: any) => {
-      const ad = a.expiresAt ? Date.parse(a.expiresAt) : Infinity;
-      const bd = b.expiresAt ? Date.parse(b.expiresAt) : Infinity;
-      if (ad !== bd) return ad - bd;
-      const ai = a.insertedAt ? Date.parse(a.insertedAt) : 0;
-      const bi = b.insertedAt ? Date.parse(b.insertedAt) : 0;
-      return bi - ai;
+    // sort: urgent expiry first, then name
+    filtered.sort((a: any, b: any) => {
+      const la = expiryLevel(a.expiresAt);
+      const lb = expiryLevel(b.expiresAt);
+      const wa = la === "expired" ? 3 : la === "h24" ? 2 : la === "h72" ? 1 : 0;
+      const wb = lb === "expired" ? 3 : lb === "h24" ? 2 : lb === "h72" ? 1 : 0;
+      if (wa != wb) return wb - wa;
+      return String(a.name || "").localeCompare(String(b.name || ""));
     });
 
-    return list;
-  }, [kitchen, loc, q, soloUrgenti]);
+    return filtered;
+  }, [kitchen, location, q, soloUrgenti]);
 
-  function runLowStock() {
-  const n = autoGenerateLowStockToEconomato();
-  setLowOpen(false);
-  setToast({
-    id: String(Date.now()),
-    type: n > 0 ? "success" : "warning",
-    title: n > 0 ? "Economato aggiornato" : "Nessun LOW stock",
-    message: n > 0 ? `Generati/aggiornati ${n} articoli in Economato.` : "Tutte le giacenze pz sono sopra il minimo.",
-  });
-}
+  const lowItems = useMemo(() => {
+    const list = (kitchen?.freezer || []).filter((it: any) => (it.unit || "pz") === "pz");
+    return list
+      .map((it: any) => {
+        const min = it.parLevel ?? 5;
+        const qty = Number(it.quantity ?? 0);
+        return { id: it.id, name: it.name, qty, min, diff: Math.max(0, min - qty) };
+      })
+      .filter((x: any) => x.diff > 0)
+      .sort((a: any, b: any) => b.diff - a.diff);
+  }, [kitchen]);
 
-function handleAdd() {
-    if (!kitchen || !canEdit) return;
-    const n = name.trim();
-    if (!n) return;
+  function addItem() {
+    if (!canEdit) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
 
-    const qty = Number(quantity);
-    if (!Number.isFinite(qty) || qty <= 0) return;
-
-    const item = {
+    addFreezerItem({
       id: uuid(),
-      name: n,
-      quantity: unit === "pz" ? Math.floor(qty) : qty,
+      name: trimmed,
+      quantity: unit === "pz" ? Math.floor(qty || 1) : Number(qty || 1),
       unit,
       location,
       insertedAt: new Date().toISOString(),
       expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
-      section: section.trim() || undefined,
-      parLevel: unit === "pz" ? (Number.isFinite(Number(parLevel)) && Number(parLevel) > 0 ? Math.floor(parLevel) : 5) : undefined,
-    };
-
-    addFreezerItem(item as any);
+    } as any);
 
     setName("");
-    setQuantity(1);
+    setQty(1);
     setUnit("pz");
-    setLocation("freezer");
-    setSection("");
     setExpiresAt("");
-    setParLevel(5);
+  }
+
+  function runLowStock() {
+    const n = autoGenerateLowStockToEconomato();
+    setLowOpen(false);
+    setToast({
+      id: String(Date.now()),
+      type: n > 0 ? "success" : "warning",
+      title: n > 0 ? "Economato aggiornato" : "Nessun LOW stock",
+      message: n > 0 ? `Generati/aggiornati ${n} articoli in Economato.` : "Tutte le giacenze pz sono sopra il minimo.",
+    });
   }
 
   if (!kitchen) {
     return (
       <div className="card p-6">
         <div className="h1">Giacenze</div>
-          <button className="btn btn-gold mt-2" onClick={() => setLowOpen(true)}>
-            Genera Spesa da LOW stock
-          </button>
-        <div className="p-muted mt-2">Seleziona una Kitchen prima.</div>
+        <div className="p-muted mt-2">Seleziona una Kitchen.</div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      {/* Controls */}
+      {/* Header */}
       <div className="card p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <div className="h1">Giacenze</div>
-          <button className="btn btn-gold mt-2" onClick={() => setLowOpen(true)}>
-            Genera Spesa da LOW stock
-          </button>
-            <div className="p-muted text-xs mt-1">FEFO • Filtro location • Urgenze • LOW stock (pz)</div>
-          </div>
+        <div className="h1">Giacenze</div>
+        <div className="p-muted text-xs mt-1">Freezer + Frigo • scadenze aggressive • par level (pz)</div>
 
-          <button
-            className="btn btn-ghost px-3 py-2 text-xs"
-            onClick={() => setSoloUrgenti((v) => !v)}
-          >
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button className={location === "freezer" ? "btn btn-primary text-xs" : "btn btn-ghost text-xs"} onClick={() => setLocation("freezer")}>
+            Congelatore
+          </button>
+          <button className={location === "fridge" ? "btn btn-primary text-xs" : "btn btn-ghost text-xs"} onClick={() => setLocation("fridge")}>
+            Frigo
+          </button>
+
+          <div className="flex-1" />
+
+          <button className="btn btn-ghost text-xs" onClick={() => setSoloUrgenti((v) => !v)}>
             {soloUrgenti ? "Mostra tutto" : "Solo urgenti"}
+          </button>
+
+          <button className="btn btn-gold text-xs" onClick={() => setLowOpen(true)}>
+            LOW stock → Economato
           </button>
         </div>
 
         <div className="mt-3 grid grid-cols-1 md:grid-cols-6 gap-2">
-          <input
-            className="input md:col-span-2"
-            placeholder="Cerca prodotto…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
+          <input className="input md:col-span-2" placeholder="Cerca…" value={q} onChange={(e) => setQ(e.target.value)} />
 
-          <select className="input" value={loc} onChange={(e) => setLoc(e.target.value as LocFilter)}>
-            <option value="all">Tutti</option>
-            <option value="freezer">Congelatore</option>
-            <option value="fridge">Frigo</option>
-          </select>
+          <input className="input md:col-span-2" placeholder="Nuovo item…" value={name} onChange={(e) => setName(e.target.value)} disabled={!canEdit} />
 
-          <div className="md:col-span-3 p-muted text-xs flex items-center">
-            Totale: <b className="ml-1 text-neutral-900">{items.length}</b>
-          </div>
-        </div>
-      </div>
-
-      {/* Add */}
-      <div className="card p-4">
-        <div className="h2">Nuovo inserimento</div>
-        {!canEdit && <div className="p-muted text-xs mt-1">Solo ruoli senior possono modificare.</div>}
-
-        <div className="mt-3 grid grid-cols-1 md:grid-cols-8 gap-2">
-          <input className="input md:col-span-2" placeholder="Prodotto" value={name} onChange={(e) => setName(e.target.value)} disabled={!canEdit} />
-          <input className="input" type="number" min={1} step={unit === "pz" ? 1 : 0.1} value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} disabled={!canEdit} />
           <select className="input" value={unit} onChange={(e) => setUnit(e.target.value as Unit)} disabled={!canEdit}>
             <option value="pz">pz</option>
             <option value="g">g</option>
@@ -223,100 +177,133 @@ function handleAdd() {
             <option value="ml">ml</option>
             <option value="l">l</option>
           </select>
-          <select className="input" value={location} onChange={(e) => setLocation(e.target.value as any)} disabled={!canEdit}>
-            <option value="freezer">Congelatore</option>
-            <option value="fridge">Frigo</option>
-          </select>
-          <input className="input" placeholder="Sezione" value={section} onChange={(e) => setSection(e.target.value)} disabled={!canEdit} />
-          <input className="input" type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} disabled={!canEdit} />
-          <input className="input" type="number" min={1} step={1} value={parLevel} onChange={(e) => setParLevel(Number(e.target.value))} disabled={!canEdit || unit !== "pz"} placeholder="MIN" />
-        </div>
 
-        <div className="mt-3">
-          <button className="btn btn-primary" onClick={handleAdd} disabled={!canEdit}>Aggiungi</button>
+          <input className="input" type="number" min={1} step={1} value={qty} onChange={(e) => setQty(Number(e.target.value))} disabled={!canEdit} />
+
+          <input className="input md:col-span-2" type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} disabled={!canEdit} />
+
+          <button className="btn btn-primary md:col-span-2" onClick={addItem} disabled={!canEdit}>
+            Aggiungi
+          </button>
         </div>
       </div>
 
       {/* List */}
       <div className="space-y-2">
-        {items.length == 0 && (
+        {items.length == 0 ? (
           <div className="card p-4">
             <div className="p-muted">Nessun prodotto.</div>
           </div>
-        )}
+        ) : null}
 
         {items.map((item: any) => {
-          const u: Unit = (item.unit || "pz") as Unit;
-          const h = hoursUntil(item.expiresAt);
-          const exp = expBadge(h);
-          const ms = minStock(item);
-          const isLow = ms !== null && Number(item.quantity) < Number(ms);
+          const u = String(item.unit || "pz");
+          const min = minStock(item);
+          const isLow = u === "pz" && min !== null && Number(item.quantity ?? 0) < Number(min);
+
+          const lev = expiryLevel(item.expiresAt);
+          const showExp = lev !== "none" && lev !== "ok";
 
           return (
             <div key={item.id} className="card p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
                     <div className="font-semibold truncate">{item.name}</div>
-                    <span className="badge">{item.location === "fridge" ? "FRIGO" : "CONGELATORE"}</span>
-                    {item.section && <span className="badge">{item.section}</span>}
-                    {isLow && <span className="badge badge-low">LOW (MIN {ms})</span>}
-                    {exp && <span className={exp.cls}>{exp.label}</span>}
+                    {showExp ? <span className={expiryClass(lev)}>{expiryLabel(lev)}</span> : null}
+                    {isLow ? <span className="badge badge-urgent">LOW</span> : null}
                   </div>
-
                   <div className="p-muted text-xs mt-1">
-                    Qty: <b className="text-neutral-900">{item.quantity} {u}</b>
-                    {item.expiresAt && <> • Scadenza: <b className="text-neutral-900">{String(item.expiresAt).slice(0,10)}</b></>}
+                    Qty: <b>{item.quantity}</b> {u}
+                    {u === "pz" ? (
+                      <>
+                        {" "}
+                        • MIN:{" "}
+                        <b>{(item.parLevel ?? 5)}</b>
+                      </>
+                    ) : null}
                   </div>
+                </div>
 
-                  {/* MIN editor only for pz */}
-                  {canEdit && u === "pz" && (
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="p-muted text-xs">MIN</span>
-                      <input
-                        className="input w-24"
-                        type="number"
-                        min={1}
-                        step={1}
-                        value={ms ?? 5}
-                        onChange={(e) => setFreezerParLevel(item.id, Number(e.target.value))}
-                      />
-                      <span className="p-muted text-xs">(solo pezzi)</span>
-                    </div>
-                  )}
+                <div className="flex flex-wrap gap-2">
+                  {canEdit ? (
+                    <>
+                      {/* Quick adjust */}
+                      <button className="btn btn-ghost text-xs" onClick={() => adjustFreezerItem(item.id, u === "pz" ? -1 : u === "kg" ? -1 : u === "l" ? -1 : -100)}>
+                        -
+                      </button>
+                      <button className="btn btn-ghost text-xs" onClick={() => adjustFreezerItem(item.id, u === "pz" ? +1 : u === "kg" ? +1 : u === "l" ? +1 : +100)}>
+                        +
+                      </button>
 
-                  {/* Quick adjust */}
-                  {canEdit && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {quickDeltas(u).map((d) => (
+                      {/* Par level inline (pz only) */}
+                      {u === "pz" ? (
                         <button
-                          key={d}
-                          className="btn btn-ghost px-3 py-2 text-xs"
-                          onClick={() => adjustFreezerItem(item.id, d)}
+                          className="btn btn-ghost text-xs"
+                          onClick={() => {
+                            const v = window.prompt("Imposta MIN (pz)", String(item.parLevel ?? 5));
+                            if (v is None): pass
+                          }}
                         >
-                          {d > 0 ? `+${d}` : String(d)} {u}
+                          MIN
                         </button>
-                      ))}
-                      <button className="btn btn-ghost px-3 py-2 text-xs" onClick={() => removeFreezerItem(item.id)}>
+                      ) : null}
+
+                      {/* Single add to Economato */}
+                      {canEdit && u === "pz" && isLow ? (
+                        <button
+                          className="btn btn-gold text-xs"
+                          onClick={() => {
+                            const m = (item.parLevel ?? 5);
+                            const diff = Math.max(1, Number(m) - Number(item.quantity ?? 0));
+                            shopAdd(item.name, diff, "pz", "economato", "MANUALE: reintegro LOW stock");
+                            setToast({
+                              id: String(Date.now()),
+                              type: "success",
+                              title: "Economato",
+                              message: `Aggiunto: ${item.name} +${diff} pz`,
+                            });
+                          }}
+                        >
+                          + Economato
+                        </button>
+                      ) : null}
+
+                      <button className="btn btn-ghost text-xs" onClick={() => removeFreezerItem(item.id)}>
                         Rimuovi
                       </button>
-                    </div>
+                    </>
+                  ) : (
+                    <span className="p-muted text-xs">Solo lettura</span>
                   )}
                 </div>
-
-                <div className="text-right">
-                  <div className="kpi" style={{ fontSize: 22 }}>{item.quantity}</div>
-                  <div className="p-muted text-xs">{u}</div>
-                </div>
               </div>
+
+              {/* Par editor: prompt safe (no python in TS) */}
+              {canEdit && u === "pz" ? (
+                <div className="mt-3 flex items-center gap-2">
+                  <div className="p-muted text-xs">MIN (pz)</div>
+                  <input
+                    className="input w-24"
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={item.parLevel ?? 5}
+                    onChange={(e) => setFreezerParLevel(item.id, Math.max(1, Math.floor(Number(e.target.value) || 5)))}
+                  />
+                  <div className="p-muted text-xs">default 5</div>
+                </div>
+              ) : null}
             </div>
           );
         })}
       </div>
-          <Modal open={lowOpen} title="LOW stock → Economato" onClose={() => setLowOpen(false)}>
+
+      {/* LOW stock modal */}
+      <Modal open={lowOpen} title="LOW stock → Economato" onClose={() => setLowOpen(false)}>
         <div className="space-y-3">
           <div className="p-muted text-xs">
-            Mostro solo articoli in <b>pz</b> sotto la giacenza minima (default 5 se non impostata).
+            Solo articoli in <b>pz</b> sotto MIN (default 5).
           </div>
 
           {lowItems.length === 0 ? (
@@ -351,4 +338,3 @@ function handleAdd() {
     </div>
   );
 }
-

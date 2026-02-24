@@ -1,12 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useKitchen } from "../store/kitchenStore";
 import { loadMEP, saveMEP, type MEPTask } from "../utils/mepStorage";
 import Modal from "../components/Modal";
 import { v4 as uuid } from "uuid";
 
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export default function MEP() {
   const { state, getCurrentRole, addFreezerItem } = useKitchen();
@@ -16,6 +13,7 @@ export default function MEP() {
 
   const kitchenId = state.currentKitchenId;
 
+  const [date] = useState(new Date().toISOString().slice(0,10));
   const [tasks, setTasks] = useState<MEPTask[]>([]);
   const [title, setTitle] = useState("");
 
@@ -32,7 +30,7 @@ export default function MEP() {
 
   useEffect(() => {
     if (!kitchenId) return;
-    saveMEP(kitchenId, tasks);
+    saveMEP(kitchenId, date, tasks);
   }, [tasks, kitchenId]);
 
   function addTask() {

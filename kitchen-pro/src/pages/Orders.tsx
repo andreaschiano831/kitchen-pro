@@ -65,7 +65,7 @@ export default function Orders() {
           <div className="flex gap-2">
             <button
               className="btn btn-ghost px-3 py-2 text-xs"
-              onClick={() => exportKitchenReportDoc(kitchen, `${kitchen.name}-report.doc`)}
+              onClick={() => exportKitchenDoc(kitchen)}
             >
               Export DOC (Report)
             </button>
