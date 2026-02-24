@@ -29,22 +29,21 @@ export default function Dashboard() {
 
   const stats = useMemo(() => {
     if (!kitchen) return null;
-
     const inv = (kitchen.freezer || []).slice();
-
-    const urgent72 = inv.filter((it: any) => {
-      const h = hoursUntil(it.expiresAt);
-      return h !== null && h <= 72;
-    });
-
-    const urgent24 = inv.filter((it: any) => {
-      const h = hoursUntil(it.expiresAt);
-      return h !== null && h <= 24;
-    });
 
     const expired = inv.filter((it: any) => {
       const h = hoursUntil(it.expiresAt);
       return h !== null && h <= 0;
+    });
+
+    const urgent24 = inv.filter((it: any) => {
+      const h = hoursUntil(it.expiresAt);
+      return h !== null && h <= 24 && h > 0;
+    });
+
+    const urgent72 = inv.filter((it: any) => {
+      const h = hoursUntil(it.expiresAt);
+      return h !== null && h <= 72 && h > 24;
     });
 
     const low = inv.filter((it: any) => {
@@ -62,9 +61,9 @@ export default function Dashboard() {
       totalInv: inv.length,
       freezer: freezer.length,
       fridge: fridge.length,
-      urgent72: urgent72.length,
-      urgent24: urgent24.length,
       expired: expired.length,
+      urgent24: urgent24.length,
+      urgent72: urgent72.length,
       low: low.length,
       toBuy: toBuy.length,
       members: (kitchen.members || []).length,
@@ -75,9 +74,9 @@ export default function Dashboard() {
   if (!kitchen || !stats) {
     return (
       <div className="card p-6">
-        <div className="h1">Dashboard</div>
-        <div className="p-muted mt-2">Seleziona o crea una Kitchen per iniziare.</div>
-        <Link className="btn btn-primary mt-4 inline-flex" to="/kitchen">Vai a Kitchen</Link>
+        <div className="h1">Kitchen Pro</div>
+        <div className="p-muted mt-2">Crea o seleziona una Kitchen per partire.</div>
+        <Link className="btn btn-primary mt-4" to="/kitchen">Vai a Kitchen</Link>
       </div>
     );
   }
@@ -87,11 +86,10 @@ export default function Dashboard() {
       <div className="card p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="h1">Dashboard</div>
+            <div className="h1">Kitchen Pro</div>
             <div className="p-muted mt-1">{stats.kitchenName} • Membri: {stats.members}</div>
           </div>
-
-          <Link className="btn btn-gold" to="/orders">Export + Spesa</Link>
+          <Link className="btn btn-gold" to="/orders">Export DOC</Link>
         </div>
       </div>
 
@@ -104,42 +102,39 @@ export default function Dashboard() {
 
         <div className="card p-4 border border-red-200">
           <div className="kpi-label">Scaduti/Oggi</div>
-          <div className="kpi text-red-700">{stats.expired}</div>
-          <div className="p-muted text-xs mt-1">Richiede azione</div>
+          <div className="kpi" style={{ color: "#7f1d1d" }}>{stats.expired}</div>
+          <div className="p-muted text-xs mt-1">Azione immediata</div>
         </div>
 
         <div className="card p-4 border border-amber-200">
-          <div className="kpi-label">Urgenti ≤72h</div>
-          <div className="kpi">{stats.urgent72}</div>
-          <div className="p-muted text-xs mt-1">≤24h: {stats.urgent24}</div>
+          <div className="kpi-label">Urgenti</div>
+          <div className="kpi">{stats.urgent24 + stats.urgent72}</div>
+          <div className="p-muted text-xs mt-1">≤24h: {stats.urgent24} • 24–72h: {stats.urgent72}</div>
         </div>
 
         <div className="card p-4 border border-red-200">
           <div className="kpi-label">LOW stock (pz)</div>
-          <div className="kpi text-red-700">{stats.low}</div>
+          <div className="kpi" style={{ color: "#991b1b" }}>{stats.low}</div>
           <div className="p-muted text-xs mt-1">Sotto MIN (default 5)</div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="card p-5">
-          <div className="font-semibold">Azioni rapide</div>
+          <div className="h2">Azioni rapide</div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Link className="btn btn-primary" to="/freezer">Giacenze</Link>
-            <Link className="btn btn-ghost" to="/orders">Liste Spesa</Link>
-            <Link className="btn btn-ghost" to="/mep">Preparazioni (MEP)</Link>
+            <Link className="btn btn-primary" to="/inventory">Giacenze</Link>
+            <Link className="btn btn-ghost" to="/mep">MEP</Link>
+            <Link className="btn btn-ghost" to="/orders">Spesa</Link>
             <Link className="btn btn-ghost" to="/members">Team</Link>
           </div>
-          <div className="p-muted text-xs mt-3">Obiettivo: un clic per operazioni critiche.</div>
         </div>
 
         <div className="card p-5">
-          <div className="font-semibold">Spesa</div>
-          <div className="mt-2 p-muted">Items da acquistare (non checkati):</div>
-          <div className="kpi mt-2">{stats.toBuy}</div>
-          <div className="mt-3">
-            <Link className="btn btn-gold" to="/orders">Apri liste spesa</Link>
-          </div>
+          <div className="h2">Spesa</div>
+          <div className="p-muted mt-1">Da acquistare (non checkati)</div>
+          <div className="kpi mt-3">{stats.toBuy}</div>
+          <Link className="btn btn-gold mt-3" to="/orders">Apri liste spesa</Link>
         </div>
       </div>
     </div>
