@@ -24,6 +24,7 @@ export default function SwitchUser() {
   }
 
   function handleAdd() {
+    if (!kitchen) return;
     if (!name.trim()) return;
     addMember(kitchen.id, name.trim(), role);
     setName("");
