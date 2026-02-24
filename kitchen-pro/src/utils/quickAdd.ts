@@ -78,7 +78,7 @@ export function quickAddParse(input: string): QuickAddDraft {
   }
 
   // name = remove known tokens (#tag, exp/scad + date, quantity+unit, note...)
-  const cleaned = tokens.filter((t, idx) => {
+  const cleaned = tokens.filter((t) => {
     const low = t.toLowerCase();
     if (t.startsWith("#")) return false;
     if (low in UNIT_MAP) return false;
