@@ -27,6 +27,8 @@ type Action =
   | { type: "KITCHEN_SELECT"; id: string }
   | { type: "SET_USER"; id: string }
   | { type: "ADD_MEMBER"; kitchenId: string; member: Member }
+  | { type: "UPDATE_MEMBER_ROLE"; kitchenId: string; memberId: string; role: Role }
+  | { type: "REMOVE_MEMBER"; kitchenId: string; memberId: string }
   | { type: "FREEZER_ADD"; item: FreezerItem }
   | { type: "FREEZER_REMOVE"; id: string };
 
@@ -47,6 +49,43 @@ function reducer(state: KitchenState, action: Action): KitchenState {
         kitchens: [...state.kitchens, action.kitchen],
         currentKitchenId: action.kitchen.id,
         currentUserId: action.kitchen.members[0].id,
+      };
+
+    case "ADD_MEMBER":
+      return {
+        ...state,
+        kitchens: state.kitchens.map(k =>
+          k.id === action.kitchenId
+            ? { ...k, members: [...k.members, action.member] }
+            : k
+        ),
+        currentKitchenId: action.kitchenId,
+        currentUserId: action.member.id,
+      };
+
+    case "UPDATE_MEMBER_ROLE":
+      return {
+        ...state,
+        kitchens: state.kitchens.map(k =>
+          k.id === action.kitchenId
+            ? {
+                ...k,
+                members: k.members.map(m =>
+                  m.id === action.memberId ? { ...m, role: action.role } : m
+                ),
+              }
+            : k
+        ),
+      };
+
+    case "REMOVE_MEMBER":
+      return {
+        ...state,
+        kitchens: state.kitchens.map(k =>
+          k.id === action.kitchenId
+            ? { ...k, members: k.members.filter(m => m.id !== action.memberId) }
+            : k
+        ),
       };
 
     case "ADD_MEMBER":
@@ -113,6 +152,8 @@ type KitchenStore = {
   createKitchen: (name: string, ownerName: string) => void;
   selectKitchen: (id: string) => void;
   addMember: (kitchenId: string, name: string, role: Role) => void;
+  updateMemberRole: (kitchenId: string, memberId: string, role: Role) => void;
+  removeMember: (kitchenId: string, memberId: string) => void;
   addFreezerItem: (item: FreezerItem) => void;
   removeFreezerItem: (id: string) => void;
   getCurrentRole: () => Role | null;

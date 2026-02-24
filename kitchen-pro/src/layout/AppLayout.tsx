@@ -12,6 +12,7 @@ export default function AppLayout() {
           </div>
           <div className="flex items-center gap-3 text-xs text-neutral-300">
             <Link to="/kitchen" className="hover:text-white">Kitchen</Link>
+            <Link to="/members" className="hover:text-white">Members</Link>
             <Link to="/auth" className="hover:text-white">Auth</Link>
           </div>
         </div>
