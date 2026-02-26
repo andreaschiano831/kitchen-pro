@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useReducer } from "react";
 import { v4 as uuid } from "uuid";
-import type { FreezerItem, Unit } from "../types/freezer";
+import type { FreezerItem, Location, Unit } from "../types/freezer";
 
 export type Role =
   | "admin"
@@ -25,14 +25,14 @@ export type ShoppingItem = {
   category: ShoppingCategory;
   checked: boolean;
   notes?: string;
-  createdAt: string; // ISO
+  createdAt: string;
 };
 
 export type Kitchen = {
   id: string;
   name: string;
   members: Member[];
-  freezer: FreezerItem[];     // include freezer+fridge via item.location
+  freezer: FreezerItem[];
   shopping: ShoppingItem[];
   parByCategory: Record<string, number>;
 };
@@ -42,6 +42,36 @@ export type KitchenState = {
   currentUserId: string | null;
   kitchens: Kitchen[];
 };
+
+// ── Payload types exposed to pages ────────────────────────────────────────────
+
+export type StockAddPayload = {
+  name: string;
+  quantity: number;
+  unit: Unit;
+  location: Location;
+  insertedAt: string;
+  insertedDate?: string;
+  expiresAt?: string;
+  lot?: string;
+  category?: string;
+  notes?: string;
+  catalogId?: string; // informational only — stripped before storage
+};
+
+export type MoveStockInput = {
+  name: string;
+  qty: number;
+  unit: Unit;
+  from: Location;
+  to: Location;
+  sourceId?: string;
+  lot?: string;
+  category?: string;
+  note?: string;
+};
+
+// ── Actions ───────────────────────────────────────────────────────────────────
 
 type Action =
   | { type: "KITCHEN_CREATE"; kitchen: Kitchen; userId: string }
@@ -53,13 +83,15 @@ type Action =
   | { type: "FREEZER_ADD"; item: FreezerItem }
   | { type: "FREEZER_REMOVE"; id: string }
   | { type: "FREEZER_ADJUST"; id: string; delta: number }
-  | { type: "FREEZER_SET_PAR"; id: string; parLevel: number | null }
+  | { type: "FREEZER_SET_PAR"; id: string; parLevel: number | undefined }
   | { type: "SHOP_ADD"; item: ShoppingItem }
   | { type: "SHOP_TOGGLE"; id: string }
   | { type: "SHOP_REMOVE"; id: string }
   | { type: "SHOP_CLEAR_CHECKED"; category: ShoppingCategory }
-  | { type: "PAR_CATEGORY_SET"; category: string; value: number}
+  | { type: "PAR_CATEGORY_SET"; category: string; value: number }
   | { type: "SHOP_UPSERT_ECONOMATO"; name: string; quantity: number; unit: Unit; notes?: string };
+
+// ── Persistence ───────────────────────────────────────────────────────────────
 
 const NS = "kitchen-pro:v1";
 
@@ -82,6 +114,8 @@ function loadState(): KitchenState {
 function saveState(state: KitchenState) {
   localStorage.setItem(NS, JSON.stringify(state));
 }
+
+// ── Reducer ───────────────────────────────────────────────────────────────────
 
 function reducer(state: KitchenState, action: Action): KitchenState {
   switch (action.type) {
@@ -115,10 +149,7 @@ function reducer(state: KitchenState, action: Action): KitchenState {
         kitchens: state.kitchens.map((k) =>
           k.id !== action.kitchenId
             ? k
-            : {
-                ...k,
-                members: k.members.map((m) => (m.id === action.memberId ? { ...m, role: action.role } : m)),
-              }
+            : { ...k, members: k.members.map((m) => (m.id === action.memberId ? { ...m, role: action.role } : m)) }
         ),
       };
 
@@ -135,7 +166,7 @@ function reducer(state: KitchenState, action: Action): KitchenState {
       return {
         ...state,
         kitchens: state.kitchens.map((k) =>
-          k.id === state.currentKitchenId ? { ...k, freezer: [...(k.freezer || []), action.item] } : k
+          k.id === state.currentKitchenId ? { ...k, freezer: [...(k.freezer ?? []), action.item] } : k
         ),
       };
 
@@ -143,7 +174,9 @@ function reducer(state: KitchenState, action: Action): KitchenState {
       return {
         ...state,
         kitchens: state.kitchens.map((k) =>
-          k.id === state.currentKitchenId ? { ...k, freezer: (k.freezer || []).filter((it) => it.id !== action.id) } : k
+          k.id === state.currentKitchenId
+            ? { ...k, freezer: (k.freezer ?? []).filter((it) => it.id !== action.id) }
+            : k
         ),
       };
 
@@ -152,9 +185,13 @@ function reducer(state: KitchenState, action: Action): KitchenState {
         ...state,
         kitchens: state.kitchens.map((k) => {
           if (k.id !== state.currentKitchenId) return k;
-          const next = (k.freezer || [])
-            .map((it) => (it.id === action.id ? { ...it, quantity: Math.max(0, Number(it.quantity || 0) + action.delta) } : it))
-            .filter((it) => Number(it.quantity || 0) > 0); // auto-remove at zero
+          const next = (k.freezer ?? [])
+            .map((it) =>
+              it.id === action.id
+                ? { ...it, quantity: Math.max(0, Number(it.quantity ?? 0) + action.delta) }
+                : it
+            )
+            .filter((it) => Number(it.quantity ?? 0) > 0);
           return { ...k, freezer: next };
         }),
       };
@@ -166,7 +203,11 @@ function reducer(state: KitchenState, action: Action): KitchenState {
           if (k.id !== state.currentKitchenId) return k;
           return {
             ...k,
-            freezer: (k.freezer || []).map((it) => (it.id === action.id ? { ...it, parLevel: action.parLevel } : it)),
+            freezer: (k.freezer ?? []).map((it) =>
+              it.id === action.id
+                ? { ...it, parLevel: action.parLevel } // number | undefined — matches FreezerItem
+                : it
+            ),
           };
         }),
       };
@@ -175,7 +216,7 @@ function reducer(state: KitchenState, action: Action): KitchenState {
       return {
         ...state,
         kitchens: state.kitchens.map((k) =>
-          k.id === state.currentKitchenId ? { ...k, shopping: [...(k.shopping || []), action.item] } : k
+          k.id === state.currentKitchenId ? { ...k, shopping: [...(k.shopping ?? []), action.item] } : k
         ),
       };
 
@@ -184,7 +225,10 @@ function reducer(state: KitchenState, action: Action): KitchenState {
         ...state,
         kitchens: state.kitchens.map((k) => {
           if (k.id !== state.currentKitchenId) return k;
-          return { ...k, shopping: (k.shopping || []).map((s) => (s.id === action.id ? { ...s, checked: !s.checked } : s)) };
+          return {
+            ...k,
+            shopping: (k.shopping ?? []).map((s) => (s.id === action.id ? { ...s, checked: !s.checked } : s)),
+          };
         }),
       };
 
@@ -193,7 +237,7 @@ function reducer(state: KitchenState, action: Action): KitchenState {
         ...state,
         kitchens: state.kitchens.map((k) => {
           if (k.id !== state.currentKitchenId) return k;
-          return { ...k, shopping: (k.shopping || []).filter((s) => s.id !== action.id) };
+          return { ...k, shopping: (k.shopping ?? []).filter((s) => s.id !== action.id) };
         }),
       };
 
@@ -205,7 +249,9 @@ function reducer(state: KitchenState, action: Action): KitchenState {
       return {
         ...state,
         kitchens: state.kitchens.map((k) =>
-          k.id === kitchenId ? { ...k, parByCategory: { ...(k.parByCategory || { default: 5 }), [cat]: val } } : k
+          k.id === kitchenId
+            ? { ...k, parByCategory: { ...(k.parByCategory ?? { default: 5 }), [cat]: val } }
+            : k
         ),
       };
     }
@@ -217,7 +263,7 @@ function reducer(state: KitchenState, action: Action): KitchenState {
           if (k.id !== state.currentKitchenId) return k;
           return {
             ...k,
-            shopping: (k.shopping || []).filter((s) => !(s.category === action.category && s.checked)),
+            shopping: (k.shopping ?? []).filter((s) => !(s.category === action.category && s.checked)),
           };
         }),
       };
@@ -227,7 +273,7 @@ function reducer(state: KitchenState, action: Action): KitchenState {
         ...state,
         kitchens: state.kitchens.map((k) => {
           if (k.id !== state.currentKitchenId) return k;
-          const list = k.shopping || [];
+          const list = k.shopping ?? [];
           const key = action.name.trim().toLowerCase();
           const idx = list.findIndex((x) => x.category === "economato" && x.name.trim().toLowerCase() === key);
           if (idx === -1) {
@@ -246,12 +292,12 @@ function reducer(state: KitchenState, action: Action): KitchenState {
           const cur = list[idx];
           const upd: ShoppingItem = {
             ...cur,
-            quantity: Math.max(1, Math.trunc(Number(cur.quantity || 0) + Number(action.quantity || 0))),
+            quantity: Math.max(1, Math.trunc(Number(cur.quantity ?? 0) + Number(action.quantity ?? 0))),
             unit: action.unit,
-            notes: action.notes || cur.notes,
+            notes: action.notes ?? cur.notes,
             checked: false,
           };
-          const next = list.slice();
+          const next = [...list];
           next[idx] = upd;
           return { ...k, shopping: next };
         }),
@@ -262,11 +308,14 @@ function reducer(state: KitchenState, action: Action): KitchenState {
   }
 }
 
+// ── Store type ────────────────────────────────────────────────────────────────
+
 export type KitchenStore = {
   state: KitchenState;
 
   createKitchen: (name: string, ownerName: string) => void;
   selectKitchen: (id: string) => void;
+  setParCategory: (category: string, value: number) => void;
 
   addMember: (kitchenId: string, name: string, role: Role) => void;
   updateMemberRole: (kitchenId: string, memberId: string, role: Role) => void;
@@ -276,7 +325,12 @@ export type KitchenStore = {
   addFreezerItem: (item: FreezerItem) => void;
   removeFreezerItem: (id: string) => void;
   adjustFreezerItem: (id: string, delta: number) => void;
-  setFreezerParLevel: (id: string, parLevel: number | null) => void;
+  setFreezerParLevel: (id: string, parLevel: number | undefined) => void;
+
+  /** High-level add from Invoice scanner — strips catalogId before storage */
+  stockAdd: (payload: StockAddPayload) => void;
+  /** Move qty from one location to another, scaling source item */
+  moveStock: (input: MoveStockInput) => void;
 
   shopAdd: (name: string, quantity: number, unit: Unit, category: ShoppingCategory, notes?: string) => void;
   shopToggle: (id: string) => void;
@@ -284,9 +338,10 @@ export type KitchenStore = {
   shopClearChecked: (category: ShoppingCategory) => void;
 
   autoGenerateLowStockToEconomato: () => number;
-
   getCurrentRole: () => Role | null;
 };
+
+// ── Provider ──────────────────────────────────────────────────────────────────
 
 const Ctx = createContext<KitchenStore | null>(null);
 
@@ -298,6 +353,8 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
   }, [state]);
 
   const store = useMemo<KitchenStore>(() => {
+    // ── Kitchen ──────────────────────────────────────────────────────────────
+
     function createKitchen(name: string, ownerName: string) {
       const kitchenId = uuid();
       const ownerId = uuid();
@@ -308,18 +365,9 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
         freezer: [],
         shopping: [],
         parByCategory: {
-          proteine: 6,
-          pesce: 4,
-          verdure: 8,
-          erbe: 12,
-          latticini: 6,
-          cereali: 3,
-          grassi: 4,
-          fermentati: 6,
-          spezie: 10,
-          fondi: 4,
-          cantina: 6,
-          consumabili: 5,
+          proteine: 6, pesce: 4, verdure: 8, erbe: 12,
+          dairy: 6, cereali: 3, grassi: 4, acidi: 6,
+          spezie: 10, fondi: 4, beverage: 6, secco: 5,
           default: 5,
         },
       };
@@ -329,6 +377,12 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
     function selectKitchen(id: string) {
       dispatch({ type: "KITCHEN_SELECT", id });
     }
+
+    function setParCategory(category: string, value: number) {
+      dispatch({ type: "PAR_CATEGORY_SET", category, value });
+    }
+
+    // ── Members ──────────────────────────────────────────────────────────────
 
     function setCurrentUser(userId: string | null) {
       dispatch({ type: "SET_CURRENT_USER", userId });
@@ -347,13 +401,18 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: "REMOVE_MEMBER", kitchenId, memberId });
     }
 
+    // ── Freezer ──────────────────────────────────────────────────────────────
+
     function addFreezerItem(item: FreezerItem) {
-    const kitchen = state.kitchens.find((k) => k.id === state.currentKitchenId);
-    const cat = (item as any).category?.trim() || "default";
-    const parMap = (kitchen as any)?.parByCategory || { default: 5 };
-    const autoPar = item.unit === "pz" ? (item.parLevel ?? parMap[cat] ?? parMap.default ?? 5) : undefined;
-    dispatch({ type: "FREEZER_ADD", item: { ...item, parLevel: autoPar } as any });
-  }
+      const kitchen = state.kitchens.find((k) => k.id === state.currentKitchenId);
+      const cat = item.category?.trim() ?? "default";
+      const parMap: Record<string, number> = kitchen?.parByCategory ?? { default: 5 };
+      const autoPar: number | undefined =
+        item.unit === "pz"
+          ? (item.parLevel ?? parMap[cat] ?? parMap["default"] ?? 5)
+          : undefined;
+      dispatch({ type: "FREEZER_ADD", item: { ...item, parLevel: autoPar } });
+    }
 
     function removeFreezerItem(id: string) {
       dispatch({ type: "FREEZER_REMOVE", id });
@@ -363,9 +422,39 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: "FREEZER_ADJUST", id, delta });
     }
 
-    function setFreezerParLevel(id: string, parLevel: number | null) {
+    function setFreezerParLevel(id: string, parLevel: number | undefined) {
       dispatch({ type: "FREEZER_SET_PAR", id, parLevel });
     }
+
+    function stockAdd(payload: StockAddPayload) {
+      // Strip catalogId (not stored in FreezerItem) and build a proper item
+      const { catalogId: _ignored, ...rest } = payload;
+      const item: FreezerItem = { id: uuid(), ...rest };
+      addFreezerItem(item);
+    }
+
+    function moveStock(input: MoveStockInput) {
+      // Scale source item (auto-removes at 0 via FREEZER_ADJUST reducer)
+      if (input.sourceId) {
+        dispatch({ type: "FREEZER_ADJUST", id: input.sourceId, delta: -input.qty });
+      }
+      // Add to destination location
+      const newItem: FreezerItem = {
+        id: uuid(),
+        name: input.name,
+        quantity: input.qty,
+        unit: input.unit,
+        location: input.to,
+        insertedAt: new Date().toISOString(),
+        insertedDate: new Date().toISOString().slice(0, 10),
+        lot: input.lot,
+        category: input.category,
+        notes: input.note,
+      };
+      dispatch({ type: "FREEZER_ADD", item: newItem });
+    }
+
+    // ── Shopping ─────────────────────────────────────────────────────────────
 
     function shopAdd(name: string, quantity: number, unit: Unit, category: ShoppingCategory, notes?: string) {
       const item: ShoppingItem = {
@@ -393,18 +482,18 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: "SHOP_CLEAR_CHECKED", category });
     }
 
-    function autoGenerateLowStockToEconomato() {
+    // ── Automation ───────────────────────────────────────────────────────────
+
+    function autoGenerateLowStockToEconomato(): number {
       const kitchen = state.kitchens.find((k) => k.id === state.currentKitchenId);
       if (!kitchen) return 0;
-
       let count = 0;
-      for (const it of kitchen.freezer || []) {
-        if ((it.unit || "pz") !== "pz") continue;
-        const min = (it as any).parLevel ?? 5;
+      for (const it of kitchen.freezer ?? []) {
+        if ((it.unit ?? "pz") !== "pz") continue;
+        const min = it.parLevel ?? 5;
         const qty = Number(it.quantity ?? 0);
         if (qty >= min) continue;
         const diff = Math.max(1, min - qty);
-
         dispatch({
           type: "SHOP_UPSERT_ECONOMATO",
           name: it.name,
@@ -412,8 +501,7 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
           unit: "pz",
           notes: "AUTO: reintegro da LOW stock",
         });
-
-        count += 1;
+        count++;
       }
       return count;
     }
@@ -427,9 +515,9 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
 
     return {
       state,
-    setParCategory: (category: string, value: number) => dispatch({ type: "PAR_CATEGORY_SET", category, value }),
       createKitchen,
       selectKitchen,
+      setParCategory,
       addMember,
       updateMemberRole,
       removeMember,
@@ -438,6 +526,8 @@ export function KitchenProvider({ children }: { children: React.ReactNode }) {
       removeFreezerItem,
       adjustFreezerItem,
       setFreezerParLevel,
+      stockAdd,
+      moveStock,
       shopAdd,
       shopToggle,
       shopRemove,

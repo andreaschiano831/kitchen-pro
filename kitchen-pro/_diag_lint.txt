@@ -1,0 +1,170 @@
+
+> kitchen-pro@0.0.0 lint
+> eslint .
+
+
+/workspaces/kitchen-pro/kitchen-pro/src/components/ExportPreviewModal.tsx
+  19:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/workspaces/kitchen-pro/kitchen-pro/src/components/ExportPreviewModal.tsx:19:5
+  17 |   useEffect(() => {
+  18 |     if (!open) return;
+> 19 |     setFilename(defaultFilename);
+     |     ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  20 |     setHtml(initialHtml);
+  21 |   }, [open, defaultFilename, initialHtml]);
+  22 |  react-hooks/set-state-in-effect
+
+/workspaces/kitchen-pro/kitchen-pro/src/components/StockIntake.tsx
+  48:48  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/workspaces/kitchen-pro/kitchen-pro/src/components/StockIntake.tsx:48:48
+  46 |   // sync location when product changes
+  47 |   useEffect(() => {
+> 48 |     if (product?.defaultLocation === "fridge") setLocation("fridge");
+     |                                                ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  49 |     else if (product?.defaultLocation === "freezer") setLocation("freezer");
+  50 |   }, [product?.id]);
+  51 |  react-hooks/set-state-in-effect
+  50:6   warning  React Hook useEffect has a missing dependency: 'product?.defaultLocation'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     react-hooks/exhaustive-deps
+
+/workspaces/kitchen-pro/kitchen-pro/src/components/Toast.tsx
+  14:6  warning  React Hook useEffect has a missing dependency: 'onClose'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/workspaces/kitchen-pro/kitchen-pro/src/hooks/useSpeech.ts
+   6:33  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-explicit-any
+  12:18  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-explicit-any
+  13:18  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-explicit-any
+  16:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/workspaces/kitchen-pro/kitchen-pro/src/hooks/useSpeech.ts:16:7
+  14 |
+  15 |     if (!SpeechRecognition) {
+> 16 |       setStatus("unsupported");
+     |       ^^^^^^^^^ Avoid calling setState() directly within an effect
+  17 |       return;
+  18 |     }
+  19 |  react-hooks/set-state-in-effect
+  28:36  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-explicit-any
+
+/workspaces/kitchen-pro/kitchen-pro/src/pages/Capture.tsx
+   26:25   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+   37:36   warning  The ref value 'videoRef.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'videoRef.current' to a variable inside the effect, and use that variable in the cleanup function  react-hooks/exhaustive-deps
+   37:57   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+   38:30   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+   40:15   error    Empty block statement                                                                                                                                                                                                                                            no-empty
+   64:34   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+   71:12   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+   78:15   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+   78:32   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+   78:75   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+   84:24   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  100:13   error    Empty block statement                                                                                                                                                                                                                                            no-empty
+  108:48   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  119:21   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  120:61   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  122:13   error    Empty block statement                                                                                                                                                                                                                                            no-empty
+  154:127  error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+
+/workspaces/kitchen-pro/kitchen-pro/src/pages/Dashboard.tsx
+  12:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  34:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  39:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  44:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  49:33  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  54:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  55:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/workspaces/kitchen-pro/kitchen-pro/src/pages/Join.tsx
+  14:45  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/workspaces/kitchen-pro/kitchen-pro/src/pages/MEP.tsx
+   28:5   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/workspaces/kitchen-pro/kitchen-pro/src/pages/MEP.tsx:28:5
+  26 |     if (!kitchenId) return;
+  27 |     const data = loadMEP(kitchenId);
+> 28 |     setTasks(data.tasks);
+     |     ^^^^^^^^ Avoid calling setState() directly within an effect
+  29 |   }, [kitchenId]);
+  30 |
+  31 |   useEffect(() => {  react-hooks/set-state-in-effect
+   34:6   warning  React Hook useEffect has a missing dependency: 'date'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           react-hooks/exhaustive-deps
+  146:62  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+
+/workspaces/kitchen-pro/kitchen-pro/src/pages/Search.tsx
+   23:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   26:55  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   31:58  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   39:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   93:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  124:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  144:45  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/workspaces/kitchen-pro/kitchen-pro/src/pages/Today.tsx
+  14:9   warning  The 'items' logical expression could make the dependencies of useMemo Hook (at line 20) change on every render. To fix this, wrap the initialization of 'items' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  14:9   warning  The 'items' logical expression could make the dependencies of useMemo Hook (at line 26) change on every render. To fix this, wrap the initialization of 'items' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  24:19  error    Unexpected any. Specify a different type                                                                                                                                                   @typescript-eslint/no-explicit-any
+  75:31  error    Unexpected any. Specify a different type                                                                                                                                                   @typescript-eslint/no-explicit-any
+  94:28  error    Unexpected any. Specify a different type                                                                                                                                                   @typescript-eslint/no-explicit-any
+
+/workspaces/kitchen-pro/kitchen-pro/src/store/kitchenStore.tsx
+  431:26  error  '_ignored' is assigned a value but never used                                                                                   @typescript-eslint/no-unused-vars
+  543:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/workspaces/kitchen-pro/kitchen-pro/src/utils/export.ts
+  16:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  34:86  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  79:43  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/workspaces/kitchen-pro/kitchen-pro/src/utils/invoiceParser.ts
+  71:44  error  '_date' is defined but never used  @typescript-eslint/no-unused-vars
+
+/workspaces/kitchen-pro/kitchen-pro/src/utils/mepStorage.ts
+  27:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  29:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  29:69  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/workspaces/kitchen-pro/kitchen-pro/src/utils/quickAdd.ts
+  181:96  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/workspaces/kitchen-pro/kitchen-pro/src/utils/reportDoc.ts
+   14:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   30:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   52:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   52:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   61:34  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   66:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   71:64  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   91:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  119:28  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/workspaces/kitchen-pro/kitchen-pro/src/utils/storage.ts
+  14:11  error  Empty block statement  no-empty
+
+✖ 69 problems (63 errors, 6 warnings)
+

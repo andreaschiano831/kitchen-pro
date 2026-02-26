@@ -37,7 +37,7 @@ const UNIT_MAP: Record<string, Unit> = {
 };
 
 // lotto: "Lotto ABC123", "L. ABC123", "LOT ABC", "L240225A1" (standalone code)
-const LOT_RE = /\b(?:lotto?\.?\s*|LOT\.?\s*)([A-Z0-9\-]{3,20})\b/i;
+const LOT_RE = /\b(?:lotto?\.?\s*|LOT\.?\s*)([A-Z0-9-]{3,20})\b/i;
 
 // scadenza: "Sc. 2026-03-01", "Scad. 03/2026", "04/2026", "2026-03"
 const EXP_RE =
@@ -68,8 +68,7 @@ function extractName(line: string): string {
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 
-export function parseInvoice(text: string, date?: string): InvoiceLine[] {
-  const today = date ?? new Date().toISOString().slice(0, 10);
+export function parseInvoice(text: string, _date?: string): InvoiceLine[] {
   const lines = text
     .split(/\n/)
     .map((l) => l.trim())

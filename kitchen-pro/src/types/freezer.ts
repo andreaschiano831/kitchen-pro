@@ -1,4 +1,17 @@
-export type Unit = "pz" | "g" | "kg" | "ml" | "l";
+export type Unit =
+  | "pz"
+  | "g"
+  | "kg"
+  | "ml"
+  | "l"
+  // Packaging / contenitori (usati in fatture e carico)
+  | "box"
+  | "busta"
+  | "brik"
+  | "latta"
+  | "vasch"
+  | "vac";
+
 export type Location = "freezer" | "fridge" | "dry" | "counter";
 
 export type FreezerItem = {
