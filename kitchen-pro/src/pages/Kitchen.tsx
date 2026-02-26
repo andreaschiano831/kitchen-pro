@@ -114,4 +114,10 @@ export default function Kitchen() {
       </div>
     </div>
   );
+  <input
+  className="input"
+  value={ownerName}
+  onChange={(e) => setOwnerName(e.target.value)}
+/>
 }
+

@@ -6,6 +6,7 @@ import type { Unit } from "../types/freezer";
 import Modal from "../components/Modal";
 import { Toast, type ToastMsg } from "../components/Toast";
 import { expiryClass, expiryLabel, expiryLevel, isUrgent } from "../utils/expiry";
+import { MICHELIN_CATEGORIES } from "../data/catalog";
 
 function minStock(item: any) {
   const unit = String(item.unit || "pz");
@@ -326,4 +327,15 @@ export default function Freezer() {
       {toast ? <Toast toast={toast} onClose={() => setToast(null)} /> : null}
     </div>
   );
+  <StockIntake
+  items={items}
+  onAdd={addItem}
+  getParForCategory={(categoryKey) => {
+  const cat = MICHELIN_CATEGORIES.find((c) => c.key === categoryKey);
+  return cat?.defaultParPz ?? 0;
+}}
+/>
+
 }
+
+
