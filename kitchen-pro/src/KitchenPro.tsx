@@ -6969,7 +6969,17 @@ function AIPanel({ t, onClose }) {
       }
     }
 
-    if(/scadenz|urgenti|in scadenza/.test(lower)) {
+    if(/cosa ho|giacenze|inventario|stock|quanti|quante|cosa c.è|mostra tutto/.test(lower) && !/aggiungi|carica|rimuovi|scala/.test(lower)) {
+      const byLoc:{[k:string]:any[]}={fridge:[],freezer:[],dry:[],counter:[]};
+      items.forEach(x=>{ if(byLoc[x.location]) byLoc[x.location].push(x); });
+      const locLabel:{[k:string]:string}={fridge:"Frigo",freezer:"Freezer",dry:"Dispensa",counter:"Banco"};
+      const lines:string[]=[];
+      Object.entries(byLoc).forEach(([loc,arr])=>{
+        if(arr.length) lines.push(`${locLabel[loc]}: ${arr.map(x=>`${x.name} ${x.quantity}${x.unit}`).join(", ")}`);
+      });
+      reply=lines.length?lines.join("
+"):"Nessuna giacenza registrata.";
+    } else if(/scadenz|urgenti|in scadenza|scad|cosa scade|cosa sta scadendo/.test(lower)) {
       const urgent=items.filter(x=>{ const h=hoursUntil(x.expiresAt); return h!==null&&h>0&&h<=72; });
       const expired=items.filter(x=>x.expiresAt&&new Date(x.expiresAt)<now);
       if(!urgent.length&&!expired.length) reply="✓ Nessuna scadenza urgente al momento.";
@@ -6977,7 +6987,7 @@ function AIPanel({ t, onClose }) {
         const lines=[...expired.map(x=>`⛔ ${x.name} — SCADUTO`), ...urgent.map(x=>`⚠ ${x.name} — ${Math.round(hoursUntil(x.expiresAt))}h rimaste`)];
         reply=lines.join("\n");
       }
-    } else if(/low|scorta bassa|sotto par/.test(lower)) {
+    } else if(/low|scorta bassa|sotto par|livello par|sotto livello|livello minimo|par level/.test(lower)) {
       const low=items.filter(x=>{ const par=x.parLevel??PAR_PRESET[x.category]??0; return par>0&&x.quantity<par; });
       if(!low.length) reply="✓ Tutti i livelli nella norma.";
       else reply=low.map(x=>`↓ ${x.name}: ${x.quantity} (par ${x.parLevel??PAR_PRESET[x.category]})`).join("\n");
