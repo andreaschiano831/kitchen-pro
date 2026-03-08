@@ -1096,7 +1096,7 @@ async function callAI({ systemPrompt, userContext=null, maxTokens=1024,
         return callAI({systemPrompt,userContext,maxTokens,expectJSON,_attempt:_attempt+1,userMessages,noCache});
       }
       if(res.status===401) throw new Error("Chiave API non valida o scaduta. Vai in Impostazioni → 🤖 AI per aggiornarla.");
-      if(res.status===400) throw new Error("Richiesta AI non valida (400). Riprova.");
+      if(res.status===400) { const eb=await res.json().catch(()=>{}); throw new Error("400: "+(eb?.error?.message||JSON.stringify(eb)||"formato errato")); }
       if(res.status===403) throw new Error("Accesso AI negato (403). Verifica la chiave API.");
       throw new Error(`Errore AI (${res.status}). Riprova tra qualche secondo.`);
     }
