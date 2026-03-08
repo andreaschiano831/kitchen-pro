@@ -2760,6 +2760,8 @@ function InventoryView({ t }) {
   const [editParVal, setEditParVal] = useState("");
   const [editExpiry, setEditExpiry] = useState(null);
   const [editExpiryVal, setEditExpiryVal] = useState("");
+  const [expandedCard, setExpandedCard] = useState(null);
+  const [editLot, setEditLot] = useState({});
   const [moveModal, setMoveModal] = useState(null);
   const [moveQty, setMoveQty] = useState("");
   const [moveDest, setMoveDest] = useState("fridge");
@@ -3041,7 +3043,7 @@ function InventoryView({ t }) {
                 <div style={{padding:"16px 20px"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:14,fontWeight:500,fontFamily:"var(--serif)",color:t.ink,marginBottom:3,fontStyle:"italic"}}>{item.name}</div>
+                      <div onClick={()=>setExpandedCard(expandedCard===item.id?null:item.id)} style={{fontSize:14,fontWeight:500,fontFamily:"var(--serif)",color:t.ink,marginBottom:3,fontStyle:"italic",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>{item.name}<span style={{fontSize:9,color:t.inkFaint,fontStyle:"normal"}}>{expandedCard===item.id?"▲":"▼"}</span></div>
                       <div className="mono" style={{fontSize:9,color:t.inkFaint}}>
                         {(CATEGORIES[item.category]?.label||item.category||"—")}
                         {item.lot&&` · ${item.lot}`}
@@ -3095,6 +3097,44 @@ function InventoryView({ t }) {
                           background:"none",color:t.inkFaint,fontSize:8,fontFamily:"var(--mono)",cursor:"pointer",
                         }}>📅 Imposta scadenza</button>
                       )}
+                    </div>
+                  )}
+                  {expandedCard===item.id&&canEdit&&(
+                    <div style={{padding:"10px 12px",borderRadius:10,background:t.bgAlt,border:`1px solid ${t.div}`,marginBottom:8,display:"flex",flexDirection:"column",gap:8}}>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <span className="mono" style={{fontSize:9,color:t.inkFaint,minWidth:40}}>LOTTO</span>
+                        <input value={editLot[item.id]??item.lot??""} onChange={e=>setEditLot(p=>({...p,[item.id]:e.target.value}))}
+                          placeholder="es. L2024-03"
+                          style={{flex:1,padding:"4px 8px",borderRadius:6,border:`1px solid ${t.div}`,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:10,outline:"none"}}/>
+                        <button onClick={()=>{
+                          const nl=editLot[item.id]??item.lot??"";
+                          adjustItem(item.id,0);
+                          // aggiorna lot via updateItem se disponibile, altrimenti removeItem+stockAdd
+                          const k=store.state.kitchens.find((x:any)=>x.id===store.state.currentKitchenId);
+                          const loc=item.location;
+                          if(k){
+                            const arr=[...(k[loc]||[])];
+                            const i=arr.findIndex((x:any)=>x.id===item.id);
+                            if(i>=0){arr[i]={...arr[i],lot:nl};store.dispatch({type:"KP_SET_LOC",kitchenId:k.id,loc,arr});}
+                          }
+                          toast("Lotto aggiornato","success");
+                        }} style={{padding:"4px 10px",borderRadius:6,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontSize:9,fontFamily:"var(--mono)"}}>✓</button>
+                      </div>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <span className="mono" style={{fontSize:9,color:t.inkFaint,minWidth:40}}>POS.</span>
+                        <select defaultValue={item.location} onChange={e=>{
+                          const newLoc=e.target.value;
+                          removeItem(item.id);
+                          stockAdd({...item,location:newLoc});
+                          setExpandedCard(null);
+                          toast(`Spostato → ${newLoc}`,"success");
+                        }} style={{flex:1,padding:"4px 8px",borderRadius:6,border:`1px solid ${t.div}`,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:10}}>
+                          <option value="fridge">🧊 Frigo</option>
+                          <option value="freezer">❄️ Congelatore</option>
+                          <option value="dry">🏺 Dispensa</option>
+                          <option value="counter">🔲 Banco</option>
+                        </select>
+                      </div>
                     </div>
                   )}
                   {canEdit&&(
