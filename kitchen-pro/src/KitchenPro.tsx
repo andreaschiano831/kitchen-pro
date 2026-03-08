@@ -382,7 +382,7 @@ function KitchenProvider({ children }) {
         const k=kid(); if(!k||!nome.trim()) return;
         dispatch({type:"PREP_ADD", kitchenId:k, prep:{
           id:genId(), nome:nome.trim(), categoriaKey:categoria||"antipasti",
-          reparto:reparto||"cucina_calda", turno:turno||"mattina",
+          reparto:reparto||"antipasti", partita:reparto||"antipasti", turno:turno||"mattina",
           quantita:Number(qty)||1, unitaMisura:unit||"pz",
           status:"da_fare", destinazione:null,
           svoltaIl:null, smistataIl:null,
@@ -2089,7 +2089,7 @@ function PreparazioniView({ t, hideForm=false }) {
   const [form, setForm] = useState({
     nome:"", qty:"1", unit:"pz",
     categoria:"antipasti", note:"",
-    scadeIl:"", partita:"saucier",
+    scadeIl:"", partita:"antipasti",
   });
 
   // ── Alert on mount ─────────────────────────────────
@@ -2114,7 +2114,7 @@ function PreparazioniView({ t, hideForm=false }) {
     prepAdd(form.nome,form.qty,form.unit,form.categoria,form.partita||"saucier","mattina",form.note,form.scadeIl||null);
     saveCustomPrep(form.nome);
     toast(`${form.nome} aggiunta`,"success");
-    setForm({nome:"",qty:"1",unit:"pz",categoria:"antipasti",note:"",scadeIl:"",partita:"saucier"});
+    setForm({nome:"",qty:"1",unit:"pz",categoria:"antipasti",note:"",scadeIl:"",partita:"antipasti"});
     setShowForm(false);
   }
 
@@ -2128,7 +2128,7 @@ function PreparazioniView({ t, hideForm=false }) {
     else if(tab==="congelatore"||tab==="calendario") p=[];
     else { p=[...preps]; if(tab==="categoria"&&catFil!=="tutti") p=p.filter(x=>x.categoriaKey===catFil); }
     if(prepCatFil!=="tutti") p=p.filter(x=>x.categoriaKey===prepCatFil);
-    if(partitaFil!=="tutti") p=p.filter(x=>(x.partita||x.reparto||"saucier")===partitaFil);
+    if(partitaFil!=="tutti") p=p.filter(x=>(x.reparto||x.partita||"cucina_calda")===partitaFil);
     // search
     if(searchPrep.trim()) p=p.filter(x=>x.nome.toLowerCase().includes(searchPrep.toLowerCase()));
     // status
@@ -2467,7 +2467,7 @@ function PrepCard({ prep, t, canEdit, onStatus, onRemove }) {
   const [editUnit, setEditUnit] = useState(prep.unitaMisura||"pz");
   const [editNote, setEditNote] = useState(prep.note||"");
   const [editScade, setEditScade] = useState(prep.scadeIl||"");
-  const [editPartita, setEditPartita] = useState(prep.partita||"saucier");
+  const [editPartita, setEditPartita] = useState(prep.partita||prep.reparto||"antipasti");
   const { prepUpdate } = useK();
   function saveEdit() {
     prepUpdate(prep.id,{nome:editNome,quantita:parseFloat(editQty)||1,unitaMisura:editUnit,note:editNote,scadeIl:editScade||null,partita:editPartita});
@@ -2545,7 +2545,7 @@ function PrepCard({ prep, t, canEdit, onStatus, onRemove }) {
               <div style={{display:"flex",gap:6}}>
                 <select value={editPartita} onChange={e=>setEditPartita(e.target.value)}
                   style={{flex:1,padding:"5px 6px",borderRadius:6,border:`1px solid ${t.div}`,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:10}}>
-                  {["saucier","poissonnier","garde_manger","patissier","rotisseur","entremettier"].map(p=><option key={p}>{p}</option>)}
+                  {STATIONS.filter(s=>s.key!=="all").map(s=><option key={s.key} value={s.key}>{s.icon} {s.label}</option>)}
                 </select>
                 <input value={editScade} onChange={e=>setEditScade(e.target.value)} type="date"
                   style={{flex:1,padding:"5px 8px",borderRadius:6,border:`1px solid ${t.div}`,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:10}}/>
