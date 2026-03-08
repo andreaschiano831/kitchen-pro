@@ -5317,7 +5317,7 @@ Rispondi SOLO in JSON valido (nessun testo fuori dal JSON):
         "location": "fridge|freezer|dry|counter",
         "categoria": "categoria prodotto",
         "scadenza_giorni": null,
-        "reparto": "saucier|poissonnier|rotisseur|garde|patissier|communard",
+        "reparto": "antipasti|primi|secondi|pasticceria|colazioni|buffet|eventi",
         "turno": "mattina|pomeriggio|sera",
         "note": ""
       },
