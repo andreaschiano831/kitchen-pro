@@ -6507,14 +6507,18 @@ function AIPanel({ t, onClose }) {
         reply=done.length?done.join("\n"):"Non ho capito. Prova: \"aggiungi 3 uova e 2 filetti in frigo\""
       } else {
         // Single item — fast local parse
-        const m=lower.match(/(\d+[\.,]?\d*)\s*(pz|kg|g|ml|l)?\s+(?:di\s+)?(.+?)(?:\s+(?:al|in)\s+(frigo|freezer|dispensa|banco))?(?:\s+lotto\s+(\S+))?$/);
+        const locMap={frigo:"fridge",frigorifico:"fridge",freezer:"freezer",congelatore:"freezer",dispensa:"dry",secco:"dry",banco:"counter"};
+        // Regex estesa: quantità opzionale, unità opzionale, nome libero
+        const m=lower.match(/(\d+[\.,]?\d*)?\s*(pz|kg|g|ml|l)?\s+(?:di\s+)?(.+?)(?:\s+(?:al|in|nel|nella)\s+(frigo|frigorifico|freezer|congelatore|dispensa|secco|banco))?(?:\s+lotto\s+(\S+))?$/);
         if(m) {
-          const qty=parseFloat(m[1].replace(",",".")), name=m[3].trim();
-          const locMap={frigo:"fridge",frigorifico:"fridge",freezer:"freezer",congelatore:"freezer",dispensa:"dry",secco:"dry",banco:"counter"};
-          const loc=locMap[m[4]||"frigo"]||"fridge";
+          const qty=m[1]?parseFloat(m[1].replace(",",".")):1;
+          const name=m[3].replace(/\s+(al|in|nel|nella)\s+(frigo|frigorifico|freezer|congelatore|dispensa|secco|banco)\s*$/i,"").trim();
+          const locKey=m[4]||(lower.match(/\b(frigo|frigorifico|freezer|congelatore|dispensa|secco|banco)\b/)||[])[0]||"frigo";
+          const loc=locMap[locKey]||"fridge";
           const lot=m[5]||undefined;
-          if(qty>0&&name){ stockAdd({name,quantity:qty,unit:m[2]||"pz",location:loc,lot,insertedDate:todayDate()}); reply=`✓ ${name} (${qty} ${m[2]||"pz"}) aggiunto in ${loc}${lot?" lotto "+lot:""}.`; }
+          if(name.length>1){ stockAdd({name,quantity:qty,unit:m[2]||"pz",location:loc,lot,insertedDate:todayDate()}); reply=`✓ ${name} (${qty} ${m[2]||"pz"}) → ${loc}${lot?" lotto "+lot:""}.`; }
         }
+        if(!reply) reply="Non ho capito. Prova: \"aggiungi 3 polli in frigo\"";
       }
     } else if(/rimuovi|elimina/.test(lower)) {
       const name=lower.replace(/rimuovi|elimina/,"").trim();
