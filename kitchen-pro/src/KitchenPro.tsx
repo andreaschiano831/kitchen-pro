@@ -157,6 +157,8 @@ function reducer(state, action) {
       return { ...state, kitchens: mapK(action.kitchenId, k => { const loc=findLoc(k,action.id); if(!loc)return k; return setStock(k,loc,mapStock(k,loc).map(x=>x.id!==action.id?x:{...x,quantity:Math.max(0,(x.quantity||0)+action.delta)}).filter(x=>x.quantity>0)); }) };
     case "ITEM_REMOVE":
       return { ...state, kitchens: mapK(action.kitchenId, k => { const loc=findLoc(k,action.id); if(!loc)return k; return setStock(k,loc,mapStock(k,loc).filter(x=>x.id!==action.id)); }) };
+    case "ITEM_UPDATE":
+      return { ...state, kitchens: mapK(action.kitchenId, k => { const loc=findLoc(k,action.id); if(!loc)return k; return setStock(k,loc,mapStock(k,loc).map(x=>x.id===action.id?{...x,...action.patch}:x)); }) };
     case "ITEM_PAR":
       return { ...state, kitchens: mapK(action.kitchenId, k => { const loc=findLoc(k,action.id); if(!loc)return k; return setStock(k,loc,mapStock(k,loc).map(x=>x.id!==action.id?x:{...x,parLevel:action.par})); }) };
     case "ITEM_EXTEND_EXPIRY": {
@@ -361,6 +363,7 @@ function KitchenProvider({ children }) {
       },
       adjustItem: (id, delta) => { const k=kid(); if(k)dispatch({type:"ITEM_ADJUST",kitchenId:k,id,delta:Number(delta)||0}); },
       removeItem: (id) => { const k=kid(); if(k)dispatch({type:"ITEM_REMOVE",kitchenId:k,id}); if(API_URL && getToken()) apiFetch(`/stock/${id}`,{method:"DELETE"}).catch(console.warn); },
+      itemUpdate: (id, patch) => { const k=kid(); if(k)dispatch({type:"ITEM_UPDATE",kitchenId:k,id,patch}); },
       setItemPar: (id, par) => { const k=kid(); if(k)dispatch({type:"ITEM_PAR",kitchenId:k,id,par}); },
       moveStock: (id, qty, to) => { const k=kid(); if(k)dispatch({type:"STOCK_MOVE",kitchenId:k,id,qty,to}); },
       extendExpiry: (id, days) => { const k=kid(); if(k)dispatch({type:"ITEM_EXTEND_EXPIRY",kitchenId:k,id,days:Number(days)||0}); },
@@ -2787,7 +2790,7 @@ function DashboardView({ t }) {
    INVENTORY VIEW
    ════════════════════════════════════════════════════════ */
 function InventoryView({ t }) {
-  const { kitchen, stockAdd, adjustItem, removeItem, setItemPar, extendExpiry, setExpiry, moveStock, currentRole } = useK();
+  const { kitchen, stockAdd, adjustItem, removeItem, setItemPar, extendExpiry, setExpiry, moveStock, currentRole, itemUpdate } = useK();
   const toast = useToast();
   const canEdit = CAN_EDIT.includes(currentRole());
 
@@ -3153,14 +3156,7 @@ function InventoryView({ t }) {
                         <button onClick={()=>{
                           const nl=editLot[item.id]??item.lot??"";
                           adjustItem(item.id,0);
-                          // aggiorna lot via updateItem se disponibile, altrimenti removeItem+stockAdd
-                          const k=store.state.kitchens.find((x:any)=>x.id===store.state.currentKitchenId);
-                          const loc=item.location;
-                          if(k){
-                            const arr=[...(k[loc]||[])];
-                            const i=arr.findIndex((x:any)=>x.id===item.id);
-                            if(i>=0){arr[i]={...arr[i],lot:nl};store.dispatch({type:"KP_SET_LOC",kitchenId:k.id,loc,arr});}
-                          }
+                          itemUpdate(item.id,{lot:nl});
                           toast("Lotto aggiornato","success");
                         }} style={{padding:"4px 10px",borderRadius:6,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontSize:9,fontFamily:"var(--mono)"}}>✓</button>
                       </div>
