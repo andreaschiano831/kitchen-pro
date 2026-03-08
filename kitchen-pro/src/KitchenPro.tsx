@@ -6492,36 +6492,25 @@ function AIPanel({ t, onClose }) {
       // Count numbers in message — if >1 item detected, use AI for multi-item parsing
       const numCount = (msg.match(/\d+/g)||[]).length;
       if(numCount > 1) {
-        // Route to AI for multi-item parsing — execute directly without checkout UI
-        setLoading(true);
-        try {
-          const res = await callAI({ systemPrompt: AI_CMD_SYSTEM, userContext: msg, maxTokens: 1024, expectJSON: true, noCache: true });
-          const cmds = (res?.comandi||[]).filter((c:any)=>c.tipo==="stock_aggiungi"||c.tipo==="prep_aggiungi"||c.tipo==="spesa_aggiungi");
-          const locMap2:{[k:string]:string}={frigo:"fridge",frigorifico:"fridge",freezer:"freezer",congelatore:"freezer",dispensa:"dry",secco:"dry",banco:"counter"};
-          const done:string[]=[];
-          cmds.forEach((cmd:any)=>{
-            const d=cmd.dati||{};
-            const loc2 = locMap2[d.location]||d.location||"fridge";
-            const scadeIso = d.scadenza_giorni ? new Date(Date.now()+d.scadenza_giorni*86400000).toISOString() : null;
-            if(cmd.tipo==="stock_aggiungi"){
-              stockAdd({name:d.nome,quantity:Number(d.quantita)||1,unit:d.unit||"pz",location:loc2,category:d.categoria||"altro",expiresAt:scadeIso,insertedDate:todayDate()});
-              done.push(`✓ ${d.nome} (${d.quantita||1}${d.unit||"pz"}) → ${loc2}`);
-            } else if(cmd.tipo==="prep_aggiungi"){
-              prepAdd(d.nome,Number(d.quantita)||1,d.unit||"pz",d.categoria||"antipasti",d.reparto||"cucina_calda",d.turno||"mattina",d.note||"",scadeIso);
-              done.push(`✓ prep: ${d.nome}`);
-            }
-          });
-          reply = done.length ? done.join("\n") : (res?.riassunto||"✓ Operazione completata");
-          setMessages(p=>[...p,{role:"ai",text:reply}]);
-        } catch(e:any) { setMessages(p=>[...p,{role:"ai",text:`⚠ ${e.message}`}]); }
-        finally { setLoading(false); }
-        return;
+        // Multi-item parser locale — zero API
+        const locMap2:{[k:string]:string}={frigo:"fridge",frigorifico:"fridge",freezer:"freezer",congelatore:"freezer",dispensa:"dry",secco:"dry",banco:"counter"};
+        const globalLocM=lower.match(/\b(frigo|frigorifico|freezer|congelatore|dispensa|secco|banco)\b/);
+        const globalLoc=globalLocM?(locMap2[globalLocM[1]]||"fridge"):"fridge";
+        const parts=msg.split(/\s+e\s+|,\s*|\s+poi\s+/i);
+        const done:string[]=[];
+        parts.forEach(part=>{
+          const pm=part.toLowerCase().match(/(\d+[\.,]?\d*)\s*(pz|kg|g|ml|l)?\s+(?:di\s+)?([\w\s]+?)(?:\s+(?:al|in)\s+(frigo|frigorifico|freezer|congelatore|dispensa|banco))?\s*$/);
+          if(pm){const qty=parseFloat(pm[1].replace(",","."));const name=pm[3].trim();const loc=pm[4]?(locMap2[pm[4]]||globalLoc):globalLoc;
+            if(qty>0&&name.length>1){stockAdd({name,quantity:qty,unit:pm[2]||"pz",location:loc,insertedDate:todayDate()});done.push(`✓ ${name} (${qty} ${pm[2]||"pz"}) → ${loc}`);}
+          }
+        });
+        reply=done.length?done.join("\n"):"Non ho capito. Prova: \"aggiungi 3 uova e 2 filetti in frigo\""
       } else {
         // Single item — fast local parse
         const m=lower.match(/(\d+[\.,]?\d*)\s*(pz|kg|g|ml|l)?\s+(?:di\s+)?(.+?)(?:\s+(?:al|in)\s+(frigo|freezer|dispensa|banco))?(?:\s+lotto\s+(\S+))?$/);
         if(m) {
           const qty=parseFloat(m[1].replace(",",".")), name=m[3].trim();
-          const locMap={frigo:"fridge",freezer:"freezer",dispensa:"dry",banco:"counter"};
+          const locMap={frigo:"fridge",frigorifico:"fridge",freezer:"freezer",congelatore:"freezer",dispensa:"dry",secco:"dry",banco:"counter"};
           const loc=locMap[m[4]||"frigo"]||"fridge";
           const lot=m[5]||undefined;
           if(qty>0&&name){ stockAdd({name,quantity:qty,unit:m[2]||"pz",location:loc,lot,insertedDate:todayDate()}); reply=`✓ ${name} (${qty} ${m[2]||"pz"}) aggiunto in ${loc}${lot?" lotto "+lot:""}.`; }
