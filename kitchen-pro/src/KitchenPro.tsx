@@ -879,7 +879,7 @@ function BackendAuthScreen({ t, onAuth }: { t: any; onAuth: (data: any) => void 
         <div style={{display:"flex",gap:6,padding:4,background:t.bgAlt,borderRadius:12,marginBottom:20}}>
           {[{k:"join",l:"Entra con codice"},{k:"create",l:"Crea cucina"}].map((m)=>(
             <button key={m.k} onClick={()=>setMode(m.k as any)} style={{flex:1,padding:"10px",borderRadius:9,border:"none",cursor:"pointer",
-              background:mode===m.k?t.bgCard:"transparent",color:mode===m.k?t.ink:t.inkMuted,
+              background:mode===m.k?"#fff":"transparent",color:mode===m.k?"#1a1a1a":"#888",fontWeight:mode===m.k?600:400,
               fontFamily:"var(--mono)",fontSize:10,boxShadow:mode===m.k?`0 2px 8px ${t.shadow}`:"none",transition:"all 0.2s"}}>{m.l}</button>
           ))}
         </div>
