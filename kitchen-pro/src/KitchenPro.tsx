@@ -4796,7 +4796,7 @@ const PIATTO_CATEGORIE = [
 ];
 
 function PiattiManager({ t, copertiServizio=30 }) {
-  const { kitchen, allItems, piattoAdd, piattoUpdate, piattoRemove, piattoToggleActive, setExternalAppUrl, stockAdd, removeItem, adjustItem } = useK();
+  const { kitchen, allItems, piattoAdd, piattoUpdate, piattoRemove, piattoToggleActive, setExternalAppUrl, stockAdd, removeItem, adjustItem, spesaV2Add } = useK();
   const toast = useToast();
   const piatti = kitchen?.piatti||[];
   const externalUrl = kitchen?.externalAppUrl||"";
@@ -5034,7 +5034,12 @@ function PiattiManager({ t, copertiServizio=30 }) {
                             </div>
                           </td>
                           <td style={{padding:"8px",color:d.ok?t.success:t.danger,fontSize:12}}>
-                            {d.ok?"✓":"✗"}
+                            {d.ok?"✓":
+                              <button onClick={()=>{spesaV2Add(d.nome,String(Math.ceil(parseFloat(d.needed)-parseFloat(d.inStock))),d.unit,"alimenti","giornaliero","Da PiattiManager");toast(`${d.nome} → lista spesa`,"success");}}
+                                style={{padding:"3px 8px",borderRadius:6,border:"none",cursor:"pointer",background:t.danger+"22",color:t.danger,fontFamily:"var(--mono)",fontSize:8}}>
+                                ✗ +spesa
+                              </button>
+                            }
                           </td>
                         </tr>
                       );
