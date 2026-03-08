@@ -2118,10 +2118,10 @@ function PreparazioniView({ t, hideForm=false }) {
   const [sortPrep, setSortPrep] = useState("default"); // default | nome | scadenza | qty
 
   const filteredPreps = useMemo(()=>{
-    if(tab==="svolte") return svolteOggi;
-    if(tab==="congelatore"||tab==="calendario") return [];
-    let p = [...preps];
-    if(tab==="categoria" && catFil!=="tutti") p=p.filter(x=>x.categoriaKey===catFil);
+    let p: any[];
+    if(tab==="svolte") p=[...svolteOggi];
+    else if(tab==="congelatore"||tab==="calendario") p=[];
+    else { p=[...preps]; if(tab==="categoria"&&catFil!=="tutti") p=p.filter(x=>x.categoriaKey===catFil); }
     if(prepCatFil!=="tutti") p=p.filter(x=>x.categoriaKey===prepCatFil);
     // search
     if(searchPrep.trim()) p=p.filter(x=>x.nome.toLowerCase().includes(searchPrep.toLowerCase()));
