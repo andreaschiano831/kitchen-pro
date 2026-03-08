@@ -1051,7 +1051,7 @@ async function callAI({ systemPrompt, userContext=null, maxTokens=1024,
   }
 
   const body: any = {
-    model:"claude-sonnet-4-5",
+    model:"claude-sonnet-4-6",
     max_tokens: maxTokens,
     system: systemPrompt,
     messages: userMessages
@@ -1329,7 +1329,7 @@ function ApiKeySetup({ t }) {
           "anthropic-dangerous-direct-browser-access":"true",
         },
         body: JSON.stringify({
-          model:"claude-sonnet-4-5",
+          model:"claude-sonnet-4-6",
           max_tokens:10,
           messages:[{role:"user",content:"ping"}]
         })
