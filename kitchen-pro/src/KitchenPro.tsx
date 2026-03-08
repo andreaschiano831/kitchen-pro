@@ -2441,6 +2441,19 @@ function PrepCard({ prep, t, canEdit, onStatus, onRemove }) {
   const toast = useToast();
   const [exp, setExp] = useState(false);
   const [showSmista, setShowSmista] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editNome, setEditNome] = useState(prep.nome||"");
+  const [editQty, setEditQty] = useState(String(prep.quantita||1));
+  const [editUnit, setEditUnit] = useState(prep.unitaMisura||"pz");
+  const [editNote, setEditNote] = useState(prep.note||"");
+  const [editScade, setEditScade] = useState(prep.scadeIl||"");
+  const [editPartita, setEditPartita] = useState(prep.partita||"saucier");
+  const { prepUpdate } = useK();
+  function saveEdit() {
+    prepUpdate(prep.id,{nome:editNome,quantita:parseFloat(editQty)||1,unitaMisura:editUnit,note:editNote,scadeIl:editScade||null,partita:editPartita});
+    toast("Prep aggiornata","success");
+    setEditMode(false);
+  }
   const [smistaLoc, setSmistaLoc] = useState("fridge");
   const [smistaQty, setSmistaQty] = useState(String(prep.quantita||1));
   const [smistaExpiry, setSmistaExpiry] = useState("");
@@ -2491,6 +2504,37 @@ function PrepCard({ prep, t, canEdit, onStatus, onRemove }) {
         <div style={{padding:"0 18px 14px",borderTop:`1px solid ${t.div}`}}>
           {prep.note&&<div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:12,color:t.inkSoft,padding:"8px 0"}}>· {prep.note}</div>}
 
+          {/* Edit inline */}
+          <div style={{display:"flex",justifyContent:"flex-end",marginBottom:6}}>
+            <button onClick={()=>setEditMode(e=>!e)} style={{padding:"4px 12px",borderRadius:7,border:`1px solid ${t.div}`,cursor:"pointer",background:editMode?t.gold:"transparent",color:editMode?"#fff":t.inkMuted,fontFamily:"var(--mono)",fontSize:9}}>
+              {editMode?"× Annulla":"✏ Modifica"}
+            </button>
+          </div>
+          {editMode&&(
+            <div style={{display:"flex",flexDirection:"column",gap:8,padding:"12px",borderRadius:10,background:t.bgAlt,border:`1px solid ${t.div}`,marginBottom:10}}>
+              <div style={{display:"flex",gap:6}}>
+                <input value={editNome} onChange={e=>setEditNome(e.target.value)} placeholder="Nome"
+                  style={{flex:2,padding:"5px 8px",borderRadius:6,border:`1px solid ${t.div}`,background:t.bgCard,color:t.ink,fontFamily:"var(--serif)",fontSize:13,fontStyle:"italic"}}/>
+                <input value={editQty} onChange={e=>setEditQty(e.target.value)} type="number" min="0" step="0.1" placeholder="Qty"
+                  style={{width:60,padding:"5px 8px",borderRadius:6,border:`1px solid ${t.div}`,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:12}}/>
+                <select value={editUnit} onChange={e=>setEditUnit(e.target.value)}
+                  style={{padding:"5px 6px",borderRadius:6,border:`1px solid ${t.div}`,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:10}}>
+                  {["pz","kg","g","l","ml","porz"].map(u=><option key={u}>{u}</option>)}
+                </select>
+              </div>
+              <div style={{display:"flex",gap:6}}>
+                <select value={editPartita} onChange={e=>setEditPartita(e.target.value)}
+                  style={{flex:1,padding:"5px 6px",borderRadius:6,border:`1px solid ${t.div}`,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:10}}>
+                  {["saucier","poissonnier","garde_manger","patissier","rotisseur","entremettier"].map(p=><option key={p}>{p}</option>)}
+                </select>
+                <input value={editScade} onChange={e=>setEditScade(e.target.value)} type="date"
+                  style={{flex:1,padding:"5px 8px",borderRadius:6,border:`1px solid ${t.div}`,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:10}}/>
+              </div>
+              <input value={editNote} onChange={e=>setEditNote(e.target.value)} placeholder="Note…"
+                style={{padding:"5px 8px",borderRadius:6,border:`1px solid ${t.div}`,background:t.bgCard,color:t.ink,fontFamily:"var(--serif)",fontSize:12}}/>
+              <button onClick={saveEdit} style={{padding:"7px",borderRadius:8,border:"none",cursor:"pointer",background:`linear-gradient(135deg,${t.gold},${t.goldBright})`,color:"#fff",fontFamily:"var(--mono)",fontSize:10}}>✓ Salva modifiche</button>
+            </div>
+          )}
           {/* Status rapido */}
           <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
             {Object.entries(STATUS_LABELS).filter(([k])=>k!=="smistata").map(([k,l]:any)=>(
