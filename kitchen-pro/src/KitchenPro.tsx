@@ -6031,6 +6031,318 @@ function ServizioViewFull({ t }) {
 /* ════════════════════════════════════════════════════════
    HACCP VIEW — temperature, checklist, lotti
    ════════════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════════════
+   SPTTP — Scheda Fine Turno
+   Scadenze · Preparazioni · Temperature · Tracciabilità · Pulizie
+   ════════════════════════════════════════════════════════ */
+function SpttpView({ t }) {
+  const { kitchen, allItems, currentRole } = useK();
+  const toast = useToast();
+  const canEdit = CAN_EDIT.includes(currentRole());
+  const today = todayDate();
+  const STORAGE = `spttp-${kitchen?.id}-${today}`;
+  const [data, setData] = React.useState(()=>{
+    try{ return JSON.parse(localStorage.getItem(STORAGE)||"null"); }catch{ return null; }
+  });
+  React.useEffect(()=>{ try{ localStorage.setItem(STORAGE, JSON.stringify(data)); }catch{} }, [data, STORAGE]);
+
+  const items = allItems();
+  const preps = kitchen?.preparazioni||[];
+  const now = new Date();
+
+  // Auto-init data struttura
+  React.useEffect(()=>{
+    if(data) return;
+    const expired = items.filter(x=>x.expiresAt&&new Date(x.expiresAt)<now);
+    const scadenti = items.filter(x=>{const h=hoursUntil(x.expiresAt);return h!==null&&h>0&&h<=24;});
+    const prepsOggi = preps.filter(p=>p.status!=="smistata");
+    setData({
+      turno: "mattina",
+      coperti: "",
+      operatore: "",
+      // Sezione 1 — Scadenze
+      scadenzeChecked: {},
+      // Sezione 2 — Prep completate
+      prepChecked: {},
+      // Sezione 3 — Temperature frigo linea
+      tempFrigo: "", tempFreezer: "", tempBanco: "",
+      tempFrigoOk: null, tempFreezerOk: null, tempBancoOk: null,
+      // Sezione 4 — Scarico giacenze
+      scaricoNote: "",
+      // Sezione 5 — Pulizie
+      pulizie: {},
+      // Sezione 6 — Check frigo linea
+      checkFrigo: {},
+      // Sezione 7 — Check fine servizio
+      checkServizio: {},
+      // Sezione 8 — Note libere
+      note: "",
+      completedAt: null,
+    });
+  }, [kitchen?.id, today]);
+
+  if(!data) return <div style={{padding:40,textAlign:"center",color:t.inkFaint}}>Caricamento...</div>;
+
+  const upd = (patch:any) => setData((p:any)=>({...p,...patch}));
+
+  const expired = items.filter(x=>x.expiresAt&&new Date(x.expiresAt)<now);
+  const scadenti24 = items.filter(x=>{const h=hoursUntil(x.expiresAt);return h!==null&&h>0&&h<=48;});
+  const prepsAttive = preps.filter(p=>p.status!=="smistata"&&p.status!=="svolta");
+
+  const PULIZIE_LIST = [
+    "Piani di lavoro sanitizzati","Attrezzature pulite e riposte",
+    "Frigo linea pulito e organizzato","Frigo principale controllato",
+    "Congelatore controllato","Pavimenti puliti",
+    "Lavello e scarichi puliti","Cappe aspiranti pulite",
+    "Contenitori e GN lavati","Rifiuti smaltiti correttamente",
+  ];
+  const CHECK_FRIGO = [
+    "Temperatura corretta (0-5°C)","Alimenti coperti con pellicola/coperchi",
+    "FIFO rispettato (vecchio davanti)","Nessun alimento scaduto",
+    "Separazione crudo/cotto","Etichettatura completa",
+  ];
+  const CHECK_FINE_SERVIZIO = [
+    "Prep aggiornate nel sistema","Giacenze aggiornate",
+    "Scarico effettuato","Temperatura registrata su HACCP",
+    "Comunicazione al turno successivo","Banco servizio pulito",
+    "Mise en place per domani avviata",
+  ];
+
+  const scoreSection = (obj:any, list:any[]) => list.filter((_,i)=>obj[i]).length;
+  const totalScore = 
+    scoreSection(data.pulizie, PULIZIE_LIST) +
+    scoreSection(data.checkFrigo, CHECK_FRIGO) +
+    scoreSection(data.checkServizio, CHECK_FINE_SERVIZIO) +
+    Object.values(data.prepChecked||{}).filter(Boolean).length +
+    Object.values(data.scadenzeChecked||{}).filter(Boolean).length +
+    (data.tempFrigoOk!==null?1:0) + (data.tempFreezerOk!==null?1:0);
+  const maxScore = PULIZIE_LIST.length + CHECK_FRIGO.length + CHECK_FINE_SERVIZIO.length +
+    prepsAttive.length + (expired.length+scadenti24.length) + 3;
+  const pct = maxScore>0 ? Math.round((totalScore/maxScore)*100) : 0;
+
+  function SectionHeader({icon,title,sub}:any) {
+    return (
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+        <span style={{fontSize:22}}>{icon}</span>
+        <div>
+          <div style={{fontFamily:"var(--mono)",fontSize:11,letterSpacing:"0.1em",color:t.ink}}>{title}</div>
+          {sub&&<div className="mono" style={{fontSize:8,color:t.inkFaint}}>{sub}</div>}
+        </div>
+      </div>
+    );
+  }
+
+  function CheckRow({label,checked,onToggle,warn=false}:any) {
+    return (
+      <div onClick={onToggle} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",
+        borderRadius:8,cursor:"pointer",background:checked?t.success+"10":warn?t.danger+"08":"transparent",
+        border:`1px solid ${checked?t.success+"44":warn?t.danger+"33":t.div}`,marginBottom:6,transition:"all 0.15s"}}>
+        <div style={{width:22,height:22,borderRadius:6,border:`1.5px solid ${checked?t.success:warn?t.danger:t.div}`,
+          background:checked?t.success:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+          {checked&&<span style={{color:"#fff",fontSize:13}}>✓</span>}
+        </div>
+        <span style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:13,color:warn&&!checked?t.danger:t.ink,flex:1}}>{label}</span>
+        {warn&&!checked&&<span style={{fontSize:10,color:t.danger}}>⚠</span>}
+      </div>
+    );
+  }
+
+  function TempInput({label,icon,value,min,max,okFn,field,okField}:any) {
+    const tv=parseFloat(value);
+    const ok=value?okFn(tv):null;
+    return (
+      <div style={{padding:"14px 16px",borderRadius:12,border:`2px solid ${ok===false?t.danger:ok===true?t.success:t.div}`,background:t.bgCard,display:"flex",flexDirection:"column",gap:8}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:20}}>{icon}</span>
+          <div>
+            <div className="mono" style={{fontSize:10,color:t.ink}}>{label}</div>
+            <div className="mono" style={{fontSize:8,color:t.inkFaint}}>{min}÷{max}°C</div>
+          </div>
+          {ok!==null&&<span style={{marginLeft:"auto",fontSize:20}}>{ok?"✅":"⚠️"}</span>}
+        </div>
+        <input value={value} onChange={e=>{ const v=e.target.value; upd({[field]:v,[okField]:v?okFn(parseFloat(v)):null}); }}
+          type="number" placeholder="°C" style={{
+            padding:"8px 12px",borderRadius:8,border:`1px solid ${ok===false?t.danger:ok===true?t.success:t.div}`,
+            background:t.bgAlt,color:t.ink,fontFamily:"var(--mono)",fontSize:18,textAlign:"center",outline:"none",width:"100%",boxSizing:"border-box"
+          }}/>
+      </div>
+    );
+  }
+
+  function exportPDF() {
+    const lines = [
+      `SCHEDA FINE TURNO — ${today}`,
+      `Operatore: ${data.operatore||"—"} | Turno: ${data.turno} | Coperti: ${data.coperti||"—"}`,
+      `Completamento: ${pct}%`,
+      "",
+      "=== TEMPERATURE ===",
+      `Frigo: ${data.tempFrigo||"—"}°C ${data.tempFrigoOk===true?"✓":data.tempFrigoOk===false?"✗":""}`,
+      `Congelatore: ${data.tempFreezer||"—"}°C ${data.tempFreezerOk===true?"✓":data.tempFreezerOk===false?"✗":""}`,
+      `Banco: ${data.tempBanco||"—"}°C ${data.tempBancoOk===true?"✓":data.tempBancoOk===false?"✗":""}`,
+      "",
+      "=== PULIZIE ===",
+      ...PULIZIE_LIST.map((p,i)=>`${data.pulizie[i]?"[✓]":"[ ]"} ${p}`),
+      "",
+      "=== CHECK FRIGO LINEA ===",
+      ...CHECK_FRIGO.map((p,i)=>`${data.checkFrigo[i]?"[✓]":"[ ]"} ${p}`),
+      "",
+      "=== CHECK FINE SERVIZIO ===",
+      ...CHECK_FINE_SERVIZIO.map((p,i)=>`${data.checkServizio[i]?"[✓]":"[ ]"} ${p}`),
+      "",
+      `Note: ${data.note||"—"}`,
+    ];
+    const csv = lines.join("\n");
+    const a = document.createElement("a");
+    a.href = "data:text/plain;charset=utf-8," + encodeURIComponent(csv);
+    a.download = `SPTTP-${today}-${data.turno}.txt`;
+    a.click();
+    toast("Scheda esportata","success");
+  }
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:20}}>
+      {/* Header stato */}
+      <div style={{padding:"16px 22px",borderRadius:14,background:pct>=80?t.success+"12":pct>=50?t.gold+"12":t.bgCard,
+        border:`1.5px solid ${pct>=80?t.success+"55":pct>=50?t.gold+"55":t.div}`,display:"flex",alignItems:"center",gap:16}}>
+        <div style={{flex:1}}>
+          <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:16,color:t.ink}}>Scheda Fine Turno — {today}</div>
+          <div className="mono" style={{fontSize:9,color:t.inkFaint,marginTop:2}}>{totalScore}/{maxScore} check completati</div>
+        </div>
+        <div style={{textAlign:"center"}}>
+          <div style={{fontFamily:"var(--mono)",fontSize:28,fontWeight:700,color:pct>=80?t.success:pct>=50?t.gold:t.danger}}>{pct}%</div>
+          <div className="mono" style={{fontSize:8,color:t.inkFaint}}>COMPLETAMENTO</div>
+        </div>
+        <button onClick={exportPDF} style={{padding:"8px 16px",borderRadius:10,border:`1px solid ${t.div}`,cursor:"pointer",background:t.bgAlt,color:t.inkMuted,fontFamily:"var(--mono)",fontSize:9}}>⬇ Esporta</button>
+      </div>
+
+      {/* Info turno */}
+      <Card t={t} style={{padding:20}}>
+        <SectionHeader icon="📋" title="INFO TURNO" sub={today}/>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+          <div>
+            <div className="mono" style={{fontSize:8,color:t.inkFaint,marginBottom:4}}>OPERATORE</div>
+            <input value={data.operatore} onChange={e=>upd({operatore:e.target.value})} placeholder="Nome operatore"
+              style={{width:"100%",padding:"7px 10px",borderRadius:8,border:`1px solid ${t.div}`,background:t.bgAlt,color:t.ink,fontFamily:"var(--serif)",fontSize:13,fontStyle:"italic",outline:"none",boxSizing:"border-box"}}/>
+          </div>
+          <div>
+            <div className="mono" style={{fontSize:8,color:t.inkFaint,marginBottom:4}}>TURNO</div>
+            <select value={data.turno} onChange={e=>upd({turno:e.target.value})}
+              style={{width:"100%",padding:"7px 10px",borderRadius:8,border:`1px solid ${t.div}`,background:t.bgAlt,color:t.ink,fontFamily:"var(--mono)",fontSize:11}}>
+              {["mattina","pranzo","pomeriggio","cena","notte"].map(t2=><option key={t2}>{t2}</option>)}
+            </select>
+          </div>
+          <div>
+            <div className="mono" style={{fontSize:8,color:t.inkFaint,marginBottom:4}}>COPERTI</div>
+            <input value={data.coperti} onChange={e=>upd({coperti:e.target.value})} type="number" placeholder="es. 45"
+              style={{width:"100%",padding:"7px 10px",borderRadius:8,border:`1px solid ${t.div}`,background:t.bgAlt,color:t.ink,fontFamily:"var(--mono)",fontSize:14,outline:"none",boxSizing:"border-box"}}/>
+          </div>
+        </div>
+      </Card>
+
+      {/* 1. Scadenze */}
+      {(expired.length>0||scadenti24.length>0)&&(
+        <Card t={t} style={{padding:20}}>
+          <SectionHeader icon="⚠️" title="SCADENZE DA GESTIRE" sub={`${expired.length} scaduti · ${scadenti24.length} entro 48h`}/>
+          {expired.map((item,i)=>(
+            <CheckRow key={item.id} warn label={`SCADUTO — ${item.name} (${item.quantity} ${item.unit})`}
+              checked={!!data.scadenzeChecked[item.id]}
+              onToggle={()=>upd({scadenzeChecked:{...data.scadenzeChecked,[item.id]:!data.scadenzeChecked[item.id]}})}/>
+          ))}
+          {scadenti24.map((item,i)=>(
+            <CheckRow key={item.id} label={`Scade presto — ${item.name} (${item.quantity} ${item.unit}) · ${fmtDate(item.expiresAt)}`}
+              checked={!!data.scadenzeChecked["s"+item.id]}
+              onToggle={()=>upd({scadenzeChecked:{...data.scadenzeChecked,["s"+item.id]:!data.scadenzeChecked["s"+item.id]}})}/>
+          ))}
+        </Card>
+      )}
+
+      {/* 2. Temperature */}
+      <Card t={t} style={{padding:20}}>
+        <SectionHeader icon="🌡️" title="TEMPERATURE" sub="Registra le temperature di fine turno"/>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:12}}>
+          <TempInput label="Frigo Linea" icon="🧊" value={data.tempFrigo} min={0} max={5}
+            okFn={(v:number)=>v>=0&&v<=5} field="tempFrigo" okField="tempFrigoOk"/>
+          <TempInput label="Congelatore" icon="❄️" value={data.tempFreezer} min={-20} max={-15}
+            okFn={(v:number)=>v>=-20&&v<=-15} field="tempFreezer" okField="tempFreezerOk"/>
+          <TempInput label="Banco Pesce" icon="🐟" value={data.tempBanco} min={0} max={4}
+            okFn={(v:number)=>v>=0&&v<=4} field="tempBanco" okField="tempBancoOk"/>
+        </div>
+      </Card>
+
+      {/* 3. Prep attive */}
+      {prepsAttive.length>0&&(
+        <Card t={t} style={{padding:20}}>
+          <SectionHeader icon="📋" title="PREPARAZIONI ATTIVE" sub="Aggiorna lo stato delle prep"/>
+          {prepsAttive.map(p=>(
+            <CheckRow key={p.id} label={`${p.nome} — ${p.quantita} ${p.unitaMisura||"pz"}`}
+              checked={!!data.prepChecked[p.id]}
+              onToggle={()=>upd({prepChecked:{...data.prepChecked,[p.id]:!data.prepChecked[p.id]}})}/>
+          ))}
+        </Card>
+      )}
+
+      {/* 4. Check frigo linea */}
+      <Card t={t} style={{padding:20}}>
+        <SectionHeader icon="🧊" title="CHECK FRIGO LINEA" sub={`${scoreSection(data.checkFrigo,CHECK_FRIGO)}/${CHECK_FRIGO.length} OK`}/>
+        {CHECK_FRIGO.map((item,i)=>(
+          <CheckRow key={i} label={item}
+            checked={!!data.checkFrigo[i]}
+            onToggle={()=>upd({checkFrigo:{...data.checkFrigo,[i]:!data.checkFrigo[i]}})}/>
+        ))}
+      </Card>
+
+      {/* 5. Pulizie */}
+      <Card t={t} style={{padding:20}}>
+        <SectionHeader icon="🧹" title="PULIZIE" sub={`${scoreSection(data.pulizie,PULIZIE_LIST)}/${PULIZIE_LIST.length} completate`}/>
+        {PULIZIE_LIST.map((item,i)=>(
+          <CheckRow key={i} label={item}
+            checked={!!data.pulizie[i]}
+            onToggle={()=>upd({pulizie:{...data.pulizie,[i]:!data.pulizie[i]}})}/>
+        ))}
+      </Card>
+
+      {/* 6. Check fine servizio */}
+      <Card t={t} style={{padding:20}}>
+        <SectionHeader icon="✅" title="CHECK FINE SERVIZIO"  sub={`${scoreSection(data.checkServizio,CHECK_FINE_SERVIZIO)}/${CHECK_FINE_SERVIZIO.length} OK`}/>
+        {CHECK_FINE_SERVIZIO.map((item,i)=>(
+          <CheckRow key={i} label={item}
+            checked={!!data.checkServizio[i]}
+            onToggle={()=>upd({checkServizio:{...data.checkServizio,[i]:!data.checkServizio[i]}})}/>
+        ))}
+      </Card>
+
+      {/* 7. Note */}
+      <Card t={t} style={{padding:20}}>
+        <SectionHeader icon="📝" title="NOTE FINE TURNO" sub="Comunicazioni per il turno successivo"/>
+        <textarea value={data.note} onChange={e=>upd({note:e.target.value})} placeholder="Segnalazioni, comunicazioni, anomalie..."
+          rows={4} style={{width:"100%",padding:"10px 14px",borderRadius:10,border:`1px solid ${t.div}`,
+            background:t.bgAlt,color:t.ink,fontFamily:"var(--serif)",fontSize:13,resize:"vertical",outline:"none",boxSizing:"border-box"}}/>
+      </Card>
+
+      {/* CTA fine */}
+      <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+        <button onClick={()=>{
+          if(window.confirm("Resetta la scheda di oggi?")) {
+            localStorage.removeItem(STORAGE);
+            setData(null);
+          }
+        }} style={{padding:"10px 20px",borderRadius:10,border:`1px solid ${t.div}`,cursor:"pointer",background:"transparent",color:t.inkMuted,fontFamily:"var(--mono)",fontSize:10}}>
+          ↺ Reset
+        </button>
+        <button onClick={()=>{
+          upd({completedAt:nowISO()});
+          exportPDF();
+          toast("Scheda fine turno completata e salvata","success");
+        }} style={{padding:"10px 24px",borderRadius:10,border:"none",cursor:"pointer",
+          background:`linear-gradient(135deg,${t.gold},${t.goldBright})`,color:"#fff",fontFamily:"var(--mono)",fontSize:10,letterSpacing:"0.06em"}}>
+          ✓ Completa Turno
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function HaccpViewFull({ t }) {
   const { kitchen, allItems, currentRole } = useK();
   const toast = useToast();
@@ -6922,6 +7234,7 @@ const DRAWER_NAV = [
   {key:"spesa",      label:"Lista Spesa"},
   {key:"economato",  label:"Economato"},
   {key:"haccp",      label:"HACCP"},
+  {key:"spttp",      label:"SPTTP Fine Turno"},
   {key:"foodcost",   label:"Food Cost"},
   {key:"brigata",    label:"Brigata"},
   {key:"settings",   label:"Impostazioni"},
@@ -6940,6 +7253,7 @@ const SECTION_TITLE = {
   spesa:        "Lista della Spesa",
   economato:    "Economato",
   haccp:        "HACCP & Tracciabilità",
+  spttp:         "SPTTP — Fine Turno",
   foodcost:     "Food Cost",
   brigata:      "Brigata",
   settings:     "Impostazioni",
@@ -7766,6 +8080,7 @@ function KitchenProInner() {
             {section==="economato"    && <EconomatoView t={t}/>}
             {section==="servizio"     && <ServizioViewFull t={t}/>}
             {section==="haccp"        && <HaccpViewFull t={t}/>}
+            {section==="spttp"        && <SpttpView t={t}/>}
             {section==="foodcost"     && <FoodCostViewFull t={t}/>}
             {section==="brigata"      && <BrigataView t={t}/>}
             {section==="settings"     && <SettingsView t={t}/>}
