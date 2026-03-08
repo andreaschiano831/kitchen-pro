@@ -1080,7 +1080,7 @@ async function callAI({ systemPrompt, userContext=null, maxTokens=1024,
     system: systemPrompt,
     messages: userMessages
       ? [{role:"user", content:userMessages}]
-      : [{role:"user", content:ctx}],
+      : [{role:"user", content:ctx||"Analizza e rispondi."}],
   };
 
   try {
