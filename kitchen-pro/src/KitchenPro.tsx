@@ -6496,7 +6496,8 @@ function AIPanel({ t, onClose }) {
         const locMap2:{[k:string]:string}={frigo:"fridge",frigorifico:"fridge",freezer:"freezer",congelatore:"freezer",dispensa:"dry",secco:"dry",banco:"counter"};
         const globalLocM=lower.match(/\b(frigo|frigorifico|freezer|congelatore|dispensa|secco|banco)\b/);
         const globalLoc=globalLocM?(locMap2[globalLocM[1]]||"fridge"):"fridge";
-        const parts=msg.split(/\s+e\s+|,\s*|\s+poi\s+/i);
+        const msgStripped=msg.replace(/^(aggiungi|carica|inserisci|metti)\s+/i,"");
+        const parts=msgStripped.split(/\s+e\s+|,\s*|\s+poi\s+/i);
         const done:string[]=[];
         parts.forEach(part=>{
           const pm=part.toLowerCase().match(/(\d+[\.,]?\d*)\s*(pz|kg|g|ml|l)?\s+(?:di\s+)?([\w\s]+?)(?:\s+(?:al|in)\s+(frigo|frigorifico|freezer|congelatore|dispensa|banco))?\s*$/);
@@ -6509,7 +6510,8 @@ function AIPanel({ t, onClose }) {
         // Single item — fast local parse
         const locMap={frigo:"fridge",frigorifico:"fridge",freezer:"freezer",congelatore:"freezer",dispensa:"dry",secco:"dry",banco:"counter"};
         // Regex estesa: quantità opzionale, unità opzionale, nome libero
-        const m=lower.match(/(\d+[\.,]?\d*)?\s*(pz|kg|g|ml|l)?\s+(?:di\s+)?(.+?)(?:\s+(?:al|in|nel|nella)\s+(frigo|frigorifico|freezer|congelatore|dispensa|secco|banco))?(?:\s+lotto\s+(\S+))?$/);
+        const stripped=lower.replace(/^(aggiungi|carica|inserisci|metti)\s+/,"");
+        const m=stripped.match(/(\d+[\.,]?\d*)?\s*(pz|kg|g|ml|l)?\s+(?:di\s+)?(.+?)(?:\s+(?:al|in|nel|nella)\s+(frigo|frigorifico|freezer|congelatore|dispensa|secco|banco))?(?:\s+lotto\s+(\S+))?$/);
         if(m) {
           const qty=m[1]?parseFloat(m[1].replace(",",".")):1;
           const name=m[3].replace(/\s+(al|in|nel|nella)\s+(frigo|frigorifico|freezer|congelatore|dispensa|secco|banco)\s*$/i,"").trim();
