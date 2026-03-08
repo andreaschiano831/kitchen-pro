@@ -3211,6 +3211,21 @@ function InventoryView({ t }) {
                           <option value="counter">🔲 Banco</option>
                         </select>
                       </div>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <span className="mono" style={{fontSize:9,color:t.inkFaint,minWidth:40}}>PARTITA</span>
+                        <select defaultValue={item.categoria||item.partita||"antipasti"} onChange={e=>{
+                          itemUpdate(item.id,{categoria:e.target.value,partita:e.target.value});
+                          toast(`Partita → ${e.target.value}`,"success");
+                        }} style={{flex:1,padding:"4px 8px",borderRadius:6,border:`1px solid ${t.div}`,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:10}}>
+                          <option value="antipasti">🍽 Antipasti</option>
+                          <option value="primi">🍝 Primi</option>
+                          <option value="secondi">🥩 Secondi</option>
+                          <option value="pasticceria">🍰 Pasticceria</option>
+                          <option value="colazioni">☕ Colazioni</option>
+                          <option value="buffet">🪭 Buffet</option>
+                          <option value="eventi">🎉 Eventi</option>
+                        </select>
+                      </div>
                     </div>
                   )}
                   {canEdit&&(
