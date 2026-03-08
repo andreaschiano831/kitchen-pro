@@ -6969,7 +6969,7 @@ function AIPanel({ t, onClose }) {
       }
     }
 
-    if(/cosa ho|giacenze|inventario|stock|quanti|quante|cosa c'è|mostra tutto/.test(lower) && !/aggiungi|carica|rimuovi|scala/.test(lower)) {
+    if(/cosa ho|giacenze|inventario|stock|quanti|quante|cosa ce|cosa ci|mostra tutto/.test(lower) && !/aggiungi|carica|rimuovi|scala/.test(lower)) {
       const byLoc:{[k:string]:any[]}={fridge:[],freezer:[],dry:[],counter:[]};
       items.forEach(x=>{ if(byLoc[x.location]) byLoc[x.location].push(x); });
       const locLabel:{[k:string]:string}={fridge:"Frigo",freezer:"Freezer",dry:"Dispensa",counter:"Banco"};
