@@ -2084,6 +2084,7 @@ function PreparazioniView({ t, hideForm=false }) {
   const [tab,     setTab]      = useState("tutte");
   const [catFil,  setCatFil]   = useState("tutti");
   const [prepCatFil, setPrepCatFil] = useState("tutti");
+  const [partitaFil, setPartitaFil] = useState("tutti");
   const [showForm,setShowForm]=useState(false);
   const [form, setForm] = useState({
     nome:"", qty:"1", unit:"pz",
@@ -2127,6 +2128,7 @@ function PreparazioniView({ t, hideForm=false }) {
     else if(tab==="congelatore"||tab==="calendario") p=[];
     else { p=[...preps]; if(tab==="categoria"&&catFil!=="tutti") p=p.filter(x=>x.categoriaKey===catFil); }
     if(prepCatFil!=="tutti") p=p.filter(x=>x.categoriaKey===prepCatFil);
+    if(partitaFil!=="tutti") p=p.filter(x=>(x.partita||x.reparto||"saucier")===partitaFil);
     // search
     if(searchPrep.trim()) p=p.filter(x=>x.nome.toLowerCase().includes(searchPrep.toLowerCase()));
     // status
@@ -2161,6 +2163,7 @@ function PreparazioniView({ t, hideForm=false }) {
           {k:"calendario",l:"📅 Calendario"},
           {k:"svolte",  l:`✅ Svolte oggi (${svolteOggi.length})`},
           {k:"congelatore",l:`❄️ Congelatore (${inCongelatore.length})`},
+          {k:"partita",l:"👨‍🍳 Partita"},
         ].map(({k,l})=>(
           <button key={k} onClick={()=>setTab(k)} style={{
             padding:"8px 16px",borderRadius:10,border:"none",cursor:"pointer",
@@ -2240,6 +2243,20 @@ function PreparazioniView({ t, hideForm=false }) {
         </div>
       )}
 
+      {/* Filtro partita */}
+      {tab==="partita"&&(
+        <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+          <span className="mono" style={{fontSize:8,color:"#999",letterSpacing:"0.1em"}}>PARTITA:</span>
+          {[{key:"tutti",label:"Tutte",icon:"⭐"},...STATIONS.filter(s=>s.key!=="all")].map(s=>(
+            <button key={s.key} onClick={()=>setPartitaFil(s.key)} style={{
+              padding:"5px 12px",borderRadius:8,border:"none",cursor:"pointer",
+              fontFamily:"var(--mono)",fontSize:9,
+              background:partitaFil===s.key?t.accent:t.bgCard,
+              color:partitaFil===s.key?"#fff":t.inkMuted,transition:"all 0.15s",
+            }}>{s.icon||""} {s.label}</button>
+          ))}
+        </div>
+      )}
       {/* Form nuova prep */}
       {showForm&&canEdit&&!hideForm&&(
         <Card t={t} style={{padding:20}}>
