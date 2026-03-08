@@ -314,6 +314,14 @@ function reducer(state, action) {
 
 function loadState() {
   try {
+    // Migration: normalizza reparto cucina_calda → antipasti
+    try {
+      const raw0 = localStorage.getItem(STORAGE_KEY);
+      if(raw0 && raw0.includes('"cucina_calda"')) {
+        const fixed = raw0.replace(/"cucina_calda"/g, '"antipasti"');
+        localStorage.setItem(STORAGE_KEY, fixed);
+      }
+    } catch {}
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { kitchens:[] };
     const p = JSON.parse(raw);
@@ -2037,7 +2045,7 @@ function QuickPrepFAB({ t }) {
   if(!canEdit) return null;
   function handleAdd() {
     if(!nome.trim()){toast("Inserisci un nome","error");return;}
-    prepAdd(nome.trim(),parseFloat(qty)||1,unit,"antipasti","cucina_calda","mattina","");
+    prepAdd(nome.trim(),parseFloat(qty)||1,unit,"antipasti","antipasti","mattina","");
     toast(`${nome} aggiunta`,"success"); setNome(""); setQty("1"); setOpen(false);
   }
   return (
@@ -2128,7 +2136,7 @@ function PreparazioniView({ t, hideForm=false }) {
     else if(tab==="congelatore"||tab==="calendario") p=[];
     else { p=[...preps]; if(tab==="categoria"&&catFil!=="tutti") p=p.filter(x=>x.categoriaKey===catFil); }
     if(prepCatFil!=="tutti") p=p.filter(x=>x.categoriaKey===prepCatFil);
-    if(partitaFil!=="tutti") p=p.filter(x=>(x.reparto||x.partita||"cucina_calda")===partitaFil);
+    if(partitaFil!=="tutti") p=p.filter(x=>(x.reparto||x.partita||"antipasti")===partitaFil);
     // search
     if(searchPrep.trim()) p=p.filter(x=>x.nome.toLowerCase().includes(searchPrep.toLowerCase()));
     // status
@@ -2277,7 +2285,7 @@ function PreparazioniView({ t, hideForm=false }) {
                 <option key={c.key} value={c.key}>{c.icon} {c.label}</option>
               ))}
             </LuxSelect>
-            <LuxSelect value={form.partita||"saucier"} onChange={e=>setForm(p=>({...p,partita:e.target.value}))} t={t}>
+            <LuxSelect value={form.partita||"antipasti"} onChange={e=>setForm(p=>({...p,partita:e.target.value}))} t={t}>
               {STATIONS.filter(s=>s.key!=="all").map(s=>(
                 <option key={s.key} value={s.key}>{s.icon} {s.label}</option>
               ))}
