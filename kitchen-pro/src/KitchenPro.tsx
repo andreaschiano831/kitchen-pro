@@ -3213,12 +3213,13 @@ function btnSmall(t) {
    STATIONS — partite di cucina
    ════════════════════════════════════════════════════════ */
 const STATIONS = [
-  {key:"saucier",    label:"Saucier",         icon:"🫕", color:"#8B1E2F"},
-  {key:"poissonnier",label:"Pesce",           icon:"🐟", color:"#2A4FA5"},
-  {key:"rotisseur",  label:"Arrosti",         icon:"🥩", color:"#8B4A1E"},
-  {key:"garde",      label:"Antipasti Freddi",icon:"🥗", color:"#3D7A4A"},
-  {key:"patissier",  label:"Pasticceria",     icon:"🍮", color:"#7A5A1E"},
-  {key:"communard",  label:"Personale",       icon:"🍲", color:"#555"},
+  {key:"antipasti",  label:"Antipasti",       icon:"🫕", color:"#8B1E2F"},
+  {key:"primi",      label:"Primi",           icon:"🍝", color:"#2A4FA5"},
+  {key:"secondi",    label:"Secondi",         icon:"🥩", color:"#8B4A1E"},
+  {key:"pasticceria",label:"Pasticceria",     icon:"🍮", color:"#7A5A1E"},
+  {key:"colazioni",  label:"Colazioni",       icon:"☕", color:"#7A5A3A"},
+  {key:"buffet",     label:"Buffet",          icon:"🎪", color:"#3D7A4A"},
+  {key:"eventi",     label:"Eventi",          icon:"🎊", color:"#555"},
   {key:"all",        label:"Tutta la brigata",icon:"⭐", color:"#C19A3E"},
 ];
 
