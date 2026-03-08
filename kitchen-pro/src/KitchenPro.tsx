@@ -390,7 +390,7 @@ function KitchenProvider({ children }) {
         const k=kid(); if(!k||!nome.trim()) return;
         dispatch({type:"PREP_ADD", kitchenId:k, prep:{
           id:genId(), nome:nome.trim(), categoriaKey:categoria||"antipasti",
-          reparto:reparto||"antipasti", partita:reparto||"antipasti", turno:turno||"mattina",
+          reparto:reparto||"antipasti", partita:reparto||"antipasti", turno:turno||"mattina", station:reparto||"antipasti",
           quantita:Number(qty)||1, unitaMisura:unit||"pz",
           status:"da_fare", destinazione:null,
           svoltaIl:null, smistataIl:null,
@@ -2119,7 +2119,7 @@ function PreparazioniView({ t, hideForm=false }) {
 
   function save() {
     if(!form.nome.trim()) { toast("Inserisci il nome","error"); return; }
-    prepAdd(form.nome,form.qty,form.unit,form.categoria,form.partita||"saucier","mattina",form.note,form.scadeIl||null);
+    prepAdd(form.nome,form.qty,form.unit,form.categoria,form.categoria,"mattina",form.note,form.scadeIl||null);
     saveCustomPrep(form.nome);
     toast(`${form.nome} aggiunta`,"success");
     setForm({nome:"",qty:"1",unit:"pz",categoria:"antipasti",note:"",scadeIl:"",partita:"antipasti"});
@@ -2136,7 +2136,7 @@ function PreparazioniView({ t, hideForm=false }) {
     else if(tab==="congelatore"||tab==="calendario") p=[];
     else { p=[...preps]; if(tab==="categoria"&&catFil!=="tutti") p=p.filter(x=>x.categoriaKey===catFil); }
     if(prepCatFil!=="tutti") p=p.filter(x=>x.categoriaKey===prepCatFil);
-    if(partitaFil!=="tutti") p=p.filter(x=>(x.reparto||x.partita||"antipasti")===partitaFil);
+    if(partitaFil!=="tutti") p=p.filter(x=>(x.categoriaKey||x.reparto||x.partita||"antipasti")===partitaFil);
     // search
     if(searchPrep.trim()) p=p.filter(x=>x.nome.toLowerCase().includes(searchPrep.toLowerCase()));
     // status
@@ -2288,14 +2288,7 @@ function PreparazioniView({ t, hideForm=false }) {
                 ))}
               </LuxSelect>
             </div>
-            <div style={{display:"flex",flexDirection:"column",gap:3}}>
-              <span className="mono" style={{fontSize:8,color:"#999",letterSpacing:"0.1em"}}>PARTITA</span>
-              <LuxSelect value={form.partita||"antipasti"} onChange={e=>setForm(p=>({...p,partita:e.target.value}))} t={t}>
-                {STATIONS.filter(s=>s.key!=="all").map(s=>(
-                  <option key={s.key} value={s.key}>{s.icon} {s.label}</option>
-                ))}
-              </LuxSelect>
-            </div>
+
             <div>
               <div className="mono" style={{fontSize:8,color:t.inkFaint,marginBottom:4}}>SCADENZA PREP</div>
               <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:4}}>
