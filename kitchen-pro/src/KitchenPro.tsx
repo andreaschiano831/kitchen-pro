@@ -6472,8 +6472,7 @@ function HaccpViewFull({ t }) {
             <button onClick={()=>{
               const rows=[["Data","Ora","Zona","Temperatura","Operatore","OK","Note"],
                 ...logs.map(l=>[l.at?.slice(0,10)||"",l.at?.slice(11,16)||"",l.zona,l.temp,l.op||"",l.ok?"SI":"NO",l.note||""])];
-              const csv=rows.map(r=>r.join(";")).join("
-");
+              const csv=rows.map(r=>r.join(";")).join("\n");
               const a=document.createElement("a");
               a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);
               a.download=`haccp-temperature-${todayDate()}.csv`;
