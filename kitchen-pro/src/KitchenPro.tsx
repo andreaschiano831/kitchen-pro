@@ -4796,7 +4796,7 @@ const PIATTO_CATEGORIE = [
 ];
 
 function PiattiManager({ t, copertiServizio=30 }) {
-  const { kitchen, allItems, piattoAdd, piattoUpdate, piattoRemove, piattoToggleActive, setExternalAppUrl, stockAdd, removeItem } = useK();
+  const { kitchen, allItems, piattoAdd, piattoUpdate, piattoRemove, piattoToggleActive, setExternalAppUrl, stockAdd, removeItem, adjustItem } = useK();
   const toast = useToast();
   const piatti = kitchen?.piatti||[];
   const externalUrl = kitchen?.externalAppUrl||"";
@@ -4859,21 +4859,20 @@ function PiattiManager({ t, copertiServizio=30 }) {
 
   // ── Consume stock for a service ───────────────────────────
   function consumeService(piatto, coperti) {
-    if(!piatto.ingredienti?.length) return;
+    if(!piatto.ingredienti?.length) { logService(piatto,coperti); return; }
     const base = piatto.copertiBase||copertiServizio;
     const sf = Number(coperti) / base;
+    const consumed:string[] = [];
     piatto.ingredienti.forEach(ing => {
       const si = resolveStock(ing);
       if(si) {
-        const qty = ing.qty * sf;
-        const newQty = Math.max(0, si.quantity - qty);
-        piattoUpdate; // no-op placeholder
-        // Use adjustItem via removeItem+stockAdd workaround — just update via piattoUpdate won't touch stock
-        // We call adjustItem indirectly via a negative delta
-        useK; // can't call hooks here — we'll pass delta to parent via piattoUpdate side-effect flag
+        const qty = parseFloat((ing.qty * sf).toFixed(3));
+        adjustItem(si.id, -qty);
+        consumed.push(`${ing.nome} -${qty}${ing.unit}`);
       }
     });
     logService(piatto, coperti);
+    if(consumed.length) toast(`Scaricato: ${consumed.join(", ")}`, "success");
   }
 
   // ── Stats from storico ───────────────────────────────────
@@ -5089,7 +5088,7 @@ function PiattiManager({ t, copertiServizio=30 }) {
             <input type="number" value={logCop} onChange={e=>setLogCop(e.target.value)}
               min={1} placeholder="Coperti" style={{width:80,padding:"8px 12px",borderRadius:8,
               border:`1px solid ${t.div}`,background:t.bgAlt,color:t.ink,fontFamily:"var(--mono)",fontSize:12}}/>
-            <button onClick={()=>logService(piatto, logCop)} style={{
+            <button onClick={()=>consumeService(piatto, logCop)} style={{
               padding:"8px 16px",borderRadius:8,border:"none",cursor:"pointer",
               background:`linear-gradient(135deg,${t.gold},${t.goldBright})`,
               color:"#fff",fontFamily:"var(--mono)",fontSize:10,fontWeight:600}}>
