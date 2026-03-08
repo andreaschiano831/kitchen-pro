@@ -3363,7 +3363,7 @@ function MepView({ t }) {
 
   // ── Manual add ────────────────────────────────────────
   const [manualText,    setManualText]    = useState("");
-  const [manualStation, setManualStation] = useState("saucier");
+  const [manualStation, setManualStation] = useState("antipasti");
   const [manualQty,     setManualQty]     = useState("1");
   const [manualUnit,    setManualUnit]    = useState("pz");
   const [manualCat,     setManualCat]     = useState("antipasti");
@@ -3400,7 +3400,7 @@ function MepView({ t }) {
     addTask(manualText, manualStation);
     prepAdd(manualText, manualQty, manualUnit, manualCat, manualStation, "mattina", "", manualScadeIl||null);
     saveCustomPrep && saveCustomPrep(manualText);
-    toast(`Aggiunto a ${STATIONS.find(s=>s.key===manualStation)?.label}`,"success");
+    toast(`Aggiunto a ${STATIONS.find(s=>s.key===manualStation)?.label||manualCat}`,"success");
     setManualText(""); setManualQty("1"); setManualUnit("pz");
     setManualLot(""); setManualScadeIl(""); setManualCat("antipasti");
   }
