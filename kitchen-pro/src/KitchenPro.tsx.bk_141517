@@ -6567,56 +6567,6 @@ function AIPanel({ t, onClose }) {
       const found=items.find(x=>x.name.toLowerCase().includes(name));
       if(found){ removeItem(found.id); reply=`✓ ${found.name} rimosso.`; }
       else reply=`Non ho trovato "${name}" in magazzino.`;
-    } else if(/(scala|togli|preleva|usa|consuma|scarica)/.test(lower)) {
-      // scala 2kg filetto dal frigo / togli 3 uova
-      const stripped2=lower.replace(/^(scala|togli|preleva|usa|consuma|scarica)\s+/,"");
-      const sm2=stripped2.match(/(\d+[\.,]?\d*)\s*(pz|kg|g|ml|l)?\s+(?:di\s+)?(.+?)(?:\s+(?:da[l]?|in|al|nel)\s+\S+)?$/);
-      if(sm2){
-        const qty=parseFloat(sm2[1].replace(",",".")); const name=sm2[3].trim();
-        const found=items.find(x=>x.name.toLowerCase().includes(name.toLowerCase()));
-        if(found){ adjustItem(found.id,-qty); reply=`✓ Scalati ${qty}${sm2[2]||"pz"} da ${found.name} (ora: ${Math.max(0,found.quantity-qty)}${found.unit}).`; }
-        else reply=`Non ho trovato "${name}" in magazzino.`;
-      } else reply="Non ho capito. Prova: "scala 2 uova dal frigo"";
-    } else if(/(prepara|prep|metti in prep|aggiungi prep|preparazione)/.test(lower)) {
-      // "prepara: maialino domani, anatra dopodomani"
-      // "prepara 2kg fondo bruno per domani mattina"
-      const dateMap:{[k:string]:number}={
-        oggi:0, stasera:0, stamattina:0,
-        domani:1, domanisera:1,
-        dopodomani:2,
-      };
-      const stripped3=lower
-        .replace(/^(prepara|prep|metti in prep|aggiungi prep|preparazione)[:\s]+/,"")
-        .trim();
-      // split su ", " o " e " o " poi "
-      const prepParts=stripped3.split(/,\s*|\s+e\s+|\s+poi\s+/i);
-      const done:string[]=[];
-      prepParts.forEach(part=>{
-        if(!part.trim()) return;
-        // Estrai qty + unit + nome + data
-        const pm2=part.match(/^(\d+[\.,]?\d*)?\s*(pz|kg|g|ml|l|porz|porzioni?)?\s*(?:di\s+)?(.+?)(?:\s+(?:per\s+)?(oggi|domani|dopodomani|tra\s+\d+\s+giorni|stasera|stamattina|domanisera))?(?:\s+(mattina|pomeriggio|sera))?$/i);
-        if(pm2){
-          const qty=pm2[1]?parseFloat(pm2[1].replace(",",".")):1;
-          const unit=pm2[2]||"pz";
-          const nome=(pm2[3]||"").trim().replace(/\s+(per\s+)?(oggi|domani|dopodomani|tra\s+\d+\s+giorni|stasera|stamattina)$/i,"").trim();
-          const dateStr=(pm2[4]||"oggi").toLowerCase().trim();
-          const turno=(pm2[5]||"mattina").toLowerCase();
-          let daysAhead=dateMap[dateStr.replace(/\s+/g,"")] ?? 0;
-          // gestisci "tra N giorni"
-          const traMatch=dateStr.match(/tra\s+(\d+)\s+giorni/i);
-          if(traMatch) daysAhead=parseInt(traMatch[1]);
-          const scadeIso=daysAhead>0
-            ? new Date(Date.now()+daysAhead*86400000).toISOString()
-            : null;
-          if(nome.length>1){
-            prepAdd(nome, qty, unit, "antipasti", "saucier", turno, "", scadeIso);
-            const dataLabel=daysAhead===0?"oggi":daysAhead===1?"domani":daysAhead===2?"dopodomani":`tra ${daysAhead}gg`;
-            done.push(`✓ ${nome} (${qty}${unit}) — ${dataLabel} ${turno}`);
-          }
-        }
-      });
-      reply=done.length?done.join("
-"):"Non ho capito. Prova: "prepara: maialino domani, anatra dopodomani"";
     }
 
     // Intent: HACCP
