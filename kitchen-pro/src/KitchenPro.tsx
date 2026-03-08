@@ -1338,12 +1338,12 @@ function CardHeader({ title, right, t }) {
    SETUP SCREEN
    ════════════════════════════════════════════════════════ */
 function ApiKeySetup({ t }) {
-  if(API_URL && getToken()) return null; // backend attivo, key gestita dal worker
   const [key, setKey] = React.useState(()=>localStorage.getItem("kp-api-key")||"");
   const [saved, setSaved] = React.useState(false);
   const [show, setShow] = React.useState(false);
   const [testStatus, setTestStatus] = React.useState<null|"testing"|"ok"|"fail">(null);
   const [testMsg, setTestMsg] = React.useState("");
+  if(API_URL && getToken()) return null; // backend attivo, key gestita dal worker
   function save() {
     if(key.trim()) localStorage.setItem("kp-api-key", key.trim());
     else localStorage.removeItem("kp-api-key");
@@ -6355,6 +6355,7 @@ function HaccpViewFull({ t }) {
   const [showHACCPAI, setShowHACCPAI] = useState(false);
   const [logs,setLogs]=useState(()=>{try{return JSON.parse(localStorage.getItem(`hlog-${kitchen?.id}`)||"[]");}catch{return[];}});
   const [form,setForm]=useState({zona:"frigo",temp:"",op:"",note:""});
+  const [zTemps,setZTemps]=useState<{[k:string]:string}>({});
   const [checks,setChecks]=useState(()=>{try{return JSON.parse(localStorage.getItem(`hck-${kitchen?.id}-${todayDate()}`)||"{}");}catch{return{};}});
 
   useEffect(()=>{try{localStorage.setItem(`hlog-${kitchen?.id}`,JSON.stringify(logs.slice(0,200)));}catch{}},[logs,kitchen?.id]);
@@ -6437,7 +6438,8 @@ function HaccpViewFull({ t }) {
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>
               {ZONES.map(z=>{
                 const lastLog=logs.filter(l=>l.zona===z.key)[0];
-                const [zTemp,setZTemp]=React.useState("");
+                const zTemp=zTemps[z.key]||"";
+                const setZTemp=(v:string)=>setZTemps(p=>({...p,[z.key]:v}));
                 const tv=parseFloat(zTemp);
                 const isOk=zTemp?z.ok(tv):null;
                 return(
