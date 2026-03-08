@@ -2292,7 +2292,7 @@ function PreparazioniView({ t, hideForm=false }) {
             <div>
               <div className="mono" style={{fontSize:8,color:t.inkFaint,marginBottom:4}}>SCADENZA PREP</div>
               <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:4}}>
-                {[1,2,3,5,7,10,14,21,31].map(d=>{
+                {[1,2,3,5,7,10,14,21].map(d=>{
                   const dt=new Date();dt.setDate(dt.getDate()+d);
                   const iso=dt.toISOString().slice(0,10);
                   return <button key={d} onClick={()=>setForm(p=>({...p,scadeIl:iso}))} style={{
@@ -3036,7 +3036,7 @@ function InventoryView({ t }) {
             </LuxSelect>
             <LuxInput value={fLot} onChange={e=>setFLot(e.target.value)} placeholder="Lotto (HACCP)" t={t}/>
             <div style={{display:'flex',gap:4,flexWrap:'wrap',marginBottom:4}}>
-              {[1,2,3,5,7,10,14,21,31].map(d=>{
+              {[1,2,3,5,7,10,14,21].map(d=>{
                 const dt=new Date();dt.setDate(dt.getDate()+d);
                 const iso=dt.toISOString().slice(0,10);
                 return <button key={d} onClick={()=>setFExpiry(iso)} style={{
@@ -3792,7 +3792,7 @@ Non inventare nulla che non sia nel documento.`;
           <div style={{marginBottom:6}}>
             <div className="mono" style={{fontSize:8,color:t.inkFaint,marginBottom:4}}>SCADENZA PREP</div>
             <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:6}}>
-              {[1,2,3,5,7,10,14,21,31].map(d=>{
+              {[1,2,3,5,7,10,14,21].map(d=>{
                 const dt=new Date();dt.setDate(dt.getDate()+d);
                 const iso=dt.toISOString().slice(0,10);
                 return <button key={d} onClick={()=>setManualScadeIl(iso)} style={{
