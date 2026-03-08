@@ -6978,7 +6978,6 @@ function AIPanel({ t, onClose }) {
         if(arr.length) lines.push(`${locLabel[loc]}: ${arr.map(x=>`${x.name} ${x.quantity}${x.unit}`).join(", ")}`);
       });
       reply=lines.length?lines.join("\n"):"Nessuna giacenza registrata.";
-"):"Nessuna giacenza registrata.";
     } else if(/scadenz|urgenti|in scadenza|scad|cosa scade|cosa sta scadendo/.test(lower)) {
       const urgent=items.filter(x=>{ const h=hoursUntil(x.expiresAt); return h!==null&&h>0&&h<=72; });
       const expired=items.filter(x=>x.expiresAt&&new Date(x.expiresAt)<now);
