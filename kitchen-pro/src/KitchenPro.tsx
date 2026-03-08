@@ -7116,13 +7116,19 @@ function AIPanel({ t, onClose }) {
 
     // Claude API via callAI (cache 5min + retry + multimodale)
     setLoading(true);
-    const ctx = `Cucina: ${kitchen?.name||"—"}. Giacenze: ${items.map(x=>`${x.name} ${x.quantity}${x.unit} (${x.location})`).join(", ").slice(0,1200)}`;
+    const preps = kitchen?.preps||[];
+    const today = todayDate();
+    const prepCtx = preps.filter(p=>p.status!=="done").slice(0,30).map(p=>`${p.nome} (${p.quantita}${p.unitaMisura||""} · ${p.partita||p.reparto||"—"} · scade: ${p.scadeIl||"?"} · stato: ${p.status||"pending"})`).join(", ");
+    const ctx = `Cucina: ${kitchen?.name||"—"}. Oggi: ${today}. Giacenze: ${items.map(x=>`${x.name} ${x.quantity}${x.unit} (${x.location})`).join(", ").slice(0,800)}. Prep attive: ${prepCtx.slice(0,600)||"nessuna"}.`;
     const sys = `Sei LIA, assistente AI per cucine professionali Michelin. Rispondi SEMPRE in italiano, conciso (max 8 righe).
 
 COMANDI CHE PUOI ESEGUIRE (rispondi confermando l'azione):
 - "aggiungi X [qty] [unità] [in frigo/freezer/dispensa/banco]" → aggiunge a giacenze
 - "scala/togli/usa X [qty]" → scala dalla giacenza
-- "prepara X [per domani/dopodomani]" → aggiunge a prep list
+- "prepara X [qty] [per domani/dopodomani/lunedì]" → aggiunge a prep list con data
+- "prepara: maialino domani, fondo bruno dopodomani, anatra per venerdì" → prep MULTIPLI con date diverse
+- "cosa c'è in prep / cosa devo preparare oggi/domani" → mostra prep list filtrata per data
+- "segna X come pronto/fatto" → aggiorna status prep
 - "rimuovi/elimina X" → rimuove da giacenze
 - COMANDI MULTIPLI: "aggiungi 3 uova e 2kg farina, scala 1kg burro" → esegui TUTTI separatamente
 
