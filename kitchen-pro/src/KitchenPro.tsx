@@ -2280,16 +2280,22 @@ function PreparazioniView({ t, hideForm=false }) {
                 {UNITS.map(u=><option key={u} value={u}>{u}</option>)}
               </LuxSelect>
             </div>
-            <LuxSelect value={form.categoria} onChange={e=>setForm(p=>({...p,categoria:e.target.value}))} t={t}>
-              {CATEGORIE_MENU.filter(c=>c.key!=="svolte").map(c=>(
-                <option key={c.key} value={c.key}>{c.icon} {c.label}</option>
-              ))}
-            </LuxSelect>
-            <LuxSelect value={form.partita||"antipasti"} onChange={e=>setForm(p=>({...p,partita:e.target.value}))} t={t}>
-              {STATIONS.filter(s=>s.key!=="all").map(s=>(
-                <option key={s.key} value={s.key}>{s.icon} {s.label}</option>
-              ))}
-            </LuxSelect>
+            <div style={{display:"flex",flexDirection:"column",gap:3}}>
+              <span className="mono" style={{fontSize:8,color:"#999",letterSpacing:"0.1em"}}>CATEGORIA MENU</span>
+              <LuxSelect value={form.categoria} onChange={e=>setForm(p=>({...p,categoria:e.target.value}))} t={t}>
+                {CATEGORIE_MENU.filter(c=>c.key!=="svolte").map(c=>(
+                  <option key={c.key} value={c.key}>{c.icon} {c.label}</option>
+                ))}
+              </LuxSelect>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:3}}>
+              <span className="mono" style={{fontSize:8,color:"#999",letterSpacing:"0.1em"}}>PARTITA</span>
+              <LuxSelect value={form.partita||"antipasti"} onChange={e=>setForm(p=>({...p,partita:e.target.value}))} t={t}>
+                {STATIONS.filter(s=>s.key!=="all").map(s=>(
+                  <option key={s.key} value={s.key}>{s.icon} {s.label}</option>
+                ))}
+              </LuxSelect>
+            </div>
             <div>
               <div className="mono" style={{fontSize:8,color:t.inkFaint,marginBottom:4}}>SCADENZA PREP</div>
               <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:4}}>
