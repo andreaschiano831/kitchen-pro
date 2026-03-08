@@ -110,6 +110,7 @@ function mkKitchen(name, ownerName="Admin") {
   const owner = { id:genId(), name:ownerName.trim()||"Admin", role:"admin", joinedAt:nowISO() };
   return {
     id:genId(), name:name.trim(), ownerName:owner.name, createdAt:nowISO(),
+    code:(Math.random().toString(36).slice(2,5)+"-"+Math.floor(1000+Math.random()*9000)).toUpperCase(),
     members:[owner], freezer:[], fridge:[], dry:[], counter:[],
     parByCategory:{}, shopping:[], ledger:[],
   };
@@ -6365,6 +6366,7 @@ function SettingsView({ t }) {
       <Card t={t}>
         <CardHeader t={t} title="Cucine"/>
         <div style={{padding:20}}>
+          {kitchen?.code&&<div style={{marginBottom:16,padding:"12px 16px",borderRadius:10,background:"#1a2744",display:"flex",alignItems:"center",gap:12}}><span className="mono" style={{fontSize:9,color:"#888",letterSpacing:"0.15em"}}>CODICE CUCINA</span><span className="mono" style={{fontSize:18,color:"#C19A3E",fontWeight:700,letterSpacing:"0.2em"}}>{kitchen.code}</span><span style={{fontSize:10,color:"#666"}}>— condividilo con il team</span></div>}
           <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:16}}>
             {state.kitchens.map(k=>(
               <button key={k.id} onClick={()=>selectKitchen(k.id)} style={{
