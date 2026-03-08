@@ -784,7 +784,7 @@ const SPESA_FREQ_LABELS= {giornaliero:"Giornaliero", settimanale:"Settimanale"};
 /* ── Configura il tuo Cloudflare Worker dopo il deploy ──
    Lascia "" per API diretta (key nel browser, solo dev)
    Esempio: "https://kitchen-pro-ai.tuonome.workers.dev"  */
-const WORKER_URL = "";
+const WORKER_URL = "/api/ai";
 
 const _AI_CACHE = new Map<string,{result:any;ts:number}>();
 const _AI_CACHE_TTL = 5 * 60 * 1000;
