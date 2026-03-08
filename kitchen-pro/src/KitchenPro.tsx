@@ -982,30 +982,53 @@ function BackendInfoCard({ t }) {
 }
 
 function SetupScreen({ t }) {
-  const { createKitchen } = useK();
+  const { createKitchen, joinKitchen } = useK();
+  const [mode, setMode] = useState<"create"|"join">("create");
   const [name, setName] = useState("");
   const [owner, setOwner] = useState("");
+  const [code, setCode] = useState("");
+  const [role, setRole] = useState("commis");
   return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:t.bg}}>
-      <Card t={t} style={{width:420,padding:40}}>
-        <div style={{textAlign:"center",marginBottom:32}}>
-          <div style={{
-            width:64,height:64,borderRadius:"50%",margin:"0 auto 16px",
+      <Card t={t} style={{width:440,padding:40}}>
+        <div style={{textAlign:"center",marginBottom:24}}>
+          <div style={{width:64,height:64,borderRadius:"50%",margin:"0 auto 16px",
             background:`linear-gradient(135deg,${t.secondary},${t.secondaryDeep})`,
-            border:`2px solid ${t.goldBright}`,display:"flex",alignItems:"center",justifyContent:"center",
-          }}>
+            border:`2px solid ${t.goldBright}`,display:"flex",alignItems:"center",justifyContent:"center"}}>
             <span className="mono" style={{fontSize:11,color:t.goldBright}}>★★★</span>
           </div>
           <div style={{fontFamily:"var(--serif)",fontSize:26,fontWeight:500,color:t.ink,marginBottom:6}}>Kitchen Pro</div>
-          <div className="mono" style={{fontSize:8,letterSpacing:"0.2em",color:t.inkFaint}}>CREA LA TUA CUCINA</div>
+          <div className="mono" style={{fontSize:8,letterSpacing:"0.2em",color:t.inkFaint}}>GESTIONE CUCINA PROFESSIONALE</div>
         </div>
-        <div style={{display:"flex",flexDirection:"column",gap:14}}>
-          <LuxInput value={name} onChange={e=>setName(e.target.value)} placeholder="Nome cucina / ristorante" t={t}/>
-          <LuxInput value={owner} onChange={e=>setOwner(e.target.value)} placeholder="Tuo nome (admin)" t={t}/>
-          <Btn t={t} onClick={()=>createKitchen(name,owner)} disabled={!name.trim()} variant="primary" sx={{marginTop:8}}>
-            Crea Cucina
-          </Btn>
+        <div style={{display:"flex",gap:6,padding:4,background:t.bgAlt,borderRadius:12,marginBottom:20}}>
+          {([{k:"create",l:"Crea cucina"},{k:"join",l:"Entra con codice"}] as const).map(m=>(
+            <button key={m.k} onClick={()=>setMode(m.k)} style={{flex:1,padding:"10px",borderRadius:9,border:"none",cursor:"pointer",
+              background:mode===m.k?t.gold:"transparent",
+              color:mode===m.k?"#fff":t.inkMuted,
+              fontWeight:mode===m.k?700:400,
+              fontFamily:"var(--mono)",fontSize:10,transition:"all 0.2s"}}>{m.l}</button>
+          ))}
         </div>
+        {mode==="create" ? (
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            <LuxInput value={name} onChange={e=>setName(e.target.value)} placeholder="Nome cucina / ristorante" t={t}/>
+            <LuxInput value={owner} onChange={e=>setOwner(e.target.value)} placeholder="Tuo nome (admin)" t={t}/>
+            <Btn t={t} onClick={()=>createKitchen(name,owner)} disabled={!name.trim()} variant="primary" sx={{marginTop:8}}>
+              ✦ Crea Cucina
+            </Btn>
+          </div>
+        ) : (
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            <LuxInput value={code} onChange={e=>setCode(e.target.value.toUpperCase())} placeholder="es. LUNA-4821" t={t}/>
+            <LuxInput value={owner} onChange={e=>setOwner(e.target.value)} placeholder="Il tuo nome" t={t}/>
+            <LuxSelect value={role} onChange={e=>setRole(e.target.value)} t={t}>
+              {["admin","chef","sous-chef","capo-partita","commis","stagista","staff","fb","mm"].map(r=><option key={r} value={r}>{r}</option>)}
+            </LuxSelect>
+            <Btn t={t} onClick={()=>joinKitchen&&joinKitchen(code,owner,role)} disabled={!code.trim()||!owner.trim()} variant="gold" sx={{marginTop:8}}>
+              → Entra in Cucina
+            </Btn>
+          </div>
+        )}
       </Card>
     </div>
   );
