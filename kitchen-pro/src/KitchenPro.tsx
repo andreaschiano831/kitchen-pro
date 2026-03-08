@@ -3213,13 +3213,13 @@ function btnSmall(t) {
    STATIONS — partite di cucina
    ════════════════════════════════════════════════════════ */
 const STATIONS = [
-  {key:"saucier",    label:"Saucier",       icon:"🫕", color:"#8B1E2F"},
-  {key:"poissonnier",label:"Poissonnier",   icon:"🐟", color:"#2A4FA5"},
-  {key:"rotisseur",  label:"Rôtisseur",     icon:"🥩", color:"#8B4A1E"},
-  {key:"garde",      label:"Garde Manger",  icon:"🥗", color:"#3D7A4A"},
-  {key:"patissier",  label:"Pâtissier",     icon:"🍮", color:"#7A5A1E"},
-  {key:"communard",  label:"Communard",     icon:"🍲", color:"#555"},
-  {key:"all",        label:"Tutta la brigata", icon:"⭐", color:"#C19A3E"},
+  {key:"saucier",    label:"Saucier",         icon:"🫕", color:"#8B1E2F"},
+  {key:"poissonnier",label:"Pesce",           icon:"🐟", color:"#2A4FA5"},
+  {key:"rotisseur",  label:"Arrosti",         icon:"🥩", color:"#8B4A1E"},
+  {key:"garde",      label:"Antipasti Freddi",icon:"🥗", color:"#3D7A4A"},
+  {key:"patissier",  label:"Pasticceria",     icon:"🍮", color:"#7A5A1E"},
+  {key:"communard",  label:"Personale",       icon:"🍲", color:"#555"},
+  {key:"all",        label:"Tutta la brigata",icon:"⭐", color:"#C19A3E"},
 ];
 
 /* ════════════════════════════════════════════════════════
