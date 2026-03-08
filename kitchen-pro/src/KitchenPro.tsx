@@ -7117,7 +7117,22 @@ function AIPanel({ t, onClose }) {
     // Claude API via callAI (cache 5min + retry + multimodale)
     setLoading(true);
     const ctx = `Cucina: ${kitchen?.name||"—"}. Giacenze: ${items.map(x=>`${x.name} ${x.quantity}${x.unit} (${x.location})`).join(", ").slice(0,1200)}`;
-    const sys = `Sei un assistente chef per cucine Michelin. Rispondi SEMPRE in italiano, in modo conciso (max 8 righe). Dati cucina: ${ctx}`;
+    const sys = `Sei LIA, assistente AI per cucine professionali Michelin. Rispondi SEMPRE in italiano, conciso (max 8 righe).
+
+COMANDI CHE PUOI ESEGUIRE (rispondi confermando l'azione):
+- "aggiungi X [qty] [unità] [in frigo/freezer/dispensa/banco]" → aggiunge a giacenze
+- "scala/togli/usa X [qty]" → scala dalla giacenza
+- "prepara X [per domani/dopodomani]" → aggiunge a prep list
+- "rimuovi/elimina X" → rimuove da giacenze
+- COMANDI MULTIPLI: "aggiungi 3 uova e 2kg farina, scala 1kg burro" → esegui TUTTI separatamente
+
+REGOLE:
+- Per comandi azione: conferma con "✓ [cosa hai fatto]"
+- Per domande: rispondi con dati dalla cucina
+- Se non capisci: chiedi chiarimento breve
+- MAI inventare dati non presenti nel contesto
+
+DATI CUCINA: ${ctx}`;
     try {
       let text;
       if(attachImg) {
