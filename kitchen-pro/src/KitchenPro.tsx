@@ -6576,8 +6576,8 @@ function AIPanel({ t, onClose }) {
         const found=items.find(x=>x.name.toLowerCase().includes(name.toLowerCase()));
         if(found){ adjustItem(found.id,-qty); reply=`✓ Scalati ${qty}${sm2[2]||"pz"} da ${found.name} (ora: ${Math.max(0,found.quantity-qty)}${found.unit}).`; }
         else reply=`Non ho trovato "${name}" in magazzino.`;
-      } else reply="Non ho capito. Prova: "scala 2 uova dal frigo"";
-    } else if(/(prepara|prep|metti in prep|aggiungi prep|preparazione)/.test(lower)) {
+      } else reply="Non ho capito. Prova: \"scala 2 uova dal frigo\"";
+    } else if(/\b(prepara|prep|metti in prep|aggiungi prep|preparazione)\b/.test(lower)) {
       // "prepara: maialino domani, anatra dopodomani"
       // "prepara 2kg fondo bruno per domani mattina"
       const dateMap:{[k:string]:number}={
@@ -6615,8 +6615,7 @@ function AIPanel({ t, onClose }) {
           }
         }
       });
-      reply=done.length?done.join("
-"):"Non ho capito. Prova: "prepara: maialino domani, anatra dopodomani"";
+      reply=done.length?done.join("\n"):"Non ho capito. Prova: \"prepara: maialino domani, anatra dopodomani\"";
     }
 
     // Intent: HACCP
