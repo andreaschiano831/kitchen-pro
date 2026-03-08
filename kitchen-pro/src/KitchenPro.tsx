@@ -6541,7 +6541,9 @@ function AIPanel({ t, onClose }) {
         const done:string[]=[];
         parts.forEach(part=>{
           const pm=part.toLowerCase().match(/(\d+[\.,]?\d*)\s*(pz|kg|g|ml|l)?\s+(?:di\s+)?([\w\s]+?)(?:\s+(?:al|in)\s+(frigo|frigorifico|freezer|congelatore|dispensa|banco))?\s*$/);
-          if(pm){const qty=parseFloat(pm[1].replace(",","."));const name=pm[3].trim();const loc=pm[4]?(locMap2[pm[4]]||globalLoc):globalLoc;
+          if(pm){const qty=parseFloat(pm[1].replace(",","."));
+            const name=pm[3].trim().replace(/(un|una|il|lo|la|i|gli|le)/gi,"").trim();
+            const loc=pm[4]?(locMap2[pm[4]]||globalLoc):globalLoc;
             if(qty>0&&name.length>1){stockAdd({name,quantity:qty,unit:pm[2]||"pz",location:loc,insertedDate:todayDate()});done.push(`✓ ${name} (${qty} ${pm[2]||"pz"}) → ${loc}`);}
           }
         });
@@ -6563,10 +6565,19 @@ function AIPanel({ t, onClose }) {
         if(!reply) reply="Non ho capito. Prova: \"aggiungi 3 polli in frigo\"";
       }
     } else if(/rimuovi|elimina/.test(lower)) {
-      const name=lower.replace(/rimuovi|elimina/,"").trim();
-      const found=items.find(x=>x.name.toLowerCase().includes(name));
+      const name=lower
+        .replace(/rimuovi|elimina/,"")
+        .replace(/(un|una|il|lo|la|i|gli|le|del|dal|dal frigo|dal congelatore|dalla dispensa|dal banco|da[l]?\s+\S+)/gi,"")
+        .trim();
+      const found=items.find(x=>x.name.toLowerCase().includes(name.toLowerCase()));
       if(found){ removeItem(found.id); reply=`✓ ${found.name} rimosso.`; }
-      else reply=`Non ho trovato "${name}" in magazzino.`;
+      else {
+        // fallback: cerca parola più lunga
+        const words=name.split(/\s+/).filter(w=>w.length>2);
+        const found2=words.length?items.find(x=>words.some(w=>x.name.toLowerCase().includes(w))):null;
+        if(found2){ removeItem(found2.id); reply=`✓ ${found2.name} rimosso.`; }
+        else reply=`Non ho trovato "${name}" in magazzino.`;
+      }
     } else if(/(scala|togli|preleva|usa|consuma|scarica)/.test(lower)) {
       // scala 2kg filetto dal frigo / togli 3 uova
       const stripped2=lower.replace(/^(scala|togli|preleva|usa|consuma|scarica)\s+/,"");
