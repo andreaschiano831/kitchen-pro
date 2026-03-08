@@ -6116,29 +6116,63 @@ function HaccpViewFull({ t }) {
 
       {tab==="temperatura"&&(
         <div style={{display:"flex",flexDirection:"column",gap:16}}>
+          {/* PANNELLI RAPIDI PER ZONA */}
           {canEdit&&(
-            <Card t={t} style={{padding:20}}>
-              <div className="mono" style={{fontSize:8,letterSpacing:"0.14em",color:t.inkFaint,marginBottom:12}}>NUOVA RILEVAZIONE</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
-                <LuxSelect value={form.zona} onChange={e=>setForm(p=>({...p,zona:e.target.value}))} t={t}>
-                  {ZONES.map(z=><option key={z.key} value={z.key}>{z.icon} {z.label} ({z.min}÷{z.max}°C)</option>)}
-                </LuxSelect>
-                <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                  <LuxInput value={form.temp} onChange={e=>setForm(p=>({...p,temp:e.target.value}))} type="number" placeholder="°C" t={t} style={{flex:1}}/>
-                  {form.temp&&(()=>{const z=ZONES.find(x=>x.key===form.zona);return <span style={{fontSize:20,flexShrink:0}}>{z?.ok(parseFloat(form.temp))?"✅":"⚠️"}</span>;})()}
-                </div>
-                <LuxInput value={form.op} onChange={e=>setForm(p=>({...p,op:e.target.value}))} placeholder="Operatore" t={t}/>
-                <LuxInput value={form.note} onChange={e=>setForm(p=>({...p,note:e.target.value}))} placeholder="Note" t={t}/>
-              </div>
-              <Btn t={t} variant="primary" onClick={logTemp}>Registra</Btn>
-            </Card>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>
+              {ZONES.map(z=>{
+                const lastLog=logs.filter(l=>l.zona===z.key)[0];
+                const [zTemp,setZTemp]=React.useState("");
+                const tv=parseFloat(zTemp);
+                const isOk=zTemp?z.ok(tv):null;
+                return(
+                  <div key={z.key} style={{borderRadius:14,border:`2px solid ${isOk===false?t.danger:isOk===true?t.success:t.div}`,background:t.bgCard,padding:"14px 16px",display:"flex",flexDirection:"column",gap:8,transition:"border 0.2s"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:22}}>{z.icon}</span>
+                      <div>
+                        <div style={{fontFamily:"var(--mono)",fontSize:10,letterSpacing:"0.08em",color:t.ink}}>{z.label.toUpperCase()}</div>
+                        <div className="mono" style={{fontSize:8,color:t.inkFaint}}>{z.min}÷{z.max}°C</div>
+                      </div>
+                    </div>
+                    {lastLog&&<div style={{fontFamily:"var(--mono)",fontSize:11,color:lastLog.ok?t.success:t.danger}}>Ultima: {lastLog.temp}°C {lastLog.ok?"✅":"⚠️"}</div>}
+                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                      <input value={zTemp} onChange={e=>setZTemp(e.target.value)} type="number" placeholder="°C"
+                        style={{flex:1,padding:"6px 8px",borderRadius:8,border:`1px solid ${isOk===false?t.danger:isOk===true?t.success:t.div}`,background:t.bgAlt,color:t.ink,fontFamily:"var(--mono)",fontSize:14,outline:"none",textAlign:"center"}}/>
+                      <button onClick={()=>{
+                        if(!zTemp)return;
+                        const pass=z.ok(tv);
+                        setLogs(p=>[{id:genId(),zona:z.key,temp:tv,op:form.op||"",note:"",at:nowISO(),ok:pass},...p]);
+                        setZTemp("");
+                        toast(pass?`✓ ${z.label}: ${tv}°C`:`⚠ ${z.label}: ${tv}°C fuori range`,pass?"success":"error");
+                      }} style={{padding:"6px 10px",borderRadius:8,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontFamily:"var(--mono)",fontSize:12}}>✓</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
+          {/* OPERATORE + EXPORT */}
+          <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+            <LuxInput value={form.op} onChange={e=>setForm(p=>({...p,op:e.target.value}))} placeholder="👤 Operatore (per tutte le rilevazioni)" t={t} style={{flex:1,minWidth:180}}/>
+            <button onClick={()=>{
+              const rows=[["Data","Ora","Zona","Temperatura","Operatore","OK","Note"],
+                ...logs.map(l=>[l.at?.slice(0,10)||"",l.at?.slice(11,16)||"",l.zona,l.temp,l.op||"",l.ok?"SI":"NO",l.note||""])];
+              const csv=rows.map(r=>r.join(";")).join("
+");
+              const a=document.createElement("a");
+              a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);
+              a.download=`haccp-temperature-${todayDate()}.csv`;
+              a.click();
+            }} style={{padding:"8px 16px",borderRadius:10,border:`1px solid ${t.div}`,cursor:"pointer",background:t.bgCard,color:t.inkMuted,fontFamily:"var(--mono)",fontSize:10}}>
+              ⬇ Esporta CSV
+            </button>
+          </div>
+          {/* STORICO */}
           <Card t={t}>
             <CardHeader t={t} title="Storico temperature" right={<Badge label={`${logs.length} log`} color={t.inkMuted} bg={t.bgAlt}/>}/>
             <div>
               {logs.length===0&&<div style={{padding:"24px 22px",color:t.inkFaint,fontFamily:"var(--serif)",fontStyle:"italic",textAlign:"center"}}>Nessuna rilevazione</div>}
               {logs.slice(0,40).map((log,i)=>{const z=ZONES.find(x=>x.key===log.zona);return(
-                <div key={log.id} style={{padding:"10px 22px",display:"flex",gap:12,alignItems:"center",borderBottom:i<Math.min(logs.length,40)-1?`1px solid ${t.div}`:undefined}}>
+                <div key={log.id} style={{padding:"10px 22px",display:"flex",gap:12,alignItems:"center",borderBottom:i<Math.min(logs.length,40)-1?`1px solid ${t.div}`:undefined,background:log.ok?"transparent":t.danger+"08"}}>
                   <span style={{fontSize:18,flexShrink:0}}>{z?.icon||"🌡"}</span>
                   <div style={{flex:1}}>
                     <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:13,color:t.ink}}>{z?.label||log.zona}</div>
@@ -6146,6 +6180,7 @@ function HaccpViewFull({ t }) {
                   </div>
                   <span style={{fontFamily:"var(--mono)",fontSize:20,fontWeight:600,color:log.ok?t.success:t.danger}}>{log.temp}°C</span>
                   <span style={{fontSize:16}}>{log.ok?"✅":"⚠️"}</span>
+                  <button onClick={()=>setLogs(p=>p.filter(l=>l.id!==log.id))} style={{padding:"2px 7px",borderRadius:6,border:`1px solid ${t.div}`,cursor:"pointer",background:"transparent",color:t.inkFaint,fontSize:10,marginLeft:4}}>×</button>
                 </div>
               );})}
             </div>
