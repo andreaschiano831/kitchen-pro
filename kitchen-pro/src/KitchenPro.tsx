@@ -3771,18 +3771,18 @@ Non inventare nulla che non sia nel documento.`;
               catalog={PREP_CATALOG} extraSuggestions={customPrepsL||[]}/>
             <VoiceBtn t={t} onResult={r=>setManualText(r)}/>
           </div>
-          {/* Riga 2: qty + unit + categoria + partita */}
-          <div style={{display:"grid",gridTemplateColumns:"80px 90px 1fr 1fr",gap:8,marginBottom:10}}>
+          {/* Riga 2: qty + unit + categoria (la partita segue la categoria) */}
+          <div style={{display:"grid",gridTemplateColumns:"80px 90px 1fr",gap:8,marginBottom:10}}>
             <LuxInput value={manualQty} onChange={e=>setManualQty(e.target.value)} type="number" placeholder="Qtà" t={t}/>
             <LuxSelect value={manualUnit} onChange={e=>setManualUnit(e.target.value)} t={t}>
               {UNITS.map(u=><option key={u} value={u}>{u}</option>)}
             </LuxSelect>
-            <LuxSelect value={manualCat} onChange={e=>setManualCat(e.target.value)} t={t}>
-              {CATEGORIE_MENU.filter(c=>c.key!=="svolte").map(c=><option key={c.key} value={c.key}>{c.icon} {c.label}</option>)}
-            </LuxSelect>
-            <LuxSelect value={manualStation} onChange={e=>setManualStation(e.target.value)} t={t}>
-              {STATIONS.filter(s=>s.key!=="all").map(s=><option key={s.key} value={s.key}>{s.icon} {s.label}</option>)}
-            </LuxSelect>
+            <div style={{display:"flex",flexDirection:"column",gap:2}}>
+              <span className="mono" style={{fontSize:8,color:"#999",letterSpacing:"0.1em"}}>CATEGORIA / PARTITA</span>
+              <LuxSelect value={manualCat} onChange={e=>{setManualCat(e.target.value);setManualStation(e.target.value);}} t={t}>
+                {CATEGORIE_MENU.filter(c=>c.key!=="svolte").map(c=><option key={c.key} value={c.key}>{c.icon} {c.label}</option>)}
+              </LuxSelect>
+            </div>
           </div>
           {/* Riga 3: lotto */}
           <div style={{marginBottom:10}}>
