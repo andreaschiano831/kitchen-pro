@@ -7062,8 +7062,6 @@ function AIPanel({ t, onClose }) {
       };
       const stripped3=lower
         .replace(/^(prepara|prep|metti in prep|aggiungi prep|preparazione)[:\s]+/,"")
-        .replace(/^metti\s+(.+?)\s+in\s+(?:prep|preparazione)\s*/i,"$1 ")
-        .replace(/\s+in\s+(?:prep|preparazione)\s*$/i,"")
         .trim();
       // split su ", " o " e " o " poi "
       const prepParts=stripped3.split(/,\s*|\s+e\s+|\s+poi\s+/i);
@@ -7086,10 +7084,7 @@ function AIPanel({ t, onClose }) {
             ? new Date(Date.now()+daysAhead*86400000).toISOString()
             : null;
           if(nome.length>1){
-            // rileva partita dal testo se presente
-            const partitaKeys=["antipasti","primi","secondi","pasticceria","colazioni","buffet","eventi"];
-            const detectedPartita=partitaKeys.find(k=>lower.includes(k))||"antipasti";
-            prepAdd(nome, qty, unit, detectedPartita, detectedPartita, turno, "", scadeIso);
+            prepAdd(nome, qty, unit, "antipasti", "saucier", turno, "", scadeIso);
             const dataLabel=daysAhead===0?"oggi":daysAhead===1?"domani":daysAhead===2?"dopodomani":`tra ${daysAhead}gg`;
             done.push(`✓ ${nome} (${qty}${unit}) — ${dataLabel} ${turno}`);
           }
