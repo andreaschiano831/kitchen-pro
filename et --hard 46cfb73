@@ -1,0 +1,10 @@
+[33md290423[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Reapply "v6 fix path"
+[33m46cfb73[m Revert "v6 fix path"
+[33md30abf5[m v6 fix path
+[33m6e5ae9f[m v6
+[33m87897e1[m fix: file nel posto giusto
+[33m36f6fe8[m KitchenPro v6 - LIA fix + PiattiManager
+[33m2770bc2[m feat: Line picking list (freezer/dry -> fridge MEP) + stock movements ledger
+[33me190bba[m fix: remove escaped quotes breaking oxc parser
+[33mde09a91[m fix: main routes + kitchen par editor + store setParCategory + parLevel null compatibility
+[33m3452b94[m P34: A microcopy + B PRO dictation parser + C Michelin par presets + Kitchen editor

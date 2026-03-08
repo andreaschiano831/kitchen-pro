@@ -1056,25 +1056,25 @@ async function callAI({ systemPrompt, userContext=null, maxTokens=1024,
   const controller = new AbortController();
   const timer = setTimeout(()=>controller.abort(), 25_000);
 
-  const endpoint = (API_URL && getToken()) ? `${API_URL}/ai` : WORKER_URL ? `${WORKER_URL}/ai` : "https://api.anthropic.com/v1/messages";
+  const endpoint = (API_URL && getToken()) ? `${API_URL}/ai` : WORKER_URL ? `${WORKER_URL}/ai` : `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${localStorage.getItem("kp-api-key")||""}`;
 
-  const isDirectAnthropic = !API_URL && !WORKER_URL;
+  const isGemini = !API_URL && !WORKER_URL;
   const headers: Record<string,string> = {"Content-Type":"application/json"};
   if(API_URL && getToken()) {
     headers["Authorization"] = `Bearer ${getToken()}`;
-  } else {
+  } else if(!WORKER_URL) {
     const sk = typeof localStorage!=="undefined" ? localStorage.getItem("kp-api-key")||"" : "";
-    if(sk) {
-      headers["x-api-key"] = sk;
-      // Required for direct browser calls to Anthropic API
-      headers["anthropic-version"] = "2023-06-01";
-      headers["anthropic-dangerous-direct-browser-access"] = "true";
-    } else if(!WORKER_URL) {
-      throw new Error("Configura API key nelle Impostazioni → 🤖 AI");
-    }
+    if(!sk) throw new Error("Configura API key Gemini nelle Impostazioni → 🤖 AI");
   }
 
-  const body: any = {
+  const userText = userMessages
+    ? userMessages.map((p:any)=>typeof p==="string"?p:(p.text||"")).join("\n")
+    : (ctx||"Analizza e rispondi.");
+  const body: any = isGemini ? {
+    system_instruction:{parts:[{text:systemPrompt}]},
+    contents:[{role:"user",parts:[{text:userText}]}],
+    generationConfig:{maxOutputTokens:maxTokens,temperature:0.3},
+  } : {
     model:"claude-sonnet-4-5-20250929",
     max_tokens: maxTokens,
     system: systemPrompt,
@@ -1102,8 +1102,9 @@ async function callAI({ systemPrompt, userContext=null, maxTokens=1024,
     }
 
     const data = await res.json();
+    const geminiText = data.candidates?.[0]?.content?.parts?.[0]?.text||"";
     const content = data.content || data.result?.content || [];
-    const text = content.map((b:any)=>b.text||"").join("").trim();
+    const text = (geminiText || content.map((b:any)=>b.text||"").join("")).trim();
     if(!text) throw new Error("AI: risposta vuota");
 
     const result = expectJSON
@@ -1344,7 +1345,7 @@ function ApiKeySetup({ t }) {
     localStorage.setItem("kp-api-key", k);
     setTestStatus("testing"); setTestMsg("Test in corso…");
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${localStorage.getItem("kp-api-key")||""}`, {
         method:"POST",
         headers:{
           "Content-Type":"application/json",
