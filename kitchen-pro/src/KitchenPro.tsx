@@ -1373,7 +1373,7 @@ function ApiKeySetup({ t }) {
         🤖 CONFIGURAZIONE AI
       </div>
       <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:12,color:t.inkMuted,marginBottom:12}}>
-        Inserisci la tua Anthropic API key per abilitare tutte le funzioni AI.
+        Inserisci la tua Gemini API key (gratuita) per abilitare tutte le funzioni AI.
         La key è salvata solo sul tuo browser.
       </div>
       <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -1417,7 +1417,7 @@ function ApiKeySetup({ t }) {
         <div className="mono" style={{fontSize:9,color:"#3D7A4A",marginTop:8}}>✓ API key configurata</div>
       )}
       <div style={{marginTop:10,fontFamily:"var(--mono)",fontSize:8,color:t.inkFaint}}>
-        Ottieni la key su console.anthropic.com · Non viene mai inviata a server terzi
+        Ottieni la key su aistudio.google.com · Non viene mai inviata a server terzi
       </div>
     </div>
   );
