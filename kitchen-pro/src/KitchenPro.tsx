@@ -4034,6 +4034,16 @@ function SpesaView({ t }) {
   const items = kitchen?.spesaV2||[];
   const [tab, setTab]     = useState("tabella");
   const [form, setForm]   = useState({nome:"",qty:"1",unit:"pz",tipologia:"alimenti",frequenza:"giornaliero",note:""});
+  const [qNome, setQNome] = useState("");
+  const [qQty,  setQQty]  = useState("1");
+  const [qUnit, setQUnit] = useState("pz");
+  function quickAdd() {
+    if(!qNome.trim()){toast("Inserisci il nome","error");return;}
+    spesaV2Add(qNome.trim(),qQty,qUnit,"alimenti","giornaliero","");
+    saveCustomSpesa(qNome.trim());
+    setQNome(""); setQQty("1");
+    toast(`${qNome.trim()} aggiunto`,"success");
+  }
   const [aiLoading,setAiLoading] = useState(false);
 
   function save() {
@@ -4104,25 +4114,20 @@ function SpesaView({ t }) {
       )}
 
       {/* Quick add spesa sempre visibile */}
-      {canEdit&&tab==="tabella"&&(
-        <div style={{display:"flex",gap:8,alignItems:"center",padding:"10px 16px",borderRadius:12,background:t.bgCard,border:`1px solid ${t.div}`}}>
-          <input id="spesa-quick-nome" placeholder="Articolo…"
-            style={{flex:2,padding:"6px 10px",borderRadius:8,border:`1px solid ${t.div}`,background:t.bgAlt,color:t.ink,fontFamily:"var(--serif)",fontSize:13,fontStyle:"italic",outline:"none"}}/>
-          <input id="spesa-quick-qty" defaultValue="1" type="number" min="0.1" step="0.1"
+      {canEdit&&(
+        <div style={{display:"flex",gap:8,alignItems:"center",padding:"10px 16px",borderRadius:12,background:t.bgCard,border:`1px solid ${t.div}`,flexWrap:"wrap"}}>
+          <AutocompleteInput value={qNome} onChange={e=>setQNome(e.target.value)}
+            onSelect={p=>{setQNome(p.n);setQUnit(p.u||qUnit);saveCustomSpesa(p.n);}}
+            placeholder="Articolo…" t={t} style={{flex:2,minWidth:160}}
+            catalog={[...PRODUCT_CATALOG,...ECONOMO_CATALOG]} extraSuggestions={customSpesaL}/>
+          <input value={qQty} onChange={e=>setQQty(e.target.value)} type="number" min="0.1" step="0.1"
             style={{width:56,padding:"6px 8px",borderRadius:8,border:`1px solid ${t.div}`,background:t.bgAlt,color:t.ink,fontFamily:"var(--mono)",fontSize:12,outline:"none"}}/>
-          <select id="spesa-quick-unit"
+          <select value={qUnit} onChange={e=>setQUnit(e.target.value)}
             style={{padding:"6px 6px",borderRadius:8,border:`1px solid ${t.div}`,background:t.bgAlt,color:t.ink,fontFamily:"var(--mono)",fontSize:10}}>
             {["pz","kg","g","l","ml"].map(u=><option key={u}>{u}</option>)}
           </select>
-          <button onClick={()=>{
-            const nome=(document.getElementById("spesa-quick-nome") as HTMLInputElement)?.value?.trim();
-            const qty=(document.getElementById("spesa-quick-qty") as HTMLInputElement)?.value||"1";
-            const unit=(document.getElementById("spesa-quick-unit") as HTMLSelectElement)?.value||"pz";
-            if(!nome){toast("Inserisci il nome","error");return;}
-            spesaV2Add(nome,qty,unit,"alimenti","giornaliero","");
-            (document.getElementById("spesa-quick-nome") as HTMLInputElement).value="";
-            toast(`${nome} aggiunto`,"success");
-          }} style={{padding:"6px 16px",borderRadius:8,border:"none",cursor:"pointer",background:`linear-gradient(135deg,${t.gold},${t.goldBright})`,color:"#fff",fontFamily:"var(--mono)",fontSize:10,whiteSpace:"nowrap"}}>+ Aggiungi</button>
+          <button onClick={quickAdd}
+            style={{padding:"6px 16px",borderRadius:8,border:"none",cursor:"pointer",background:`linear-gradient(135deg,${t.gold},${t.goldBright})`,color:"#fff",fontFamily:"var(--mono)",fontSize:10,whiteSpace:"nowrap"}}>+ Aggiungi</button>
         </div>
       )}
       {/* Vista tabellare */}
