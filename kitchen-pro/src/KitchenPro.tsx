@@ -6992,7 +6992,7 @@ function AIPanel({ t, onClose }) {
         parts.forEach(part=>{
           const pm=part.toLowerCase().match(/(\d+[\.,]?\d*)\s*(pz|kg|g|ml|l)?\s+(?:di\s+)?([\w\s]+?)(?:\s+(?:al|in)\s+(frigo|frigorifico|freezer|congelatore|dispensa|banco))?\s*$/);
           if(pm){const qty=parseFloat(pm[1].replace(",","."));
-            const name=pm[3].trim().replace(/(un|una|il|lo|la|i|gli|le)/gi,"").trim();
+            const name=pm[3].trim().replace(/\b(un|una|il|lo|la|i|gli|le)\b/gi,"").trim();
             const loc=pm[4]?(locMap2[pm[4]]||globalLoc):globalLoc;
             if(qty>0&&name.length>1){stockAdd({name,quantity:qty,unit:pm[2]||"pz",location:loc,insertedDate:todayDate()});done.push(`✓ ${name} (${qty} ${pm[2]||"pz"}) → ${loc}`);}
           }
@@ -7017,7 +7017,7 @@ function AIPanel({ t, onClose }) {
     } else if(/rimuovi|elimina/.test(lower)) {
       const name=lower
         .replace(/rimuovi|elimina/,"")
-        .replace(/(un|una|il|lo|la|i|gli|le|del|dal|dal frigo|dal congelatore|dalla dispensa|dal banco|da[l]?\s+\S+)/gi,"")
+        .replace(/\b(un|una|il|lo|la|i|gli|le|del|dal)\b|dal frigo|dal congelatore|dalla dispensa|dal banco/gi,"")
         .trim();
       const found=items.find(x=>x.name.toLowerCase().includes(name.toLowerCase()));
       if(found){ removeItem(found.id); reply=`✓ ${found.name} rimosso.`; }
@@ -7028,7 +7028,7 @@ function AIPanel({ t, onClose }) {
         if(found2){ removeItem(found2.id); reply=`✓ ${found2.name} rimosso.`; }
         else reply=`Non ho trovato "${name}" in magazzino.`;
       }
-    } else if(/(scala|togli|preleva|usa|consuma|scarica)/.test(lower)) {
+    } else if(/\b(scala|togli|preleva|usa|consuma|scarica)\b/.test(lower)) {
       // scala 2kg filetto dal frigo / togli 3 uova
       const stripped2=lower.replace(/^(scala|togli|preleva|usa|consuma|scarica)\s+/,"");
       const sm2=stripped2.match(/(\d+[\.,]?\d*)\s*(pz|kg|g|ml|l)?\s+(?:di\s+)?(.+?)(?:\s+(?:da[l]?|in|al|nel)\s+\S+)?$/);
