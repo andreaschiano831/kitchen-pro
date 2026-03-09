@@ -4963,7 +4963,7 @@ function PiattiManager({ t, copertiServizio=30 }) {
   // ── DETAIL / FORECAST VIEW ────────────────────────────────
   if(view==="detail" && selPiatto) {
     const piatto = piatti.find(p=>p.id===selPiatto)||null;
-    if(!piatto) { React.useEffect(()=>setView("lista"),[]); return null; }
+    if(!piatto) { setView("lista"); return null; }
     const calc = calcPorzioni(piatto, forecastCoperti);
     const stats = calcStats(piatto);
     const cat = PIATTO_CATEGORIE.find(c=>c.key===piatto.categoria);
