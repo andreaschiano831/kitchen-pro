@@ -2823,9 +2823,6 @@ function InventoryView({ t }) {
   const [macroFilter, setMacroFilter] = useState("all");
   const [partitaFilter, setPartitaFilter] = useState("tutti");
   const [groupByCat, setGroupByCat] = useState(true);
-  const [collapsedPartite, setCollapsedPartite] = useState<string[]>([]);
-  const [collapsedCats, setCollapsedCats] = useState<string[]>([]);
-  const [collapsedProds, setCollapsedProds] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState("all"); // all | ok | low | expiring | critical
   const [sortBy, setSortBy] = useState("default"); // default | name | expiry | qty_asc | qty_desc
   const [showForm, setShowForm] = useState(false);
@@ -3067,149 +3064,190 @@ function InventoryView({ t }) {
         </div>
       ) : (
         groupByCat ? (
-          /* ── Vista Partita → Categoria → Prodotto → Lotti FIFO ── */
+          /* ── Vista raggruppata ── */
           <div style={{display:"flex",flexDirection:"column",gap:0}}>
             {(()=>{
-              const PARTITE_ORDER=STATIONS.filter((s:any)=>s.key!=="all").map((s:any)=>s.key);
-              const byPartita:Record<string,any[]>={};
-              items.forEach((item:any)=>{const p=item.partita||"—";if(!byPartita[p])byPartita[p]=[];byPartita[p].push(item);});
-              const partiteEntries=Object.entries(byPartita).sort(([a],[b])=>{const ia=PARTITE_ORDER.indexOf(a),ib=PARTITE_ORDER.indexOf(b);return(ia===-1?99:ia)-(ib===-1?99:ib);});
-              return partiteEntries.map(([partita,partitaItems])=>{
-                const partitaOpen=!collapsedPartite.includes(partita);
-                const station=(STATIONS as any[]).find((s:any)=>s.key===partita);
-                const byCategory:Record<string,any[]>={};
-                (partitaItems as any[]).forEach((item:any)=>{const c=item.category||"secco";if(!byCategory[c])byCategory[c]=[];byCategory[c].push(item);});
-                const catEntries=Object.entries(byCategory).sort(([a],[b])=>(Object.keys(CATEGORIES).indexOf(a)||99)-(Object.keys(CATEGORIES).indexOf(b)||99));
-                return (
-                  <div key={partita} style={{marginBottom:16}}>
-                    {/* PARTITA HEADER */}
-                    <div onClick={()=>setCollapsedPartite((p:string[])=>p.includes(partita)?p.filter((x:string)=>x!==partita):[...p,partita])}
-                      style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:12,
-                        background:`linear-gradient(135deg,${t.secondary}18,${t.bgAlt})`,
-                        border:`1px solid ${t.secondary}30`,cursor:"pointer",marginBottom:partitaOpen?10:0}}>
-                      <span style={{fontSize:18}}>{station?.icon||"🍽"}</span>
-                      <span className="mono" style={{fontSize:10,letterSpacing:"0.14em",color:t.secondary,flex:1}}>
-                        {(station?.label||partita).toUpperCase()}
-                      </span>
-                      <span className="mono" style={{fontSize:9,color:t.inkFaint}}>{(partitaItems as any[]).length} art.</span>
-                      <span style={{color:t.inkFaint,fontSize:11}}>{partitaOpen?"▲":"▼"}</span>
+              const grouped = Object.entries(
+                items.reduce((acc:any,item:any)=>{
+                  const cat=item.category||"secco";
+                  if(!acc[cat]) acc[cat]=[];
+                  acc[cat].push(item); return acc;
+                },{})
+              ).sort(([a],[b])=>(Object.keys(CATEGORIES).indexOf(a)||99)-(Object.keys(CATEGORIES).indexOf(b)||99));
+              return grouped.map(([cat,catItems]:any)=>(
+                <div key={cat} style={{marginBottom:20}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,
+                    padding:"8px 12px",borderRadius:10,
+                    background:`linear-gradient(135deg,${t.gold}10,${t.bgAlt})`,
+                    border:`1px solid ${t.gold}30`}}>
+                    <span style={{fontSize:18}}>{CATEGORIES[cat]?.icon||"·"}</span>
+                    <span className="mono" style={{fontSize:9,letterSpacing:"0.14em",color:t.gold,flex:1}}>
+                      {(CATEGORIES[cat]?.label||cat).toUpperCase()}
+                    </span>
+                    <span className="mono" style={{fontSize:9,color:t.inkFaint}}>{(catItems as any[]).length} art.</span>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}}>
+                    {(catItems as any[]).map((item:any,idx:number)=>{
+            const badge  = expiryBadge(item.expiresAt);
+            const par    = item.parLevel ?? PAR_PRESET[item.category] ?? 0;
+            const isLow  = par>0 && item.quantity<par;
+            const [sm,lg] = stepFor(item.unit);
+            return (
+              <div key={item.id} style={{
+                background:t.bgCard,borderRadius:12,overflow:"hidden",
+                border:`1px solid ${badge&&badge.bg==="#8B1E2F"?t.accent+"40":t.div}`,
+                boxShadow:badge?`0 4px 20px ${t.accentGlow}`:`0 1px 6px ${t.shadow}`,
+                animation:`cardIn 0.4s cubic-bezier(0.4,0,0.2,1) ${idx*0.04}s both`,
+                transition:"all 0.3s",
+              }}
+              onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
+              onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>
+                {/* time progress bar at top */}
+                {item.expiresAt&&(()=>{
+                  const h=hoursUntil(item.expiresAt);
+                  const maxH=72;
+                  const pct = h===null?100:Math.min(Math.max((1-h/maxH)*100,0),100);
+                  const barColor = !h||h<=0?t.danger:h<=24?t.danger:h<=72?t.warning:t.success;
+                  return <div style={{height:3,background:t.bgAlt}}><div style={{height:"100%",width:`${pct}%`,background:barColor,transition:"width 1s"}}/></div>;
+                })()}
+
+                <div style={{padding:"16px 20px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div onClick={()=>setExpandedCard(expandedCard===item.id?null:item.id)} style={{fontSize:14,fontWeight:500,fontFamily:"var(--serif)",color:t.ink,marginBottom:3,fontStyle:"italic",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>{item.name}<span style={{fontSize:9,color:t.inkFaint,fontStyle:"normal"}}>{expandedCard===item.id?"▲":"▼"}</span></div>
+                      <div className="mono" style={{fontSize:9,color:t.inkFaint}}>
+                        {(CATEGORIES[item.category]?.label||item.category||"—")}
+                        {item.lot&&` · ${item.lot}`}
+                        {item.expiresAt&&` · Scad. ${fmtDate(item.expiresAt)}`}
+                      </div>
                     </div>
-                    {partitaOpen&&catEntries.map(([cat,catItems])=>{
-                      const catKey=partita+":"+cat;
-                      const catOpen=!collapsedCats.includes(catKey);
-                      const byName:Record<string,any[]>={};
-                      (catItems as any[]).forEach((item:any)=>{const k=item.name.trim().toLowerCase();if(!byName[k])byName[k]=[];byName[k].push(item);});
-                      Object.values(byName).forEach((arr:any[])=>arr.sort((a,b)=>{if(!a.expiresAt&&!b.expiresAt)return 0;if(!a.expiresAt)return 1;if(!b.expiresAt)return -1;return new Date(a.expiresAt).getTime()-new Date(b.expiresAt).getTime();}));
-                      const nameEntries=Object.entries(byName);
-                      return (
-                        <div key={cat} style={{marginBottom:10}}>
-                          {/* CATEGORIA HEADER */}
-                          <div onClick={()=>setCollapsedCats((p:string[])=>p.includes(catKey)?p.filter((x:string)=>x!==catKey):[...p,catKey])}
-                            style={{display:"flex",alignItems:"center",gap:10,marginBottom:catOpen?8:0,
-                              padding:"7px 12px",borderRadius:10,
-                              background:`linear-gradient(135deg,${t.gold}10,${t.bgAlt})`,
-                              border:`1px solid ${t.gold}30`,cursor:"pointer"}}>
-                            <span style={{fontSize:16}}>{(CATEGORIES as any)[cat]?.icon||"·"}</span>
-                            <span className="mono" style={{fontSize:9,letterSpacing:"0.14em",color:t.gold,flex:1}}>
-                              {((CATEGORIES as any)[cat]?.label||cat).toUpperCase()}
-                            </span>
-                            <span className="mono" style={{fontSize:9,color:t.inkFaint}}>{(catItems as any[]).length} art.</span>
-                            <span style={{color:t.inkFaint,fontSize:10}}>{catOpen?"▲":"▼"}</span>
-                          </div>
-                          {catOpen&&(
-                            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                              {nameEntries.map(([nameKey,lots])=>{
-                                const prodKey=partita+":"+cat+":"+nameKey;
-                                const prodOpen=!collapsedProds.includes(prodKey);
-                                const firstLot=(lots as any[])[0];
-                                const totalQty=(lots as any[]).reduce((s:number,x:any)=>s+(x.quantity||0),0);
-                                const badge=expiryBadge(firstLot.expiresAt);
-                                const par=firstLot.parLevel??PAR_PRESET[firstLot.category]??0;
-                                const isLow=par>0&&totalQty<par;
-                                return (
-                                  <div key={nameKey} style={{
-                                    background:t.bgCard,borderRadius:12,overflow:"hidden",
-                                    border:`1px solid ${badge&&(badge as any).bg==="#8B1E2F"?t.accent+"40":t.div}`,
-                                    boxShadow:badge?`0 4px 20px ${t.accentGlow}`:`0 1px 6px ${t.shadow}`,
-                                    transition:"all 0.3s",
-                                  }}>
-                                    {firstLot.expiresAt&&(()=>{const h=hoursUntil(firstLot.expiresAt);const maxH=72;const pct=h===null?100:Math.min(Math.max((1-h/maxH)*100,0),100);const barColor=!h||h<=0?t.danger:h<=24?t.danger:h<=72?t.warning:t.success;return <div style={{height:3,background:t.bgAlt}}><div style={{height:"100%",width:`${pct}%`,background:barColor,transition:"width 1s"}}/></div>;})()}
-                                    {/* PRODOTTO HEADER */}
-                                    <div onClick={()=>setCollapsedProds((p:string[])=>p.includes(prodKey)?p.filter((x:string)=>x!==prodKey):[...p,prodKey])}
-                                      style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
-                                      <div style={{flex:1,minWidth:0}}>
-                                        <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:14,color:t.ink,fontWeight:500}}>{firstLot.name}</div>
-                                        <div className="mono" style={{fontSize:8,color:t.inkFaint,marginTop:2}}>
-                                          {(lots as any[]).length} lott{(lots as any[]).length===1?"o":"i"} · tot. {totalQty} {firstLot.unit}
-                                          {firstLot.expiresAt&&` · primo scad. ${fmtDate(firstLot.expiresAt)}`}
-                                        </div>
-                                      </div>
-                                      <div style={{textAlign:"right",flexShrink:0}}>
-                                        <span style={{fontSize:22,fontWeight:300,fontFamily:"var(--serif)",color:isLow?t.danger:t.ink,lineHeight:1}}>{totalQty}</span>
-                                        <span className="mono" style={{fontSize:9,color:t.inkFaint,display:"block"}}>{firstLot.unit}</span>
-                                      </div>
-                                      <span style={{color:t.inkFaint,fontSize:11,marginLeft:6}}>{prodOpen?"▲":"▼"}</span>
-                                    </div>
-                                    {(badge||isLow)&&<div style={{padding:"0 16px 8px",display:"flex",gap:6,flexWrap:"wrap"}}>
-                                      {badge&&<Badge label={(badge as any).label} color={(badge as any).color} bg={(badge as any).bg}/>}
-                                      {isLow&&<Badge label="↓ SCORTA" color={t.warning} bg={t.goldFaint}/>}
-                                    </div>}
-                                    {/* LOTTI FIFO */}
-                                    {prodOpen&&(
-                                      <div style={{borderTop:`1px solid ${t.div}`}}>
-                                        {(lots as any[]).map((item:any,li:number)=>{
-                                          const [sm,lg]=stepFor(item.unit);
-                                          const ltBadge=expiryBadge(item.expiresAt);
-                                          return (
-                                            <div key={item.id} style={{
-                                              padding:"10px 16px",
-                                              borderBottom:li<(lots as any[]).length-1?`1px solid ${t.div}40`:"none",
-                                              background:li===0?`${t.gold}08`:"transparent",
-                                            }}>
-                                              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                                                {li===0&&<span className="mono" style={{fontSize:7,padding:"2px 5px",borderRadius:4,background:t.gold,color:"#fff",flexShrink:0}}>FIFO</span>}
-                                                <span className="mono" style={{fontSize:9,color:t.inkSoft,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                                                  {item.lot||"—"}{item.expiresAt&&` · Scad. ${fmtDate(item.expiresAt)}`}
-                                                </span>
-                                                <span style={{fontFamily:"var(--serif)",fontSize:16,color:item.quantity<=0?t.danger:t.ink,flexShrink:0}}>{item.quantity}</span>
-                                                <span className="mono" style={{fontSize:8,color:t.inkFaint,flexShrink:0}}>{item.unit}</span>
-                                                {ltBadge&&<Badge label={(ltBadge as any).label} color={(ltBadge as any).color} bg={(ltBadge as any).bg}/>}
-                                              </div>
-                                              {canEdit&&(
-                                                <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                                                  <button onClick={()=>adjustItem(item.id,-sm)} style={btnSmall(t)}>−{sm}</button>
-                                                  <button onClick={()=>adjustItem(item.id,-lg)} style={btnSmall(t)}>−{lg}</button>
-                                                  <button onClick={()=>adjustItem(item.id,+sm)} style={{...btnSmall(t),background:t.success+"20",color:t.success}}>+{sm}</button>
-                                                  <button onClick={()=>adjustItem(item.id,+lg)} style={{...btnSmall(t),background:t.success+"20",color:t.success}}>+{lg}</button>
-                                                  <button onClick={()=>{setMoveModal(item);setMoveQty(String(item.quantity));setMoveDest(item.location==="freezer"?"fridge":"counter");}} style={{...btnSmall(t),background:"#2A4FA520",color:"#2A4FA5",fontSize:8}}>↗ Sposta</button>
-                                                  <div style={{flex:1}}/>
-                                                  <button onClick={()=>{if(confirm(`Rimuovi ${item.name}?`))removeItem(item.id);}} style={{...btnSmall(t),background:t.accentGlow,color:t.danger}}>✕</button>
-                                                </div>
-                                              )}
-                                            </div>
-                                          );
-                                        })}
-                                        {canEdit&&(
-                                          <div style={{padding:"8px 16px",borderTop:`1px solid ${t.div}40`}}>
-                                            <button onClick={()=>{setFName(firstLot.name);setFCat(firstLot.category||"proteine");setFPartita(firstLot.partita||"");setShowForm(true);window.scrollTo({top:0,behavior:"smooth"});}}
-                                              style={{width:"100%",padding:"6px",borderRadius:8,border:`1px dashed ${t.gold}60`,background:"transparent",color:t.gold,fontFamily:"var(--mono)",fontSize:9,cursor:"pointer"}}>
-                                              + Nuovo lotto
-                                            </button>
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
+                    <div style={{textAlign:"right",flexShrink:0,marginLeft:12}}>
+                      <span style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",color:isLow?t.danger:t.ink,lineHeight:1}}>{item.quantity}</span>
+                      <span className="mono" style={{fontSize:9,color:t.inkFaint,display:"block"}}>{item.unit}</span>
+                    </div>
+                  </div>
+
+                  {par>0&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                    <BarMini value={item.quantity} max={par} t={t}/>
+                    <span className="mono" style={{fontSize:8,color:t.inkFaint,minWidth:48,textAlign:"right"}}>par {par}</span>
+                  </div>}
+
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
+                    {badge&&<Badge label={badge.label} color={badge.color} bg={badge.bg}/>}
+                    {isLow&&<Badge label="↓ SCORTA" color={t.warning} bg={t.goldFaint}/>}
+                  </div>
+
+                  {/* +giorni scadenza */}
+                  {canEdit&&(
+                    <div style={{marginBottom:8}}>
+                      {item.expiresAt ? (
+                        <div style={{display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}>
+                          <span className="mono" style={{fontSize:8,color:t.inkFaint,marginRight:2}}>+gg scad:</span>
+                          {[3,5,7,10,14,21,31].map(d=>(
+                            <button key={d} onClick={()=>{extendExpiry(item.id,d);toast(`+${d}gg scadenza`,"success");}} style={{
+                              padding:"3px 7px",borderRadius:6,border:`1px solid ${t.gold}40`,
+                              background:t.goldFaint,color:t.gold,fontSize:8,fontFamily:"var(--mono)",
+                              cursor:"pointer",minHeight:24,
+                            }}>+{d}</button>
+                          ))}
                         </div>
-                      );
+                      ) : editExpiry===item.id ? (
+                        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                          <input type="date" value={editExpiryVal} onChange={e=>setEditExpiryVal(e.target.value)}
+                            style={{flex:1,padding:"4px 8px",borderRadius:6,border:`1px solid ${t.gold}`,
+                              background:t.bgCard,color:t.ink,fontSize:10,fontFamily:"var(--mono)"}}/>
+                          <button onClick={()=>{
+                            if(editExpiryVal){setExpiry(item.id,new Date(editExpiryVal).toISOString());toast("Scadenza impostata","success");}
+                            setEditExpiry(null); setEditExpiryVal("");
+                          }} style={{padding:"4px 10px",borderRadius:6,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontSize:9,fontFamily:"var(--mono)"}}>✓</button>
+                          <button onClick={()=>{setEditExpiry(null);setEditExpiryVal("");}} style={{padding:"4px 8px",borderRadius:6,border:`1px solid ${t.div}`,cursor:"pointer",background:"none",color:t.inkMuted,fontSize:9}}>×</button>
+                        </div>
+                      ) : (
+                        <button onClick={()=>setEditExpiry(item.id)} style={{
+                          padding:"3px 10px",borderRadius:6,border:`1px dashed ${t.div}`,
+                          background:"none",color:t.inkFaint,fontSize:8,fontFamily:"var(--mono)",cursor:"pointer",
+                        }}>📅 Imposta scadenza</button>
+                      )}
+                    </div>
+                  )}
+                  {expandedCard===item.id&&canEdit&&(
+                    <div style={{padding:"10px 12px",borderRadius:10,background:t.bgAlt,border:`1px solid ${t.div}`,marginBottom:8,display:"flex",flexDirection:"column",gap:8}}>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <span className="mono" style={{fontSize:9,color:t.inkFaint,minWidth:40}}>NOME</span>
+                        <input
+                          defaultValue={item.name}
+                          id={`edit-name-${item.id}`}
+                          style={{flex:1,padding:"4px 8px",borderRadius:6,border:`1px solid ${t.div}`,background:t.bgCard,color:t.ink,fontFamily:"var(--serif)",fontSize:13,fontStyle:"italic",outline:"none"}}/>
+                        <button onClick={()=>{
+                          const el=document.getElementById(`edit-name-${item.id}`) as HTMLInputElement;
+                          if(el?.value?.trim()) itemUpdate(item.id,{name:el.value.trim()});
+                          toast("Nome aggiornato","success");
+                        }} style={{padding:"4px 10px",borderRadius:6,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontSize:9,fontFamily:"var(--mono)"}}>✓</button>
+                      </div>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <span className="mono" style={{fontSize:9,color:t.inkFaint,minWidth:40}}>LOTTO</span>
+                        <input value={editLot[item.id]??item.lot??""} onChange={e=>setEditLot(p=>({...p,[item.id]:e.target.value}))}
+                          placeholder="es. L2024-03"
+                          style={{flex:1,padding:"4px 8px",borderRadius:6,border:`1px solid ${t.div}`,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:10,outline:"none"}}/>
+                        <button onClick={()=>{
+                          const nl=editLot[item.id]??item.lot??"";
+                          adjustItem(item.id,0);
+                          itemUpdate(item.id,{lot:nl});
+                          toast("Lotto aggiornato","success");
+                        }} style={{padding:"4px 10px",borderRadius:6,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontSize:9,fontFamily:"var(--mono)"}}>✓</button>
+                      </div>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <span className="mono" style={{fontSize:9,color:t.inkFaint,minWidth:40}}>POS.</span>
+                        <select defaultValue={item.location} onChange={e=>{
+                          const newLoc=e.target.value;
+                          removeItem(item.id);
+                          stockAdd({...item,location:newLoc});
+                          setExpandedCard(null);
+                          toast(`Spostato → ${newLoc}`,"success");
+                        }} style={{flex:1,padding:"4px 8px",borderRadius:6,border:`1px solid ${t.div}`,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:10}}>
+                          <option value="fridge">🧊 Frigo</option>
+                          <option value="freezer">❄️ Congelatore</option>
+                          <option value="dry">🏺 Dispensa</option>
+                          <option value="counter">🔲 Banco</option>
+                        </select>
+                      </div>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <span className="mono" style={{fontSize:9,color:t.inkFaint,minWidth:40}}>PARTITA</span>
+                        <select defaultValue={item.categoria||item.partita||"antipasti"} onChange={e=>{
+                          itemUpdate(item.id,{categoria:e.target.value,partita:e.target.value});
+                          toast(`Partita → ${e.target.value}`,"success");
+                        }} style={{flex:1,padding:"4px 8px",borderRadius:6,border:`1px solid ${t.div}`,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:10}}>
+                          <option value="antipasti">🍽 Antipasti</option>
+                          <option value="primi">🍝 Primi</option>
+                          <option value="secondi">🥩 Secondi</option>
+                          <option value="pasticceria">🍰 Pasticceria</option>
+                          <option value="colazioni">☕ Colazioni</option>
+                          <option value="buffet">🪭 Buffet</option>
+                          <option value="eventi">🎉 Eventi</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                  {canEdit&&(
+                    <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                      <button onClick={()=>adjustItem(item.id,-sm)} style={btnSmall(t)}>−{sm}</button>
+                      <button onClick={()=>adjustItem(item.id,-lg)} style={btnSmall(t)}>−{lg}</button>
+                      <button onClick={()=>adjustItem(item.id,+sm)} style={{...btnSmall(t),background:t.success+"20",color:t.success}}>+{sm}</button>
+                      <button onClick={()=>adjustItem(item.id,+lg)} style={{...btnSmall(t),background:t.success+"20",color:t.success}}>+{lg}</button>
+                      {/* Sposta rapido */}
+                      <button onClick={()=>{setMoveModal(item);setMoveQty(String(item.quantity));setMoveDest(item.location==="freezer"?"fridge":"counter");}} style={{...btnSmall(t),background:"#2A4FA520",color:"#2A4FA5",fontSize:8}}>↗ Sposta</button>
+                      <div style={{flex:1}}/>
+                      <button onClick={()=>{setEditPar(item.id);setEditParVal(item.parLevel||"");}} style={{...btnSmall(t),fontSize:8}}>Giacenza min.</button>
+                      <button onClick={()=>{ if(confirm(`Rimuovi ${item.name}?`))removeItem(item.id); }} style={{...btnSmall(t),background:t.accentGlow,color:t.danger}}>✕</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
                     })}
                   </div>
-                );
-              });
+                </div>
+              ));
             })()}
           </div>
         ) : (
