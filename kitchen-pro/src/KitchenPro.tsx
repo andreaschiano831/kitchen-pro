@@ -4455,6 +4455,9 @@ function EconomatoView({ t }) {
                 {canEdit&&ordine.status==="bozza"&&(
                   <button onClick={()=>{if(editingOrdineId===ordine.id){setEditingOrdineId(null);}else{setEditingOrdineId(ordine.id);setEditOrdineItems([...(ordine.items||[])]);setNewEditItem({nome:'',qty:'',unit:'kg',prezzoUnit:''}); }}} style={{fontSize:9,padding:"5px 12px",borderRadius:8,border:"1px solid "+t.div,cursor:"pointer",background:editingOrdineId===ordine.id?t.gold+"20":"transparent",color:editingOrdineId===ordine.id?t.gold:t.inkMuted,fontFamily:"var(--mono)"}}>{editingOrdineId===ordine.id?"✓ Chiudi":"✏ Modifica"}</button>
                 )}
+                {canEdit&&ordine.status==="bozza"&&(
+                  <Btn t={t} onClick={()=>inviaOrdine(ordine.id)} style={{fontSize:9,padding:"5px 12px"}}>Invia</Btn>
+                )}
                 {canEdit&&ordine.status==="inviato"&&(
                   <Btn t={t} variant="gold" onClick={()=>confermOrdine(ordine)} style={{fontSize:9,padding:"5px 12px"}}>
                     ✅ Conferma Ricezione → Stock
