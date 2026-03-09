@@ -1086,7 +1086,7 @@ async function callAI({ systemPrompt, userContext=null, maxTokens=1024,
     contents:[{role:"user",parts:[{text:userText}]}],
     generationConfig:{maxOutputTokens:maxTokens,temperature:0.3},
   } : {
-    model:"claude-haiku-4-5-20251001",
+    model:"claude-sonnet-4-5-20250929",
     max_tokens: maxTokens,
     system: systemPrompt,
     messages: userMessages
@@ -1365,7 +1365,7 @@ function ApiKeySetup({ t }) {
           "anthropic-dangerous-direct-browser-access":"true",
         },
         body: JSON.stringify({
-          model:"claude-haiku-4-5-20251001",
+          model:"claude-sonnet-4-5-20250929",
           max_tokens:10,
           messages:[{role:"user",content:"ping"}]
         })
@@ -7316,11 +7316,8 @@ DATI CUCINA: ${ctx}`;
 
   return (
     <div style={{
-      position:"fixed",zIndex:8000,
-      bottom:"var(--ai-bottom,90px)",right:"var(--ai-right,24px)",
-      width:"min(480px,100vw)",
-      height:"min(520px,calc(100dvh - 80px))",
-      borderRadius:"clamp(0px,16px,16px)",overflow:"hidden",
+      position:"fixed",bottom:90,right:24,zIndex:8000,
+      width:480,height:520,borderRadius:16,overflow:"hidden",
       boxShadow:`0 20px 60px ${t.shadowStrong}`,
       display:"flex",flexDirection:"column",
       background:t.bgCard,border:`1px solid ${t.div}`,
