@@ -3133,7 +3133,7 @@ function InventoryView({ t }) {
                     </span>
                     <span className="mono" style={{fontSize:9,color:t.inkFaint}}>{(catItems as any[]).length} art.</span>
                   </div>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}}>
                     {(catItems as any[]).map((item:any,idx:number)=>{
             const badge  = expiryBadge(item.expiresAt);
             const par    = item.parLevel ?? PAR_PRESET[item.category] ?? 0;
@@ -3300,7 +3300,7 @@ function InventoryView({ t }) {
           </div>
         ) : (
           /* Vista flat */
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}}>
             {items.map((item,idx)=>{
               const badge  = expiryBadge(item.expiresAt);
               const par    = item.parLevel ?? PAR_PRESET[item.category] ?? 0;
@@ -3835,7 +3835,7 @@ Non inventare nulla che non sia nel documento.`;
             <VoiceBtn t={t} onResult={r=>setManualText(r)}/>
           </div>
           {/* Riga 2: qty + unit + categoria (la partita segue la categoria) */}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+          <div style={{display:"grid",gridTemplateColumns:"80px 90px 1fr",gap:8,marginBottom:10}}>
             <LuxInput value={manualQty} onChange={e=>setManualQty(e.target.value)} type="number" placeholder="Qtà" t={t}/>
             <LuxSelect value={manualUnit} onChange={e=>setManualUnit(e.target.value)} t={t}>
               {UNITS.map(u=><option key={u} value={u}>{u}</option>)}
@@ -4400,7 +4400,7 @@ function EconomatoView({ t }) {
                 style={{background:"none",border:"none",color:t.danger,cursor:"pointer",fontSize:14}}>✕</button>
             </div>
           ))}
-          <div style={{display:"grid",gridTemplateColumns:"1fr",gap:8,marginTop:10}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 70px 60px 90px auto",gap:8,marginTop:10}}>
             <AutocompleteInput value={newItem.nome} onChange={e=>setNewItem(p=>({...p,nome:e.target.value}))}
               onSelect={p=>{setNewItem(q=>({...q,nome:p.n,unit:p.u||q.unit}));}}
               placeholder="Articolo (autocomplete)" t={t}
