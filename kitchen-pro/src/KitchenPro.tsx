@@ -4961,9 +4961,12 @@ function PiattiManager({ t, copertiServizio=30 }) {
   const catActive = piatti.filter(p=>p.attivo);
 
   // ── DETAIL / FORECAST VIEW ────────────────────────────────
+  React.useEffect(()=>{
+    if(view==="detail" && selPiatto && !piatti.find(p=>p.id===selPiatto)) setView("lista");
+  },[view,selPiatto,piatti]);
   if(view==="detail" && selPiatto) {
     const piatto = piatti.find(p=>p.id===selPiatto)||null;
-    if(!piatto) { React.useEffect(()=>setView("lista"),[]); return null; }
+    if(!piatto) return null;
     const calc = calcPorzioni(piatto, forecastCoperti);
     const stats = calcStats(piatto);
     const cat = PIATTO_CATEGORIE.find(c=>c.key===piatto.categoria);
