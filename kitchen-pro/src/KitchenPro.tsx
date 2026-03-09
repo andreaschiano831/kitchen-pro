@@ -3143,7 +3143,7 @@ function InventoryView({ t }) {
                       {item.expiresAt ? (
                         <div style={{display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}>
                           <span className="mono" style={{fontSize:8,color:t.inkFaint,marginRight:2}}>+gg scad:</span>
-                          {[3,5,7,10,14,21].map(d=>(
+                          {[3,5,7,10,14,21,31].map(d=>(
                             <button key={d} onClick={()=>{extendExpiry(item.id,d);toast(`+${d}gg scadenza`,"success");}} style={{
                               padding:"3px 7px",borderRadius:6,border:`1px solid ${t.gold}40`,
                               background:t.goldFaint,color:t.gold,fontSize:8,fontFamily:"var(--mono)",
