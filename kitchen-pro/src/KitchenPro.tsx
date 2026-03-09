@@ -7069,6 +7069,7 @@ function AIPanel({ t, onClose }) {
   const [loading, setLoading] = useState(false);
   const [attachImg, setAttachImg] = useState(null); // {base64, mimeType, name}
   const [editingOp, setEditingOp] = useState(null);
+  const [pendingOps, setPendingOps] = useState<any[]|null>(null);
   const endRef = useRef(null);
   const fileRef = useRef(null);
   const speech = useSpeech(t2=>setInput(t2));
