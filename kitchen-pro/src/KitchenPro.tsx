@@ -2684,9 +2684,6 @@ function DashboardView({ t }) {
   const { kitchen, allItems } = useK();
   const [showAICmd, setShowAICmd] = useState(false);
   const [showExport, setShowExport] = useState(false);
-  const [expSections, setExpSections] = useState({giacenze:true,preparazioni:true,haccp:false});
-  const [expPartita, setExpPartita] = useState('tutti');
-  const isMobile2 = useIsMobile();
 
   // NOTE: hooks must be called before any early return
   const items = kitchen ? allItems() : [];
@@ -8028,6 +8025,9 @@ function KitchenProInner() {
   const [sideCollapsed,setSideCollapsed]= useState(false);
   const [sideDrawerOpen, setSideDrawerOpen] = useState(false);
   const [showAI,        setShowAI]        = useState(false);
+  const [showExport, setShowExport] = useState(false);
+  const [expSections, setExpSections] = useState({giacenze:true,preparazioni:true,haccp:false});
+  const [expPartita, setExpPartita] = useState('tutti');
   const [showBriefing,  setShowBriefing]  = useState(false);
   const [showWasteAI,   setShowWasteAI]   = useState(false);
   const [showMenuAI,    setShowMenuAI]    = useState(false);
