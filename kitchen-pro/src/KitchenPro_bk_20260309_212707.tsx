@@ -280,10 +280,6 @@ function reducer(state, action) {
       return { ...state, kitchens: mapK(action.kitchenId, k => ({
         ...k, spesaV2:(k.spesaV2||[]).map(x=>x.id!==action.id?x:{...x,checked:!x.checked})
       }))};
-    case "SPESA_V2_UPDATE":
-      return { ...state, kitchens: mapK(action.kitchenId, k => ({
-        ...k, spesaV2:(k.spesaV2||[]).map(x=>x.id!==action.id?x:{...x,...action.patch})
-      }))};
     case "SPESA_V2_REMOVE":
       return { ...state, kitchens: mapK(action.kitchenId, k => ({
         ...k, spesaV2:(k.spesaV2||[]).filter(x=>x.id!==action.id)
@@ -430,7 +426,6 @@ function KitchenProvider({ children }) {
           note:note||null, checked:false, createdAt:nowISO(),
         }});
       },
-      spesaV2Update: (id,patch) => { const k=kid(); if(k)dispatch({type:"SPESA_V2_UPDATE",kitchenId:k,id,patch}); },
       spesaV2Toggle: (id) => { const k=kid(); if(k)dispatch({type:"SPESA_V2_TOGGLE",kitchenId:k,id}); },
       spesaV2Remove: (id) => { const k=kid(); if(k)dispatch({type:"SPESA_V2_REMOVE",kitchenId:k,id}); },
       spesaV2Clear: () => { const k=kid(); if(k)dispatch({type:"SPESA_V2_CLEAR",kitchenId:k}); },
@@ -2233,7 +2228,7 @@ function PreparazioniView({ t, hideForm=false }) {
         ))}
         {canEdit&&!hideForm&&(
           <button onClick={()=>setShowForm(f=>!f)} style={{
-            marginLeft:"auto",padding:"8px 18px",borderRadius:10,cursor:"pointer",
+            marginLeft:"auto",padding:"8px 18px",borderRadius:10,border:"none",cursor:"pointer",
             background:`linear-gradient(135deg,${t.gold},${t.goldBright})`,color:"#fff",
             fontFamily:"var(--mono)",fontSize:10,letterSpacing:"0.06em",
           }}>+ Nuova Prep</button>
@@ -2956,7 +2951,7 @@ function InventoryView({ t }) {
       <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
         {LOCS.map(l=>(
           <button key={l.key} onClick={()=>setLoc(l.key)} style={{
-            padding:"10px 20px",borderRadius:12,cursor:"pointer",
+            padding:"10px 20px",borderRadius:12,border:"none",cursor:"pointer",
             display:"flex",alignItems:"center",gap:8,fontFamily:"var(--mono)",fontSize:10,letterSpacing:"0.08em",
             background:loc===l.key?`linear-gradient(135deg,${t.secondary},${t.secondaryDeep})`:t.bgCard,
             color:loc===l.key?"#fff":t.inkMuted,
@@ -3651,7 +3646,7 @@ Non inventare nulla che non sia nel documento.`;
                 {key:"file",  label:"📄 Foto / File",  desc:"Immagine, PDF, .txt"},
               ].map(m=>(
                 <button key={m.key} onClick={()=>{setAiMode(m.key);setAiPreview(null);}} style={{
-                  flex:1,padding:"12px 16px",borderRadius:10,cursor:"pointer",
+                  flex:1,padding:"12px 16px",borderRadius:10,border:"none",cursor:"pointer",
                   background:aiMode===m.key?`linear-gradient(135deg,${t.gold},${t.goldBright})`:t.bgAlt,
                   color:aiMode===m.key?"#fff":t.inkMuted,
                   fontFamily:"var(--mono)",fontSize:10,letterSpacing:"0.06em",
@@ -3900,7 +3895,7 @@ Non inventare nulla che non sia nel documento.`;
           const active = filterStation===s.key;
           return (
             <button key={s.key} onClick={()=>setFilterStation(s.key)} style={{
-              padding:"8px 16px",borderRadius:10,cursor:"pointer",
+              padding:"8px 16px",borderRadius:10,border:"none",cursor:"pointer",
               fontFamily:"var(--mono)",fontSize:9,letterSpacing:"0.06em",
               background:active?`linear-gradient(135deg,${s.color},${s.color}CC)`:t.bgCard,
               color:active?"#fff":t.inkMuted,
@@ -4118,7 +4113,7 @@ function ShoppingView({ t }) {
    Economato | Alimenti | Altro  ×  Giornaliero | Settimanale
    ════════════════════════════════════════════════════════ */
 function SpesaView({ t }) {
-  const { kitchen, allItems, stockAdd, spesaV2Add, spesaV2Update, spesaV2Toggle, spesaV2Remove, spesaV2Clear, currentRole } = useK();
+  const { kitchen, spesaV2Add, spesaV2Toggle, spesaV2Remove, spesaV2Clear, currentRole } = useK();
   const toast = useToast();
   const canEdit = CAN_EDIT.includes(currentRole());
   const [customSpesaL, saveCustomSpesa] = useCustomMemory("spesa");
@@ -4126,15 +4121,6 @@ function SpesaView({ t }) {
   const items = kitchen?.spesaV2||[];
   const [tab, setTab]     = useState("tabella");
   const [form, setForm]   = useState({nome:"",qty:"1",unit:"pz",tipologia:"alimenti",frequenza:"giornaliero",note:""});
-
-  // ── Carica articolo spesa in giacenza ─────────────────────
-  function caricaInGiacenza(item) {
-    const qty = parseFloat(item.quantita)||1;
-    const loc = "dry"; // default dispensa — modificabile
-    stockAdd({name:item.nome, quantity:qty, unit:item.unitaMisura||"pz", location:loc, insertedDate:todayDate()});
-    spesaV2Toggle(item.id); // spunta l'articolo
-    toast(`✓ ${item.nome} (${qty} ${item.unitaMisura||"pz"}) → Dispensa`, "success");
-  }
   const [qNome, setQNome] = useState("");
   const [qQty,  setQQty]  = useState("1");
   const [qUnit, setQUnit] = useState("pz");
@@ -4261,8 +4247,7 @@ function SpesaView({ t }) {
               <div style={{padding:"8px 12px",borderRight:`1px solid ${t.div}`}}>
                 {riga.giornalieri.map(item=>(
                   <SpesaItemRow key={item.id} item={item} t={t} canEdit={canEdit}
-                    onToggle={spesaV2Toggle} onRemove={spesaV2Remove}
-                    onUpdate={spesaV2Update} onCaricaGiacenza={caricaInGiacenza}/>
+                    onToggle={spesaV2Toggle} onRemove={spesaV2Remove}/>
                 ))}
                 {riga.giornalieri.length===0&&(
                   <div style={{padding:"8px 0",color:t.inkFaint,fontFamily:"var(--serif)",fontStyle:"italic",fontSize:11}}>—</div>
@@ -4272,8 +4257,7 @@ function SpesaView({ t }) {
               <div style={{padding:"8px 12px"}}>
                 {riga.settimanali.map(item=>(
                   <SpesaItemRow key={item.id} item={item} t={t} canEdit={canEdit}
-                    onToggle={spesaV2Toggle} onRemove={spesaV2Remove}
-                    onUpdate={spesaV2Update} onCaricaGiacenza={caricaInGiacenza}/>
+                    onToggle={spesaV2Toggle} onRemove={spesaV2Remove}/>
                 ))}
                 {riga.settimanali.length===0&&(
                   <div style={{padding:"8px 0",color:t.inkFaint,fontFamily:"var(--serif)",fontStyle:"italic",fontSize:11}}>—</div>
@@ -4293,75 +4277,24 @@ function SpesaView({ t }) {
   );
 }
 
-function SpesaItemRow({ item, t, canEdit, onToggle, onRemove, onUpdate, onCaricaGiacenza }) {
-  const [editQty, setEditQty] = React.useState(false);
-  const [qtyVal, setQtyVal]   = React.useState(String(item.quantita||"1"));
-
-  function commitQty() {
-    const v = parseFloat(qtyVal);
-    if(isFinite(v) && v > 0 && onUpdate) onUpdate(item.id, {quantita: String(v)});
-    setEditQty(false);
-  }
-
+function SpesaItemRow({ item, t, canEdit, onToggle, onRemove }) {
   return (
-    <div style={{display:"flex",alignItems:"center",gap:5,padding:"5px 0",
+    <div style={{display:"flex",alignItems:"center",gap:6,padding:"5px 0",
       opacity:item.checked?0.4:1,transition:"opacity 0.2s"}}>
       <input type="checkbox" checked={!!item.checked} onChange={()=>onToggle(item.id)}
         style={{cursor:"pointer",accentColor:t.gold,minWidth:16,minHeight:16}}/>
-      <div style={{flex:1,minWidth:0}}>
+      <div style={{flex:1}}>
         <span style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:12,color:t.ink,
           textDecoration:item.checked?"line-through":"none"}}>{item.nome}</span>
-        {/* Qty inline edit */}
-        {editQty ? (
-          <span style={{display:"inline-flex",alignItems:"center",gap:3,marginLeft:6}}>
-            <input autoFocus type="number" value={qtyVal}
-              onChange={e=>setQtyVal(e.target.value)}
-              onBlur={commitQty}
-              onKeyDown={e=>{if(e.key==="Enter")commitQty();if(e.key==="Escape")setEditQty(false);}}
-              style={{width:50,padding:"1px 4px",borderRadius:5,border:`1px solid ${t.gold}`,
-                background:t.bgAlt,color:t.ink,fontFamily:"var(--mono)",fontSize:11,outline:"none"}}/>
-            <span className="mono" style={{fontSize:9,color:t.inkFaint}}>{item.unitaMisura}</span>
-          </span>
-        ) : (
-          <span className="mono" onClick={()=>{if(canEdit)setEditQty(true);}}
-            style={{fontSize:9,color:t.inkFaint,marginLeft:6,cursor:canEdit?"pointer":"default",
-              borderBottom:canEdit?`1px dashed ${t.div}`:"none"}}>
-            {item.quantita} {item.unitaMisura}
-          </span>
-        )}
+        <span className="mono" style={{fontSize:9,color:t.inkFaint,marginLeft:6}}>
+          {item.quantita} {item.unitaMisura}
+        </span>
         {item.note&&<span style={{fontSize:9,color:t.inkFaint,marginLeft:4}}>· {item.note}</span>}
       </div>
-      {canEdit&&!item.checked&&(
-        <>
-          {/* +/- rapidi */}
-          <button onClick={()=>{
-            const v=parseFloat(item.quantita||"1");
-            if(onUpdate) onUpdate(item.id,{quantita:String(Math.max(0.1,+(v-1).toFixed(2)))});
-          }} style={{background:t.bgAlt,border:`1px solid ${t.div}`,color:t.inkMuted,
-            cursor:"pointer",borderRadius:5,width:20,height:20,fontSize:12,lineHeight:"1",
-            display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>−</button>
-          <button onClick={()=>{
-            const v=parseFloat(item.quantita||"1");
-            if(onUpdate) onUpdate(item.id,{quantita:String(+(v+1).toFixed(2))});
-          }} style={{background:t.bgAlt,border:`1px solid ${t.div}`,color:t.inkMuted,
-            cursor:"pointer",borderRadius:5,width:20,height:20,fontSize:12,lineHeight:"1",
-            display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>+</button>
-          {/* Carica in giacenza */}
-          {onCaricaGiacenza&&(
-            <button onClick={()=>onCaricaGiacenza(item)}
-              title="Carica in giacenza (economato)"
-              style={{padding:"2px 7px",borderRadius:6,border:`1px solid ${t.success}44`,cursor:"pointer",
-                background:t.success+"15",color:t.success,fontFamily:"var(--mono)",fontSize:8,
-                whiteSpace:"nowrap",flexShrink:0}}>
-              → stock
-            </button>
-          )}
-        </>
-      )}
       {canEdit&&(
         <button onClick={()=>onRemove(item.id)} style={{
           background:"none",border:"none",color:t.danger,cursor:"pointer",
-          fontSize:12,minWidth:20,minHeight:20,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,
+          fontSize:12,minWidth:24,minHeight:24,display:"flex",alignItems:"center",justifyContent:"center",
         }}>✕</button>
       )}
     </div>
@@ -4444,7 +4377,7 @@ function EconomatoView({ t }) {
         ))}
         {canEdit&&(
           <button onClick={()=>setShowForm(f=>!f)} style={{
-            marginLeft:"auto",padding:"8px 18px",borderRadius:10,cursor:"pointer",
+            marginLeft:"auto",padding:"8px 18px",borderRadius:10,border:"none",cursor:"pointer",
             background:`linear-gradient(135deg,${t.gold},${t.goldBright})`,color:"#fff",
             fontFamily:"var(--mono)",fontSize:10,
           }}>+ Nuovo Ordine</button>
@@ -5009,9 +4942,7 @@ function PiattiManager({ t, copertiServizio=30 }) {
       const canMake = inStock > 0 && ing.qty > 0 ? Math.floor(inStock / (ing.qty / base)) : 0;
       minPorzioni = Math.min(minPorzioni, canMake);
       const pctUso = inStock > 0 ? Math.min(100, Math.round((needed / inStock) * 100)) : 0;
-      // Quante porzioni posso fare con lo stock rimasto
-      const porzioniPossibili = ing.qty > 0 ? Math.floor(inStock / (ing.qty / base)) : 999;
-      return { nome:ing.nome, needed:needed.toFixed(2), unit:ing.unit, inStock:inStock.toFixed(2), ok:inStock>=needed, pctUso, canMake, porzioniPossibili };
+      return { nome:ing.nome, needed:needed.toFixed(2), unit:ing.unit, inStock:inStock.toFixed(2), ok:inStock>=needed, pctUso, canMake };
     });
     return { details, porzioni:minPorzioni===Infinity?0:minPorzioni };
   }
@@ -5026,7 +4957,6 @@ function PiattiManager({ t, copertiServizio=30 }) {
   // ── Consume stock for a service ───────────────────────────
   function consumeService(piatto, coperti) {
     if(!piatto.ingredienti?.length) { logService(piatto,coperti); return; }
-    if(!confirm(`Scaricare ingredienti per ${coperti} coperti di "${piatto.nome}"?\nL'operazione aggiornerà le giacenze.`)) return;
     const base = piatto.copertiBase||copertiServizio;
     const sf = Number(coperti) / base;
     const consumed:string[] = [];
@@ -5112,21 +5042,6 @@ function PiattiManager({ t, copertiServizio=30 }) {
   const catLabels = {tutti:"Tutti",...Object.fromEntries(PIATTO_CATEGORIE.map(c=>[c.key,c.icon+" "+c.label]))};
   const catActive = piatti.filter(p=>p.attivo);
 
-  // ── Semaforo autonomia per card lista ────────────────────
-  function getStockSignal(piatto) {
-    const calc = calcPorzioni(piatto, copertiServizio);
-    if(!calc) return null;
-    const stats = calcStats(piatto);
-    const minDays = stats?.minDays;
-    if(calc.porzioni >= copertiServizio) {
-      return { col:"#3D7A4A", label: calc.porzioni >= copertiServizio*2 ? "✓✓" : "✓", title:`Stock OK — ${calc.porzioni} coperti possibili` };
-    } else if(calc.porzioni > 0) {
-      return { col:"#B8860B", label:`⚠ ${calc.porzioni}`, title:`Stock parziale — solo ${calc.porzioni} coperti` };
-    } else {
-      return { col:"#C04A4A", label:"✗", title:"Stock insufficiente" };
-    }
-  }
-
   // ── DETAIL / FORECAST VIEW ────────────────────────────────
   React.useEffect(()=>{
     if(view==="detail" && selPiatto && !piatti.find(p=>p.id===selPiatto)) setView("lista");
@@ -5196,7 +5111,7 @@ function PiattiManager({ t, copertiServizio=30 }) {
                 <table style={{width:"100%",borderCollapse:"collapse",fontFamily:"var(--mono)",fontSize:10}}>
                   <thead>
                     <tr style={{borderBottom:`1px solid ${t.div}`}}>
-                      {["INGREDIENTE","NECESSARIO","IN STOCK","% USO","MAX PORZION.","STATO"].map(h=>(
+                      {["INGREDIENTE","NECESSARIO","IN STOCK","% USO","STATO"].map(h=>(
                         <th key={h} style={{padding:"6px 8px",textAlign:"left",color:t.inkFaint,fontWeight:400,letterSpacing:"0.08em",fontSize:9}}>{h}</th>
                       ))}
                     </tr>
@@ -5217,13 +5132,6 @@ function PiattiManager({ t, copertiServizio=30 }) {
                               </div>
                               <span style={{color:col,minWidth:30,textAlign:"right"}}>{d.pctUso}%</span>
                             </div>
-                          </td>
-                          <td style={{padding:"8px",textAlign:"center"}}>
-                            <span className="mono" style={{
-                              fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:5,
-                              background:d.porzioniPossibili>=forecastCoperti?t.success+"18":d.porzioniPossibili>0?t.warning+"18":t.danger+"18",
-                              color:d.porzioniPossibili>=forecastCoperti?t.success:d.porzioniPossibili>0?t.warning:t.danger,
-                            }}>{d.porzioniPossibili>=999?"∞":d.porzioniPossibili}</span>
                           </td>
                           <td style={{padding:"8px",color:d.ok?t.success:t.danger,fontSize:12}}>
                             {d.ok?"✓":
@@ -6879,8 +6787,8 @@ function FoodCostViewFull({ t }) {
             background:tab===k?`linear-gradient(135deg,${t.accent},${t.accentDeep})`:t.bgCard,
             color:tab===k?"#fff":t.inkMuted,transition:"all 0.2s"}}>{l}</button>
         ))}
-        {canEdit&&tab==="ricette"&&<button onClick={()=>setShowR(f=>!f)} style={{marginLeft:"auto",padding:"8px 18px",borderRadius:10,cursor:"pointer",background:`linear-gradient(135deg,${t.gold},${t.goldBright})`,color:"#fff",fontFamily:"var(--mono)",fontSize:10}}>+ Ricetta</button>}
-        {canEdit&&tab==="waste"&&<button onClick={()=>setShowW(f=>!f)} style={{marginLeft:"auto",padding:"8px 18px",borderRadius:10,cursor:"pointer",background:`linear-gradient(135deg,${t.accent},${t.accentDeep})`,color:"#fff",fontFamily:"var(--mono)",fontSize:10}}>+ Spreco</button>}
+        {canEdit&&tab==="ricette"&&<button onClick={()=>setShowR(f=>!f)} style={{marginLeft:"auto",padding:"8px 18px",borderRadius:10,border:"none",cursor:"pointer",background:`linear-gradient(135deg,${t.gold},${t.goldBright})`,color:"#fff",fontFamily:"var(--mono)",fontSize:10}}>+ Ricetta</button>}
+        {canEdit&&tab==="waste"&&<button onClick={()=>setShowW(f=>!f)} style={{marginLeft:"auto",padding:"8px 18px",borderRadius:10,border:"none",cursor:"pointer",background:`linear-gradient(135deg,${t.accent},${t.accentDeep})`,color:"#fff",fontFamily:"var(--mono)",fontSize:10}}>+ Spreco</button>}
       </div>
 
       {/* RICETTE */}
@@ -7110,7 +7018,7 @@ function SettingsView({ t }) {
           <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:16}}>
             {state.kitchens.map(k=>(
               <button key={k.id} onClick={()=>selectKitchen(k.id)} style={{
-                padding:"8px 18px",borderRadius:10,cursor:"pointer",
+                padding:"8px 18px",borderRadius:10,border:"none",cursor:"pointer",
                 fontFamily:"var(--mono)",fontSize:10,letterSpacing:"0.06em",
                 background:(state.selectedKitchenId||state.kitchens[0]?.id)===k.id?`linear-gradient(135deg,${t.gold},${t.goldBright})`:`${t.bgAlt}`,
                 color:(state.selectedKitchenId||state.kitchens[0]?.id)===k.id?"#fff":t.inkMuted,
@@ -7183,7 +7091,7 @@ function AIPanel({ t, onClose }) {
 
     // ── Parser +N item [in/al loc] e -N item ──────────────
     // Supporta: "+3 piccioni in congelatore +2 uova in frigo, -1kg filetto manzo"
-    const locMap:{[k:string]:string}={frigo:"fridge",frigorifico:"fridge",fridge:"fridge",freezer:"freezer",congelatore:"freezer",dispensa:"dry",secco:"dry",banco:"counter",servizio:"counter"};
+    const locMap:{[k:string]:string}={frigo:"fridge",frigorifico:"fridge",fridge:"fridge",freezer:"freezer",congelatore:"freezer",dispensa:"dry",dispensa:"dry",secco:"dry",banco:"counter",servizio:"counter"};
     const plusMinusPattern = /([+\-])\s*(\d+[\.,]?\d*)\s*(pz|kg|g|ml|l|vasch|cl|dl|hg)?\s+(?:di\s+)?([a-zA-Zàèìòùéáíóú][a-zA-Zàèìòùéáíóú\s']*?)(?:\s+(?:in|al|nel|nella|nel)\s+([a-zA-Zàèìòùéáíóú]+))?(?=[,+\-]|$)/gi;
     const matches=[...msg.matchAll(plusMinusPattern)];
     if(matches.length>0) {
@@ -7196,12 +7104,25 @@ function AIPanel({ t, onClose }) {
         if(name&&qty>0) ops.push({sign,qty,unit,name,loc});
       }
       if(ops.length>0){
-        const pendingList=ops.map(({sign,qty,unit,name,loc})=>({
-          type:sign==="+"?"add":"remove",
-          name,qty,unit,loc,
-        }));
-        setPendingOps(pendingList);
-        setMessages(p=>[...p,{role:"ai",text:`⚡ ${pendingList.length} operazion${pendingList.length===1?"e":"i"} — verifica e conferma:`}]);
+        const addedL:string[]=[], removedL:string[]=[], errL:string[]=[];
+        ops.forEach(({sign,qty,unit,name,loc})=>{
+          if(sign==="+"){
+            stockAdd({name,quantity:qty,unit,location:loc,insertedDate:todayDate()});
+            addedL.push(`+${qty}${unit} ${name} (${loc})`);
+            ops_recap.push({type:'add',name,qty,unit,loc});
+          } else {
+            const found=items.find(x=>x.name.toLowerCase().includes(name.toLowerCase()));
+            if(found){ adjustItem(found.id,-qty); removedL.push(`-${qty}${unit} ${name}`); }
+            else errL.push(`✗ non trovato: ${name}`);
+            ops_recap.push({type:'remove',name,qty,unit,loc:'?'});
+          }
+        });
+        const parts=[];
+        if(addedL.length) parts.push("✓ Aggiunti: "+addedL.join(", "));
+        if(removedL.length) parts.push("✓ Rimossi/ridotti: "+removedL.join(", "));
+        if(errL.length) parts.push(errL.join(", "));
+        reply=parts.join("\n");
+        setMessages(p=>[...p,{role:"ai",text:reply||"✓ Operazioni eseguite",ops:ops_recap.length?ops_recap:undefined}]);
         return;
       }
     }
@@ -7237,21 +7158,17 @@ function AIPanel({ t, onClose }) {
         const globalLoc=globalLocM?(locMap2[globalLocM[1]]||"fridge"):"fridge";
         const msgStripped=msg.replace(/^(aggiungi|carica|inserisci|metti)\s+/i,"");
         const parts=msgStripped.split(/\s+e\s+|,\s*|\s+poi\s+/i);
-        const pendingMulti:{type:string,name:string,qty:number,unit:string,loc:string}[]=[];
+        const done:string[]=[];
         parts.forEach(part=>{
           const pm=part.toLowerCase().match(/(\d+[\.,]?\d*)\s*(pz|kg|g|ml|l)?\s+(?:di\s+)?([\w\s]+?)(?:\s+(?:al|in)\s+(frigo|frigorifico|freezer|congelatore|dispensa|banco))?\s*$/);
           if(pm){const qty=parseFloat(pm[1].replace(",","."));
             const name=pm[3].trim().replace(/\b(un|una|il|lo|la|i|gli|le)\b/gi,"").trim();
             const loc=pm[4]?(locMap2[pm[4]]||globalLoc):globalLoc;
-            if(qty>0&&name.length>1) pendingMulti.push({type:'add',name,qty,unit:pm[2]||'pz',loc});
+            if(qty>0&&name.length>1){stockAdd({name,quantity:qty,unit:pm[2]||"pz",location:loc,insertedDate:todayDate()});done.push(`✓ ${name} (${qty} ${pm[2]||"pz"}) → ${loc}`);}
+            ops_recap.push({type:'add',name,qty,unit:pm[2]||'pz',loc});
           }
         });
-        if(pendingMulti.length>0){
-          setPendingOps(pendingMulti);
-          setMessages(p=>[...p,{role:"ai",text:`⚡ ${pendingMulti.length} prodott${pendingMulti.length===1?"o":"i"} — verifica e conferma:`}]);
-          return;
-        }
-        reply="Non ho capito. Prova: \"aggiungi 3 uova e 2 filetti in frigo\x22"
+        reply=done.length?done.join("\n"):"Non ho capito. Prova: \"aggiungi 3 uova e 2 filetti in frigo\""
       } else {
         // Single item — fast local parse
         const locMap={frigo:"fridge",frigorifico:"fridge",freezer:"freezer",congelatore:"freezer",dispensa:"dry",secco:"dry",banco:"counter"};
@@ -7264,11 +7181,8 @@ function AIPanel({ t, onClose }) {
           const locKey=m[4]||(lower.match(/\b(frigo|frigorifico|freezer|congelatore|dispensa|secco|banco)\b/)||[])[0]||"frigo";
           const loc=locMap[locKey]||"fridge";
           const lot=m[5]||undefined;
-          if(name.length>1){
-            setPendingOps([{type:'add',name,qty,unit:m[2]||"pz",loc,lot}]);
-            setMessages(p=>[...p,{role:"ai",text:`⚡ Conferma aggiunta:`}]);
-            return;
-          }
+          if(name.length>1){ stockAdd({name,quantity:qty,unit:m[2]||"pz",location:loc,lot,insertedDate:todayDate()}); reply=`✓ ${name} (${qty} ${m[2]||"pz"}) → ${loc}${lot?" lotto "+lot:""}.`; }
+          ops_recap.push({type:'add',name,qty,unit:m[2]||'pz',loc});
         }
         if(!reply) reply="Non ho capito. Prova: \"aggiungi 3 polli in frigo\"";
       }
@@ -7446,21 +7360,14 @@ DATI CUCINA: ${ctx}`;
           </div>
           <div style={{display:"flex",gap:8}}>
             <button onClick={()=>{
-              const locLabel:{[k:string]:string}={fridge:"Frigo",freezer:"Freezer",dry:"Dispensa",counter:"Banco"};
-              const recap:string[]=[];
               pendingOps.forEach(op=>{
-                if(op.type==="add"){
-                  stockAdd({name:op.name,quantity:op.qty,unit:op.unit,location:op.loc,lot:op.lot,insertedDate:todayDate()});
-                  recap.push(`✓ ${op.name} · ${op.qty} ${op.unit} → ${locLabel[op.loc]||op.loc}`);
-                } else {
-                  const f=allItems().find(x=>x.name.toLowerCase().includes(op.name.toLowerCase()));
-                  if(f){ adjustItem(f.id,-op.qty); recap.push(`✓ Scalati ${op.qty}${op.unit} da ${f.name}`); }
-                  else recap.push(`✗ Non trovato: ${op.name}`);
-                }
+                if(op.type==="add") stockAdd({name:op.name,quantity:op.qty,unit:op.unit,location:op.loc,insertedDate:todayDate()});
+                else { const f=allItems().find(x=>x.name.toLowerCase().includes(op.name.toLowerCase())); if(f) adjustItem(f.id,-op.qty); }
               });
-              setMessages(p=>[...p,{role:"ai",text:recap.join("\n")||"✓ Operazioni applicate"}]);
+              const recap=ops.map((op:any)=>op.type==="add"?"+ "+op.name+" ("+op.qty+" "+op.unit+") "+op.loc:"- scalato "+op.name).join("\n");
+              setMessages(p=>[...p,{role:"ai",text:recap}]);
               setPendingOps(null);
-            }} style={{flex:1,padding:"7px",borderRadius:8,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontFamily:"var(--mono)",fontSize:10,fontWeight:600}}>✅ Applica</button>
+            }} style={{flex:1,padding:"7px",borderRadius:8,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontFamily:"var(--mono)",fontSize:10,fontWeight:600}}>✓ Conferma</button>
             <button onClick={()=>setPendingOps(null)} style={{flex:1,padding:"7px",borderRadius:8,border:"1px solid "+t.div,cursor:"pointer",background:"transparent",color:t.inkMuted,fontFamily:"var(--mono)",fontSize:10}}>Annulla</button>
           </div>
         </div>
