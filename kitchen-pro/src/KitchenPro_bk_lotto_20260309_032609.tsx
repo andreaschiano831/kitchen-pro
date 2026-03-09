@@ -3236,7 +3236,6 @@ function InventoryView({ t }) {
                       <button onClick={()=>adjustItem(item.id,+lg)} style={{...btnSmall(t),background:t.success+"20",color:t.success}}>+{lg}</button>
                       {/* Sposta rapido */}
                       <button onClick={()=>{setMoveModal(item);setMoveQty(String(item.quantity));setMoveDest(item.location==="freezer"?"fridge":"counter");}} style={{...btnSmall(t),background:"#2A4FA520",color:"#2A4FA5",fontSize:8}}>↗ Sposta</button>
-                      <button onClick={()=>{setFName(item.name);setFCat(item.category||"proteine");setFPartita(item.partita||"");setFUnit(item.unit||"pz");setFQty("1");setFLot("");setFExpiry("");setShowForm(true);window.scrollTo({top:0,behavior:"smooth"});}} style={{...btnSmall(t),background:t.gold+"20",color:t.gold,fontSize:8}}>+ Lotto</button>
                       <div style={{flex:1}}/>
                       <button onClick={()=>{setEditPar(item.id);setEditParVal(item.parLevel||"");}} style={{...btnSmall(t),fontSize:8}}>Giacenza min.</button>
                       <button onClick={()=>{ if(confirm(`Rimuovi ${item.name}?`))removeItem(item.id); }} style={{...btnSmall(t),background:t.accentGlow,color:t.danger}}>✕</button>
