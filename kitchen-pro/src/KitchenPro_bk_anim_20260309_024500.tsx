@@ -8180,7 +8180,7 @@ function KitchenProInner() {
           padding:isMobile?"14px 14px 24px":"28px 36px 48px",
           overflow:"auto",
         }} key={section}>
-          <div style={{animation:ready?"cardIn 0.45s cubic-bezier(0.4,0,0.2,1) both":"none",width:"100%",minWidth:0,overflow:"hidden"}}>
+          <div style={{animation:ready?"cardIn 0.45s cubic-bezier(0.4,0,0.2,1) both":"none"}}>
             {section==="dashboard"    && <DashboardView t={t}/>}
             {section==="giacenze"     && <InventoryView t={t}/>}
             {section==="preparazioni" && <PrepMepView t={t}/>}

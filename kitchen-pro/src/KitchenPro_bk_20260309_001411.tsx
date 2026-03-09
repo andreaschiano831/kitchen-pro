@@ -6498,7 +6498,7 @@ function HaccpViewFull({ t }) {
           )}
           {/* PANNELLI RAPIDI PER ZONA */}
           {canEdit&&(
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10,width:"100%"}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>
               {ZONES.map(z=>{
                 const lastLog=logs.filter(l=>l.zona===z.key)[0];
                 const zTemp=zTemps[z.key]||"";
@@ -6513,19 +6513,19 @@ function HaccpViewFull({ t }) {
                         <div style={{fontFamily:"var(--mono)",fontSize:10,letterSpacing:"0.08em",color:t.ink}}>{z.label.toUpperCase()}</div>
                         <div className="mono" style={{fontSize:8,color:t.inkFaint}}>{z.minT}÷{z.maxT}°C</div>
                       </div>
-                      <button onClick={()=>setEditZone({...zonesRaw.find((x:any)=>x.key===z.key)})} style={{padding:"5px 9px",borderRadius:6,border:`1px solid ${t.div}`,background:"transparent",color:t.inkFaint,fontSize:12,cursor:"pointer",fontFamily:"var(--mono)"}}>✎</button>
+                      <button onClick={()=>setEditZone({...zonesRaw.find((x:any)=>x.key===z.key)})} style={{padding:"2px 6px",borderRadius:5,border:`1px solid ${t.div}`,background:"transparent",color:t.inkFaint,fontSize:9,cursor:"pointer",fontFamily:"var(--mono)"}}>✎</button>
                     </div>
                     {lastLog&&<div style={{fontFamily:"var(--mono)",fontSize:11,color:lastLog.ok?t.success:t.danger}}>Ultima: {lastLog.temp}°C {lastLog.ok?"✅":"⚠️"}</div>}
                     <div style={{display:"flex",gap:6,alignItems:"center"}}>
                       <input value={zTemp} onChange={e=>setZTemp(e.target.value)} type="number" placeholder="°C"
-                        style={{flex:1,minWidth:0,padding:"6px 8px",borderRadius:8,border:`1px solid ${isOk===false?t.danger:isOk===true?t.success:t.div}`,background:t.bgAlt,color:t.ink,fontFamily:"var(--mono)",fontSize:14,outline:"none",textAlign:"center"}}/>
+                        style={{flex:1,padding:"6px 8px",borderRadius:8,border:`1px solid ${isOk===false?t.danger:isOk===true?t.success:t.div}`,background:t.bgAlt,color:t.ink,fontFamily:"var(--mono)",fontSize:14,outline:"none",textAlign:"center"}}/>
                       <button onClick={()=>{
                         if(!zTemp)return;
                         const pass=z.ok(tv);
                         setLogs(p=>[{id:genId(),zona:z.key,temp:tv,op:form.op||"",note:"",at:nowISO(),ok:pass},...p]);
                         setZTemp("");
                         toast(pass?`✓ ${z.label}: ${tv}°C`:`⚠ ${z.label}: ${tv}°C fuori range`,pass?"success":"error");
-                      }} style={{padding:"6px 10px",borderRadius:8,border:"none",cursor:"pointer",flexShrink:0,background:t.gold,color:"#fff",fontFamily:"var(--mono)",fontSize:12}}>✓</button>
+                      }} style={{padding:"6px 10px",borderRadius:8,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontFamily:"var(--mono)",fontSize:12}}>✓</button>
                     </div>
                   </div>
                 );
@@ -8180,7 +8180,7 @@ function KitchenProInner() {
           padding:isMobile?"14px 14px 24px":"28px 36px 48px",
           overflow:"auto",
         }} key={section}>
-          <div style={{animation:ready?"cardIn 0.45s cubic-bezier(0.4,0,0.2,1) both":"none",width:"100%",minWidth:0,overflow:"hidden"}}>
+          <div style={{animation:ready?"cardIn 0.45s cubic-bezier(0.4,0,0.2,1) both":"none"}}>
             {section==="dashboard"    && <DashboardView t={t}/>}
             {section==="giacenze"     && <InventoryView t={t}/>}
             {section==="preparazioni" && <PrepMepView t={t}/>}
