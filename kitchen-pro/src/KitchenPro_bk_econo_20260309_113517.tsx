@@ -4308,7 +4308,7 @@ function SpesaItemRow({ item, t, canEdit, onToggle, onRemove }) {
    REGOLA: prezzi SOLO qui · stock aggiornato solo dopo conferma
    ════════════════════════════════════════════════════════ */
 function EconomatoView({ t }) {
-  const { kitchen, ordineAdd, ordineUpdate, confermRicezione, allItems, currentRole, updateLocation } = useK();
+  const { kitchen, ordineAdd, ordineUpdate, confermRicezione, allItems, currentRole } = useK();
   const toast = useToast();
   const canEdit = CAN_EDIT.includes(currentRole());
 
@@ -4318,9 +4318,6 @@ function EconomatoView({ t }) {
   const [ordineForm, setOrdineForm] = useState({fornitore:"", items:[]});
   const [newItem, setNewItem] = useState({nome:"",qty:"",unit:"kg",prezzoUnit:"",codiceLotto:"",scadeIl:""});
   const [ricezione, setRicezione] = useState(null); // ordineId in ricezione
-  const [editingOrdineId, setEditingOrdineId] = useState(null);
-  const [editOrdineItems, setEditOrdineItems] = useState([]);
-  const [newEditItem, setNewEditItem] = useState({nome:'',qty:'',unit:'kg',prezzoUnit:''});
 
   function addItemToForm() {
     if(!newItem.nome||!newItem.qty) { toast("Nome e quantità obbligatori","error"); return; }
@@ -4453,7 +4450,7 @@ function EconomatoView({ t }) {
                   color:STATUS_COLORS[ordine.status]||"#7A7168",
                 }}>{STATUS_LABELS[ordine.status]||ordine.status}</span>
                 {canEdit&&ordine.status==="bozza"&&(
-                  <button onClick={()=>{if(editingOrdineId===ordine.id){setEditingOrdineId(null);}else{setEditingOrdineId(ordine.id);setEditOrdineItems([...(ordine.items||[])]);setNewEditItem({nome:'',qty:'',unit:'kg',prezzoUnit:''}); }}} style={{fontSize:9,padding:"5px 12px",borderRadius:8,border:"1px solid "+t.div,cursor:"pointer",background:editingOrdineId===ordine.id?t.gold+"20":"transparent",color:editingOrdineId===ordine.id?t.gold:t.inkMuted,fontFamily:"var(--mono)"}}>{editingOrdineId===ordine.id?"✓ Chiudi":"✏ Modifica"}</button>
+                  <Btn t={t} onClick={()=>inviaOrdine(ordine.id)} style={{fontSize:9,padding:"5px 12px"}}>📤 Invia</Btn>
                 )}
                 {canEdit&&ordine.status==="inviato"&&(
                   <Btn t={t} variant="gold" onClick={()=>confermOrdine(ordine)} style={{fontSize:9,padding:"5px 12px"}}>
@@ -4476,26 +4473,6 @@ function EconomatoView({ t }) {
                       Totale: €{(ordine.items.reduce((s,i)=>s+(i.prezzoUnitario||0)*(i.quantitaOrdinata||0),0)).toFixed(2)}
                     </span>
                   </div>
-                </div>
-              )}
-              {editingOrdineId===ordine.id&&(
-                <div style={{padding:"12px 20px",borderTop:`1px solid ${t.div}`,background:t.bgAlt,display:"flex",flexDirection:"column",gap:8}}>
-                  <div className="mono" style={{fontSize:8,color:t.inkFaint,marginBottom:4}}>MODIFICA ARTICOLI</div>
-                  {editOrdineItems.map((item,i)=>(
-                    <div key={item.id||i} style={{display:"flex",gap:8,alignItems:"center"}}>
-                      <input value={item.nome} onChange={e=>{const a=[...editOrdineItems];a[i]={...a[i],nome:e.target.value};setEditOrdineItems(a);}} style={{flex:2,padding:"5px 8px",borderRadius:7,border:`1px solid ${t.div}`,background:t.bgCard,color:t.ink,fontFamily:"var(--serif)",fontStyle:"italic",fontSize:12,outline:"none"}}/>
-                      <input type="number" value={item.quantitaOrdinata} onChange={e=>{const a=[...editOrdineItems];a[i]={...a[i],quantitaOrdinata:parseFloat(e.target.value)||0};setEditOrdineItems(a);}} style={{width:60,padding:"5px 6px",borderRadius:7,border:`1px solid ${t.div}`,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:11,outline:"none"}}/>
-                      <input type="number" value={item.prezzoUnitario||0} onChange={e=>{const a=[...editOrdineItems];a[i]={...a[i],prezzoUnitario:parseFloat(e.target.value)||0};setEditOrdineItems(a);}} placeholder="€" style={{width:60,padding:"5px 6px",borderRadius:7,border:`1px solid ${t.div}`,background:t.bgCard,color:t.gold,fontFamily:"var(--mono)",fontSize:11,outline:"none"}}/>
-                      <button onClick={()=>setEditOrdineItems(editOrdineItems.filter((_,j)=>j!==i))} style={{padding:"3px 8px",borderRadius:5,border:"none",cursor:"pointer",background:t.accentGlow,color:t.danger,fontSize:12}}>✕</button>
-                    </div>
-                  ))}
-                  <div style={{display:"flex",gap:6,marginTop:4}}>
-                    <input value={newEditItem.nome} onChange={e=>setNewEditItem(p=>({...p,nome:e.target.value}))} placeholder="Nuovo articolo" style={{flex:2,padding:"5px 8px",borderRadius:7,border:`1px solid ${t.div}`,background:t.bgCard,color:t.ink,fontFamily:"var(--serif)",fontStyle:"italic",fontSize:12,outline:"none"}}/>
-                    <input type="number" value={newEditItem.qty} onChange={e=>setNewEditItem(p=>({...p,qty:e.target.value}))} placeholder="Qtà" style={{width:55,padding:"5px 6px",borderRadius:7,border:`1px solid ${t.div}`,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:11,outline:"none"}}/>
-                    <input value={newEditItem.unit} onChange={e=>setNewEditItem(p=>({...p,unit:e.target.value}))} placeholder="un" style={{width:40,padding:"5px 4px",borderRadius:7,border:`1px solid ${t.div}`,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:11,outline:"none"}}/>
-                    <button onClick={()=>{if(!newEditItem.nome||!newEditItem.qty)return;setEditOrdineItems(p=>[...p,{id:genId(),nome:newEditItem.nome,quantitaOrdinata:parseFloat(newEditItem.qty)||0,unitaMisura:newEditItem.unit,prezzoUnitario:0,quantitaRicevuta:null}]);setNewEditItem({nome:'',qty:'',unit:'kg',prezzoUnit:''}); }} style={{padding:"5px 10px",borderRadius:7,border:"none",cursor:"pointer",background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:9}}>+ Add</button>
-                  </div>
-                  <button onClick={()=>{ordineUpdate(ordine.id,{items:editOrdineItems});setEditingOrdineId(null);toast("Ordine aggiornato","success");}} style={{padding:"8px",borderRadius:8,border:"none",cursor:"pointer",background:`linear-gradient(135deg,${t.gold},${t.goldBright})`,color:"#fff",fontFamily:"var(--mono)",fontSize:10}}>💾 Salva modifiche</button>
                 </div>
               )}
             </Card>
@@ -4529,14 +4506,6 @@ function EconomatoView({ t }) {
                   </div>
                 )}
               </div>
-                {canEdit&&(
-                  <div style={{display:"flex",gap:6,alignItems:"center",marginTop:8}}>
-                    <button onClick={()=>{const loc=item.location||"dry";const arr=(kitchen[loc]||[]).map((x:any)=>x.id===item.id?{...x,quantity:Math.max(0,(x.quantity||0)-1)}:x);updateLocation(loc,arr);}} style={{width:28,height:28,borderRadius:7,border:`1px solid ${t.div}`,background:t.bgAlt,color:t.ink,cursor:"pointer",fontFamily:"var(--mono)",fontSize:14}}>-</button>
-                    <span className="mono" style={{minWidth:40,textAlign:"center",fontSize:12,color:t.ink}}>{item.quantity} {item.unit}</span>
-                    <button onClick={()=>{const loc=item.location||"dry";const arr=(kitchen[loc]||[]).map((x:any)=>x.id===item.id?{...x,quantity:(x.quantity||0)+1}:x);updateLocation(loc,arr);}} style={{width:28,height:28,borderRadius:7,border:`1px solid ${t.div}`,background:t.bgAlt,color:t.ink,cursor:"pointer",fontFamily:"var(--mono)",fontSize:14}}>+</button>
-                    <button onClick={()=>{const loc=item.location||"dry";const arr=(kitchen[loc]||[]).filter((x:any)=>x.id!==item.id);updateLocation(loc,arr);toast(item.name+" rimosso","success");}} style={{marginLeft:"auto",padding:"4px 10px",borderRadius:7,border:"none",cursor:"pointer",background:t.accentGlow,color:t.danger,fontFamily:"var(--mono)",fontSize:9}}>✕ Rimuovi</button>
-                  </div>
-                )}
             </Card>
           ))}
           {allItems().filter(x=>x.category==="economato"||x.location==="dry").length===0&&(
