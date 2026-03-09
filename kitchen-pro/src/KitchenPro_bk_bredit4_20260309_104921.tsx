@@ -1792,8 +1792,6 @@ function BriefingPanel({ kitchen, t, onClose }) {
   const [loading, setLoading] = React.useState(false);
   const [result,  setResult]  = React.useState(null);
   const [error,   setError]   = React.useState(null);
-  const [editMode, setEditMode] = React.useState(false);
-  const [editText, setEditText] = React.useState("");
   function generate() {
     setLoading(true); setResult(null); setError(null);
     try {
@@ -1889,10 +1887,8 @@ function BriefingPanel({ kitchen, t, onClose }) {
                 }
                 window.open("https://wa.me/?text="+encodeURIComponent(buildText(result)),"_blank");
               }} style={{padding:"10px 14px",borderRadius:10,border:"none",cursor:"pointer",background:"#25D36620",color:"#25D366",fontFamily:"var(--mono)",fontSize:10}}>WhatsApp</button>
-              <button onClick={()=>{const r=result;const rows=[r.intestazione,"","PRIORITA:",...(r.priorita_giornaliere||[]).map((p,i)=>(i+1)+". "+p)];if(r.mep_urgente&&r.mep_urgente.length){rows.push("","MEP URGENTE:");r.mep_urgente.forEach(m=>rows.push("- "+m.nome+(m.da_fare_entro?" -> "+m.da_fare_entro:"")));}if(r.allerte_haccp&&r.allerte_haccp.length){rows.push("","HACCP:");r.allerte_haccp.forEach(a=>rows.push("- "+a));}if(r.nota_chef){rows.push("","NOTA CHEF:",r.nota_chef);}setEditText(rows.join("\n"));setEditMode(e=>!e);}} style={{padding:"10px 14px",borderRadius:10,border:`1px solid ${t.div}`,cursor:"pointer",background:editMode?t.gold+"20":"transparent",color:editMode?t.gold:t.inkMuted,fontFamily:"var(--mono)",fontSize:10}}>{editMode?"x Vista":"Edit"}</button>
               <button onClick={()=>window.print()} style={{padding:"10px 14px",borderRadius:10,border:"none",cursor:"pointer",background:t.bgAlt,color:t.inkMuted,fontFamily:"var(--mono)",fontSize:10}}>Stampa</button>
             </div>
-            {editMode&&<textarea value={editText} onChange={e=>setEditText(e.target.value)} style={{width:"100%",minHeight:280,padding:"12px",borderRadius:10,border:"1px solid "+t.div,background:t.bgAlt,color:t.ink,fontFamily:"var(--serif)",fontSize:13,lineHeight:1.7,resize:"vertical",outline:"none",marginTop:8}}/>}
           </div>
         )}
       </div>
