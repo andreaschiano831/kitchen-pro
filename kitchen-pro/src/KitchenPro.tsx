@@ -6379,13 +6379,19 @@ function HaccpViewFull({ t }) {
   useEffect(()=>{try{localStorage.setItem(`hlog-${kitchen?.id}`,JSON.stringify(logs.slice(0,200)));}catch{}},[logs,kitchen?.id]);
   useEffect(()=>{try{localStorage.setItem(`hck-${kitchen?.id}-${todayDate()}`,JSON.stringify(checks));}catch{}},[checks,kitchen?.id]);
 
-  const ZONES=[
-    {key:"frigo",       label:"Frigo",        icon:"🧊",min:0, max:5,  ok:v=>v>=0&&v<=5},
-    {key:"congelatore", label:"Congelatore",   icon:"❄️",min:-20,max:-15,ok:v=>v>=-20&&v<=-15},
-    {key:"abbattitore", label:"Abbattitore",   icon:"🌡",min:-18,max:3, ok:v=>v>=-18&&v<=3},
-    {key:"banco",       label:"Banco Pesce",   icon:"🐟",min:0, max:4,  ok:v=>v>=0&&v<=4},
-    {key:"cucina",      label:"Cucina (cotto)",icon:"🔥",min:70,max:100,ok:v=>v>=70},
+  const DEFAULT_ZONES=[
+    {key:"frigo",       label:"Frigo",         icon:"🧊",min:0,  max:5,   minT:0,  maxT:5},
+    {key:"congelatore", label:"Congelatore",    icon:"❄️",min:-20,max:-15, minT:-20,maxT:-15},
+    {key:"abbattitore", label:"Abbattitore",    icon:"🌡",min:-18,max:3,   minT:-18,maxT:3},
+    {key:"banco",       label:"Banco Pesce",    icon:"🐟",min:0,  max:4,   minT:0,  maxT:4},
+    {key:"cucina",      label:"Cucina (cotto)", icon:"🔥",min:70, max:100, minT:70, maxT:100},
   ];
+  const [zonesRaw,setZonesRaw]=useState(()=>{
+    try{const s=localStorage.getItem(`haccp-zones-${kitchen?.id}`); return s?JSON.parse(s):DEFAULT_ZONES;}catch{return DEFAULT_ZONES;}
+  });
+  const [editZone,setEditZone]=useState<any>(null); // null=chiuso, {}=nuovo, {key}=edit
+  const ZONES=zonesRaw.map((z:any)=>({...z,ok:(v:number)=>v>=z.minT&&v<=z.maxT}));
+  const saveZones=(nz:any[])=>{setZonesRaw(nz);localStorage.setItem(`haccp-zones-${kitchen?.id}`,JSON.stringify(nz));};
 
   const CHECKLIST=[
     "Controllo temperature frigo (mattina)","Controllo temperature congelatore",
@@ -6451,6 +6457,45 @@ function HaccpViewFull({ t }) {
 
       {tab==="temperatura"&&(
         <div style={{display:"flex",flexDirection:"column",gap:16}}>
+          {/* GESTISCI ZONE */}
+          {canEdit&&editZone!==null&&(
+            <div style={{padding:"16px",borderRadius:14,border:`1px solid ${t.gold}`,background:t.bgCard,display:"flex",flexDirection:"column",gap:10}}>
+              <div className="mono" style={{fontSize:10,color:t.gold,letterSpacing:"0.1em"}}>{editZone.key?"✎ MODIFICA ZONA":"+ NUOVA ZONA"}</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                  <span className="mono" style={{fontSize:8,color:t.inkFaint}}>NOME</span>
+                  <input value={editZone.label||""} onChange={e=>setEditZone((p:any)=>({...p,label:e.target.value}))}
+                    placeholder="es. Frigo 2" style={{padding:"6px 8px",borderRadius:6,border:`1px solid ${t.div}`,background:t.bgAlt,color:t.ink,fontFamily:"var(--mono)",fontSize:11}}/>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                  <span className="mono" style={{fontSize:8,color:t.inkFaint}}>ICONA</span>
+                  <input value={editZone.icon||""} onChange={e=>setEditZone((p:any)=>({...p,icon:e.target.value}))}
+                    placeholder="🧊" style={{padding:"6px 8px",borderRadius:6,border:`1px solid ${t.div}`,background:t.bgAlt,color:t.ink,fontSize:18,width:60}}/>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                  <span className="mono" style={{fontSize:8,color:t.inkFaint}}>TEMP MIN (°C)</span>
+                  <input type="number" value={editZone.minT??""} onChange={e=>setEditZone((p:any)=>({...p,minT:parseFloat(e.target.value)||0,min:parseFloat(e.target.value)||0}))}
+                    style={{padding:"6px 8px",borderRadius:6,border:`1px solid ${t.div}`,background:t.bgAlt,color:t.ink,fontFamily:"var(--mono)",fontSize:11}}/>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                  <span className="mono" style={{fontSize:8,color:t.inkFaint}}>TEMP MAX (°C)</span>
+                  <input type="number" value={editZone.maxT??""} onChange={e=>setEditZone((p:any)=>({...p,maxT:parseFloat(e.target.value)||0,max:parseFloat(e.target.value)||0}))}
+                    style={{padding:"6px 8px",borderRadius:6,border:`1px solid ${t.div}`,background:t.bgAlt,color:t.ink,fontFamily:"var(--mono)",fontSize:11}}/>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                <button onClick={()=>setEditZone(null)} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${t.div}`,background:"transparent",color:t.inkMuted,fontFamily:"var(--mono)",fontSize:10,cursor:"pointer"}}>Annulla</button>
+                {editZone.key&&<button onClick={()=>{saveZones(zonesRaw.filter((z:any)=>z.key!==editZone.key));setEditZone(null);toast("Zona eliminata","success");}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:t.danger+"22",color:t.danger,fontFamily:"var(--mono)",fontSize:10,cursor:"pointer"}}>🗑 Elimina</button>}
+                <button onClick={()=>{
+                  if(!editZone.label?.trim()){toast("Inserisci un nome","error");return;}
+                  const k=editZone.key||(editZone.label.toLowerCase().replace(/\s+/g,"-")+"-"+Date.now());
+                  if(editZone.key){saveZones(zonesRaw.map((z:any)=>z.key===editZone.key?{...editZone,key:k}:z));}
+                  else{saveZones([...zonesRaw,{...editZone,key:k}]);}
+                  setEditZone(null);toast("Zona salvata","success");
+                }} style={{padding:"6px 14px",borderRadius:8,border:"none",background:t.gold,color:"#fff",fontFamily:"var(--mono)",fontSize:10,cursor:"pointer"}}>✓ Salva</button>
+              </div>
+            </div>
+          )}
           {/* PANNELLI RAPIDI PER ZONA */}
           {canEdit&&(
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>
@@ -6464,10 +6509,11 @@ function HaccpViewFull({ t }) {
                   <div key={z.key} style={{borderRadius:14,border:`2px solid ${isOk===false?t.danger:isOk===true?t.success:t.div}`,background:t.bgCard,padding:"14px 16px",display:"flex",flexDirection:"column",gap:8,transition:"border 0.2s"}}>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
                       <span style={{fontSize:22}}>{z.icon}</span>
-                      <div>
+                      <div style={{flex:1}}>
                         <div style={{fontFamily:"var(--mono)",fontSize:10,letterSpacing:"0.08em",color:t.ink}}>{z.label.toUpperCase()}</div>
-                        <div className="mono" style={{fontSize:8,color:t.inkFaint}}>{z.min}÷{z.max}°C</div>
+                        <div className="mono" style={{fontSize:8,color:t.inkFaint}}>{z.minT}÷{z.maxT}°C</div>
                       </div>
+                      <button onClick={()=>setEditZone({...zonesRaw.find((x:any)=>x.key===z.key)})} style={{padding:"2px 6px",borderRadius:5,border:`1px solid ${t.div}`,background:"transparent",color:t.inkFaint,fontSize:9,cursor:"pointer",fontFamily:"var(--mono)"}}>✎</button>
                     </div>
                     {lastLog&&<div style={{fontFamily:"var(--mono)",fontSize:11,color:lastLog.ok?t.success:t.danger}}>Ultima: {lastLog.temp}°C {lastLog.ok?"✅":"⚠️"}</div>}
                     <div style={{display:"flex",gap:6,alignItems:"center"}}>
@@ -6484,6 +6530,11 @@ function HaccpViewFull({ t }) {
                   </div>
                 );
               })}
+              <div onClick={()=>setEditZone({label:"",icon:"🌡",minT:0,maxT:5,min:0,max:5})}
+                style={{borderRadius:14,border:`2px dashed ${t.div}`,background:"transparent",padding:"14px 16px",display:"flex",flexDirection:"column",gap:8,alignItems:"center",justifyContent:"center",cursor:"pointer",opacity:0.6,minHeight:120}}>
+                <span style={{fontSize:22}}>＋</span>
+                <span className="mono" style={{fontSize:9,color:t.inkMuted}}>AGGIUNGI ZONA</span>
+              </div>
             </div>
           )}
           {/* OPERATORE + EXPORT */}
