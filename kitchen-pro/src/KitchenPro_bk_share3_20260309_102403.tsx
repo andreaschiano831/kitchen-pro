@@ -1861,30 +1861,7 @@ function BriefingPanel({ kitchen, t, onClose }) {
               <div className="mono" style={{fontSize:8,color:t.inkFaint,marginBottom:4}}>NOTA CHEF</div>
               <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:13,color:t.ink,lineHeight:1.6}}>{result.nota_chef}</div>
             </div>}
-            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-              <button onClick={generate} style={{flex:1,padding:"10px",borderRadius:10,border:`1px solid ${t.div}`,cursor:"pointer",background:"transparent",color:t.inkMuted,fontFamily:"var(--mono)",fontSize:10}}>↺ Rigenera</button>
-              <button onClick={()=>{
-                function buildText(r){
-                  const rows=[r.intestazione,"","PRIORITA:",...(r.priorita_giornaliere||[]).map((p,i)=>(i+1)+". "+p)];
-                  if(r.mep_urgente?.length){rows.push("","MEP URGENTE:");r.mep_urgente.forEach(m=>rows.push("- "+m.nome+(m.da_fare_entro?" -> "+m.da_fare_entro:"")));}
-                  if(r.allerte_haccp?.length){rows.push("","HACCP:");r.allerte_haccp.forEach(a=>rows.push("- "+a));}
-                  if(r.nota_chef){rows.push("","NOTA CHEF:",r.nota_chef);}
-                  return rows.join("\n");
-                }
-                navigator.clipboard?.writeText(buildText(result)).then(()=>alert("Briefing copiato!"));
-              }} style={{padding:"10px 14px",borderRadius:10,border:`1px solid ${t.div}`,cursor:"pointer",background:"transparent",color:t.inkMuted,fontFamily:"var(--mono)",fontSize:10}}>Copia</button>
-              <button onClick={()=>{
-                function buildText(r){
-                  const rows=[r.intestazione,"","PRIORITA:",...(r.priorita_giornaliere||[]).map((p,i)=>(i+1)+". "+p)];
-                  if(r.mep_urgente?.length){rows.push("","MEP URGENTE:");r.mep_urgente.forEach(m=>rows.push("- "+m.nome+(m.da_fare_entro?" -> "+m.da_fare_entro:"")));}
-                  if(r.allerte_haccp?.length){rows.push("","HACCP:");r.allerte_haccp.forEach(a=>rows.push("- "+a));}
-                  if(r.nota_chef){rows.push("","NOTA CHEF:",r.nota_chef);}
-                  return rows.join("\n");
-                }
-                window.open("https://wa.me/?text="+encodeURIComponent(buildText(result)),"_blank");
-              }} style={{padding:"10px 14px",borderRadius:10,border:"none",cursor:"pointer",background:"#25D36620",color:"#25D366",fontFamily:"var(--mono)",fontSize:10}}>WhatsApp</button>
-              <button onClick={()=>window.print()} style={{padding:"10px 14px",borderRadius:10,border:"none",cursor:"pointer",background:t.bgAlt,color:t.inkMuted,fontFamily:"var(--mono)",fontSize:10}}>Stampa</button>
-            </div>
+            <button onClick={generate} style={{padding:"10px",borderRadius:10,border:`1px solid ${t.div}`,cursor:"pointer",background:"transparent",color:t.inkMuted,fontFamily:"var(--mono)",fontSize:10}}>↺ Rigenera</button>
           </div>
         )}
       </div>
