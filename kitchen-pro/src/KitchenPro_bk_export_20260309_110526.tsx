@@ -2683,9 +2683,6 @@ function PrepCard({ prep, t, canEdit, onStatus, onRemove }) {
 function DashboardView({ t }) {
   const { kitchen, allItems } = useK();
   const [showAICmd, setShowAICmd] = useState(false);
-  const [showExport, setShowExport] = useState(false);
-  const [expSections, setExpSections] = useState({giacenze:true,preparazioni:true,haccp:false});
-  const [expPartita, setExpPartita] = useState('tutti');
   const isMobile2 = useIsMobile();
 
   // NOTE: hooks must be called before any early return
@@ -8197,7 +8194,6 @@ function KitchenProInner() {
             </div>}
           </div>
           <div style={{display:"flex",alignItems:"center",gap:isMobile?8:18,flexShrink:0}}>
-            <button onClick={()=>setShowExport(true)} style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:9,border:`1px solid ${t.div}`,cursor:"pointer",background:t.bgCard,color:t.inkMuted,fontFamily:"var(--mono)",fontSize:9}}><span>⬇</span><span>{isMobile?"":"Export"}</span></button>
             <LiveClock t={t} short={isMobile}/>
             {!isMobile&&<div style={{width:1,height:28,background:t.div}}/>}
             <button onClick={()=>setShowAI(!showAI)} style={{
@@ -8400,74 +8396,6 @@ function KitchenProInner() {
 
       {/* AI Panels */}
       {showAI        && <AIPanel            t={t} onClose={()=>setShowAI(false)}/>}
-      {showExport&&(
-        <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowExport(false)}>
-          <div onClick={e=>e.stopPropagation()} style={{background:t.bgCard,borderRadius:16,padding:28,width:460,maxWidth:"95vw",boxShadow:"0 20px 60px rgba(0,0,0,0.4)"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-              <div style={{fontFamily:"var(--serif)",fontSize:16,fontStyle:"italic",color:t.ink}}>⬇ Esporta Dati</div>
-              <button onClick={()=>setShowExport(false)} style={{background:"none",border:"none",cursor:"pointer",color:t.inkFaint,fontSize:20}}>×</button>
-            </div>
-            <div className="mono" style={{fontSize:8,color:t.inkFaint,marginBottom:8,letterSpacing:"0.1em"}}>SEZIONI</div>
-            <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
-              {[{k:"giacenze",l:"Giacenze"},{k:"preparazioni",l:"Preparazioni"},{k:"haccp",l:"HACCP"}].map(({k,l})=>(
-                <button key={k} onClick={()=>setExpSections((p:any)=>({...p,[k]:!p[k]}))}
-                  style={{padding:"7px 14px",borderRadius:9,border:"none",cursor:"pointer",fontFamily:"var(--mono)",fontSize:9,
-                    background:(expSections as any)[k]?`linear-gradient(135deg,${t.secondary},${t.secondaryDeep})`:t.bgAlt,
-                    color:(expSections as any)[k]?"#fff":t.inkMuted}}>
-                  {(expSections as any)[k]?"✓ ":""}{l}
-                </button>
-              ))}
-            </div>
-            <div className="mono" style={{fontSize:8,color:t.inkFaint,marginBottom:8,letterSpacing:"0.1em"}}>PARTITA</div>
-            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:20}}>
-              {[{k:"tutti",l:"Tutte"},...STATIONS.filter((s:any)=>s.key!=="all").map((s:any)=>({k:s.key,l:s.icon+" "+s.label}))].map(({k,l})=>(
-                <button key={k} onClick={()=>setExpPartita(k)}
-                  style={{padding:"6px 12px",borderRadius:8,border:"none",cursor:"pointer",fontFamily:"var(--mono)",fontSize:9,
-                    background:expPartita===k?t.gold:t.bgAlt,
-                    color:expPartita===k?"#fff":t.inkMuted}}>
-                  {l}
-                </button>
-              ))}
-            </div>
-            <button onClick={()=>{
-              const rows:string[][] = [];
-              const sep = ";";
-              const allItems = [...(kitchen?.freezer||[]),...(kitchen?.fridge||[]),...(kitchen?.dry||[]),...(kitchen?.counter||[])];
-              const filtItems = expPartita==="tutti"?allItems:allItems.filter((x:any)=>x.partita===expPartita);
-              if((expSections as any).giacenze){
-                rows.push(["GIACENZE","","","","","","",""]);
-                rows.push(["Nome","Categoria","Partita","Lotto","Data Produzione","Scadenza","Giacenza","Unita"]);
-                filtItems.forEach((x:any)=>rows.push([x.name||"",x.category||"",x.partita||"",x.lot||"",x.insertedDate||"",x.expiresAt?x.expiresAt.slice(0,10):"",String(x.quantity||0),x.unit||""]));
-                rows.push([""]);
-              }
-              if((expSections as any).preparazioni){
-                const preps = expPartita==="tutti"?(kitchen?.preparazioni||[]):(kitchen?.preparazioni||[]).filter((p:any)=>p.partita===expPartita||p.reparto===expPartita);
-                rows.push(["PREPARAZIONI","","","","",""]);
-                rows.push(["Nome","Partita","Stato","Quantita","Unita","Scadenza"]);
-                preps.forEach((p:any)=>rows.push([p.nome||"",p.partita||p.reparto||"",p.status||"",String(p.quantita||0),p.unitaMisura||"",p.scadeIl?p.scadeIl.slice(0,10):""]));
-                rows.push([""]);
-              }
-              if((expSections as any).haccp){
-                const hLogs:any[] = JSON.parse(localStorage.getItem("hlog-"+kitchen?.id)||"[]");
-                const filtLogs = expPartita==="tutti"?hLogs:hLogs;
-                rows.push(["HACCP TEMPERATURE","","","",""]);
-                rows.push(["Zona","Temperatura","Operatore","Data Ora","Conforme"]);
-                filtLogs.forEach((l:any)=>rows.push([l.zona||"",String(l.temp||0),l.op||"",l.at?l.at.slice(0,16).replace("T"," "):"",l.ok?"SI":"NO"]));
-              }
-              const csv = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(sep)).join("\n");
-              const a = document.createElement("a");
-              a.href = "data:text/csv;charset=utf-8,﻿"+encodeURIComponent(csv);
-              a.download = "kitchenpro-export-"+new Date().toISOString().slice(0,10)+".csv";
-              a.click();
-              setShowExport(false);
-            }} style={{width:"100%",padding:"12px",borderRadius:10,border:"none",cursor:"pointer",
-              background:`linear-gradient(135deg,${t.gold},${t.goldBright})`,color:"#fff",
-              fontFamily:"var(--mono)",fontSize:11,letterSpacing:"0.06em"}}>
-              ⬇ Scarica CSV (Excel)
-            </button>
-          </div>
-        </div>
-      )}
       {showBriefing  && <BriefingPanel      kitchen={kitchen} t={t} onClose={()=>setShowBriefing(false)}/>}
       {showWasteAI   && <WasteAnalysisPanel kitchen={kitchen} t={t} onClose={()=>setShowWasteAI(false)}/>}
       {showMenuAI    && <MenuFromExpiryPanel kitchen={kitchen} t={t} onClose={()=>setShowMenuAI(false)}/>}
