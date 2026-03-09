@@ -7371,39 +7371,6 @@ DATI CUCINA: ${ctx}`;
           </div>
         </div>
       )}
-      {/* Pending ops */}
-      {pendingOps&&(
-        <div style={{padding:"12px 14px",borderBottom:"1px solid "+t.div,background:t.bgAlt,display:"flex",flexDirection:"column",gap:8}}>
-          <div className="mono" style={{fontSize:9,color:t.gold,letterSpacing:"0.1em"}}>CONFERMA OPERAZIONI</div>
-          <div style={{display:"flex",flexDirection:"column",gap:5}}>
-            {pendingOps.map((op,oi)=>(
-              <div key={oi} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 8px",borderRadius:7,background:t.bgCard,border:"1px solid "+t.div}}>
-                <span style={{fontSize:11,color:op.type==="add"?"#3D7A4A":"#C04A4A"}}>{op.type==="add"?"+ ":"- "}</span>
-                <input value={op.name} onChange={e=>{const n=[...pendingOps];n[oi]={...n[oi],name:e.target.value};setPendingOps(n);}} style={{flex:2,minWidth:60,padding:"3px 5px",borderRadius:5,border:"1px solid "+t.div,background:t.bgAlt,color:t.ink,fontSize:12,fontFamily:"var(--serif)",outline:"none"}}/>
-                <input type="number" value={op.qty} onChange={e=>{const n=[...pendingOps];n[oi]={...n[oi],qty:parseFloat(e.target.value)||0};setPendingOps(n);}} style={{width:44,padding:"3px 4px",borderRadius:5,border:"1px solid "+t.div,background:t.bgAlt,color:t.ink,fontSize:12,outline:"none"}}/>
-                <input value={op.unit} onChange={e=>{const n=[...pendingOps];n[oi]={...n[oi],unit:e.target.value};setPendingOps(n);}} style={{width:32,padding:"3px",borderRadius:5,border:"1px solid "+t.div,background:t.bgAlt,color:t.ink,fontSize:11,outline:"none"}}/>
-                <select value={op.loc} onChange={e=>{const n=[...pendingOps];n[oi]={...n[oi],loc:e.target.value};setPendingOps(n);}} style={{padding:"3px",borderRadius:5,border:"1px solid "+t.div,background:t.bgAlt,color:t.ink,fontSize:10,outline:"none"}}>
-                  <option value="fridge">Frigo</option><option value="freezer">Freezer</option><option value="dry">Dispensa</option><option value="counter">Banco</option>
-                </select>
-                <button onClick={()=>setPendingOps(prev=>(prev||[]).filter((_,j)=>j!==oi))} style={{background:"none",border:"none",color:t.danger,cursor:"pointer",fontSize:14}}>x</button>
-              </div>
-            ))}
-          </div>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>{
-              const ops=pendingOps||[];
-              ops.forEach((op:any)=>{
-                if(op.type==="add") stockAdd({name:op.name,quantity:op.qty,unit:op.unit,location:op.loc,insertedDate:todayDate()});
-                else { const f=allItems().find((x:any)=>x.name.toLowerCase().includes(op.name.toLowerCase())); if(f) adjustItem(f.id,-op.qty); }
-              });
-              const recap=ops.map((op:any)=>op.type==="add"?"+ "+op.name+" ("+op.qty+" "+op.unit+") "+op.loc:"- scalato "+op.name).join("\n");
-              setMessages(p=>[...p,{role:"ai",text:recap}]);
-              setPendingOps(null);
-            }} style={{flex:1,padding:"7px",borderRadius:8,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontFamily:"var(--mono)",fontSize:10,fontWeight:600}}>Conferma</button>
-            <button onClick={()=>setPendingOps(null)} style={{flex:1,padding:"7px",borderRadius:8,border:"1px solid "+t.div,cursor:"pointer",background:"transparent",color:t.inkMuted,fontFamily:"var(--mono)",fontSize:10}}>Annulla</button>
-          </div>
-        </div>
-      )}
       {/* Messages */}
       <div style={{flex:1,overflowY:"auto",padding:"14px 16px",display:"flex",flexDirection:"column",gap:10}}>
         {messages.map((m,i)=>(
