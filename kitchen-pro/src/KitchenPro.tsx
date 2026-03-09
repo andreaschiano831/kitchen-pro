@@ -2684,6 +2684,7 @@ function DashboardView({ t }) {
   const { kitchen, allItems } = useK();
   const [showAICmd, setShowAICmd] = useState(false);
   const [showExport, setShowExport] = useState(false);
+  const isMobile2 = useIsMobile();
 
   // NOTE: hooks must be called before any early return
   const items = kitchen ? allItems() : [];
