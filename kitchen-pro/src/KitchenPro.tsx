@@ -7083,6 +7083,7 @@ function AIPanel({ t, onClose }) {
     // Local intent parsing
     const lower=msg.toLowerCase();
     let reply=null;
+    let ops_recap:any[]=[];
 
     const items=allItems();
     const now=new Date();
@@ -7107,10 +7108,12 @@ function AIPanel({ t, onClose }) {
           if(sign==="+"){
             stockAdd({name,quantity:qty,unit,location:loc,insertedDate:todayDate()});
             addedL.push(`+${qty}${unit} ${name} (${loc})`);
+            ops_recap.push({type:'add',name,qty,unit,loc});
           } else {
             const found=items.find(x=>x.name.toLowerCase().includes(name.toLowerCase()));
             if(found){ adjustItem(found.id,-qty); removedL.push(`-${qty}${unit} ${name}`); }
             else errL.push(`✗ non trovato: ${name}`);
+            ops_recap.push({type:'remove',name,qty,unit,loc:'?'});
           }
         });
         const parts=[];
@@ -7118,7 +7121,7 @@ function AIPanel({ t, onClose }) {
         if(removedL.length) parts.push("✓ Rimossi/ridotti: "+removedL.join(", "));
         if(errL.length) parts.push(errL.join(", "));
         reply=parts.join("\n");
-        setMessages(p=>[...p,{role:"ai",text:reply||"✓ Operazioni eseguite"}]);
+        setMessages(p=>[...p,{role:"ai",text:reply||"✓ Operazioni eseguite",ops:ops_recap.length?ops_recap:undefined}]);
         return;
       }
     }
@@ -7161,6 +7164,7 @@ function AIPanel({ t, onClose }) {
             const name=pm[3].trim().replace(/\b(un|una|il|lo|la|i|gli|le)\b/gi,"").trim();
             const loc=pm[4]?(locMap2[pm[4]]||globalLoc):globalLoc;
             if(qty>0&&name.length>1){stockAdd({name,quantity:qty,unit:pm[2]||"pz",location:loc,insertedDate:todayDate()});done.push(`✓ ${name} (${qty} ${pm[2]||"pz"}) → ${loc}`);}
+            ops_recap.push({type:'add',name,qty,unit:pm[2]||'pz',loc});
           }
         });
         reply=done.length?done.join("\n"):"Non ho capito. Prova: \"aggiungi 3 uova e 2 filetti in frigo\""
@@ -7177,6 +7181,7 @@ function AIPanel({ t, onClose }) {
           const loc=locMap[locKey]||"fridge";
           const lot=m[5]||undefined;
           if(name.length>1){ stockAdd({name,quantity:qty,unit:m[2]||"pz",location:loc,lot,insertedDate:todayDate()}); reply=`✓ ${name} (${qty} ${m[2]||"pz"}) → ${loc}${lot?" lotto "+lot:""}.`; }
+          ops_recap.push({type:'add',name,qty,unit:m[2]||'pz',loc});
         }
         if(!reply) reply="Non ho capito. Prova: \"aggiungi 3 polli in frigo\"";
       }
@@ -7269,7 +7274,7 @@ function AIPanel({ t, onClose }) {
       reply=sc.length?`🍽 ${sc.length} prodotti in scadenza 72h: ${sc.slice(0,4).map(x=>x.name).join(", ")}…\nUsa Dashboard › Menu AI per i suggerimenti.`:"Nessun articolo in scadenza imminente.";
     }
 
-    if(reply) { setMessages(p=>[...p,{role:"ai",text:reply}]); return; }
+    if(reply) { setMessages(p=>[...p,{role:"ai",text:reply,ops:ops_recap.length?ops_recap:undefined}]); return; }
 
     // Claude API via callAI (cache 5min + retry + multimodale)
     setLoading(true);
