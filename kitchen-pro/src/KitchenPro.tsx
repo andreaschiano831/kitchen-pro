@@ -6721,24 +6721,57 @@ function SemilavView({ t, kitchen, allItems, toast }) {
         </div>
       ))}
       {printItem&&(
-        <div style={{position:"fixed",inset:0,zIndex:9000,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-          <div style={{background:"#fff",borderRadius:12,padding:"24px",maxWidth:380,width:"100%"}}>
-            <div style={{fontFamily:"'Times New Roman',serif",color:"#000",border:"2px solid #1a2744",borderRadius:8,padding:"16px 20px"}}>
-              <div style={{textAlign:"center",borderBottom:"1.5px solid #1a2744",paddingBottom:8,marginBottom:10}}>
-                <div style={{fontSize:11,letterSpacing:"0.15em",color:"#8B7536",fontFamily:"monospace"}}>KITCHEN PRO · SEMILAVORATO</div>
-                <div style={{fontSize:18,fontWeight:700,marginTop:4}}>{printItem.nome}</div>
+        <div style={{position:"fixed",inset:0,zIndex:9000,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          {/* Etichetta stampabile — visibile solo in print */}
+          <div id="etichetta-print-wrapper" style={{display:"none",position:"fixed",inset:0,background:"#fff",zIndex:99999,alignItems:"center",justifyContent:"center"}}>
+            <div style={{fontFamily:"'Times New Roman',serif",color:"#000",border:"3px solid #1a2744",borderRadius:6,padding:"14px 18px",width:320,margin:"auto",marginTop:20}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",borderBottom:"1.5px solid #1a2744",paddingBottom:8,marginBottom:10}}>
+                <div>
+                  <div style={{fontSize:9,letterSpacing:"0.18em",color:"#8B7536",fontFamily:"monospace",textTransform:"uppercase"}}>Kitchen Pro · Semilavorato</div>
+                  <div style={{fontSize:20,fontWeight:700,marginTop:3,lineHeight:1.2}}>{printItem.nome}</div>
+                </div>
+                <img src={"https://api.qrserver.com/v1/create-qr-code/?size=70x70&data="+encodeURIComponent("LOTTO:"+printItem.lotto+"|PROD:"+printItem.dataProd+"|SCAD:"+printItem.scadenza+"|"+printItem.nome)} alt="QR" style={{width:70,height:70,borderRadius:4}}/>
               </div>
-              <div style={{fontSize:11,lineHeight:1.8}}>
-                <div><b>Lotto:</b> {printItem.lotto}</div>
-                <div><b>Data produzione:</b> {printItem.dataProd}</div>
-                <div><b>Scadenza:</b> {printItem.scadenza}</div>
-                {printItem.ingredienti.length>0&&<div style={{marginTop:6}}><b>Ingredienti:</b> {printItem.ingredienti.map((i:any,ii:number)=><span key={ii}>{i.nome}{i.lotto?" (lotto "+i.lotto+")":""}{i.qty?" "+i.qty+i.unit:""}{ii<printItem.ingredienti.length-1?", ":""}</span>)}</div>}
-                {printItem.nota&&<div style={{marginTop:6,fontStyle:"italic"}}>{printItem.nota}</div>}
+              <table style={{width:"100%",fontSize:11,lineHeight:1.9,borderCollapse:"collapse"}}>
+                <tbody>
+                  <tr><td style={{color:"#555",width:110,fontFamily:"monospace",fontSize:10}}>LOTTO</td><td style={{fontWeight:700,fontFamily:"monospace"}}>{printItem.lotto}</td></tr>
+                  <tr><td style={{color:"#555",fontFamily:"monospace",fontSize:10}}>PRODUZIONE</td><td>{printItem.dataProd}</td></tr>
+                  <tr><td style={{color:"#555",fontFamily:"monospace",fontSize:10,color:"#b00"}}>SCADENZA</td><td style={{fontWeight:700,color:"#b00"}}>{printItem.scadenza}</td></tr>
+                  {printItem.ingredienti.length>0&&<tr><td style={{color:"#555",fontFamily:"monospace",fontSize:10,verticalAlign:"top",paddingTop:4}}>INGREDIENTI</td><td style={{fontSize:10}}>{printItem.ingredienti.map((ing:any,ii:number)=><span key={ii}>{ing.nome}{ing.lotto?" (L."+ing.lotto+")":""}{ing.qty?" "+ing.qty+ing.unit:""}{ii<printItem.ingredienti.length-1?", ":""}</span>)}</td></tr>}
+                  {printItem.nota&&<tr><td style={{color:"#555",fontFamily:"monospace",fontSize:10,verticalAlign:"top"}}>NOTE</td><td style={{fontSize:10,fontStyle:"italic"}}>{printItem.nota}</td></tr>}
+                </tbody>
+              </table>
+              <div style={{marginTop:8,paddingTop:6,borderTop:"1px solid #ccc",display:"flex",justifyContent:"space-between",fontSize:8,color:"#999",fontFamily:"monospace"}}>
+                <span>{kitchen?.name||"Kitchen Pro"}</span>
+                <span>Reg. {printItem.createdAt?.slice(0,10)||""}</span>
               </div>
-              <div style={{marginTop:10,paddingTop:8,borderTop:"1px solid #1a2744",fontSize:9,color:"#666",textAlign:"right",fontFamily:"monospace"}}>Kitchen Pro · {kitchen?.name||""}</div>
             </div>
-            <div style={{display:"flex",gap:8,marginTop:14}}>
-              <button onClick={()=>window.print()} style={{flex:1,padding:"9px",borderRadius:9,border:"none",cursor:"pointer",background:"#1a2744",color:"#C9A84C",fontFamily:"monospace",fontSize:11,fontWeight:600}}>Stampa</button>
+          </div>
+          {/* Modal preview */}
+          <div style={{background:"#fff",borderRadius:14,padding:"20px",maxWidth:420,width:"100%",boxShadow:"0 20px 60px rgba(0,0,0,0.5)"}}>
+            <div style={{fontFamily:"'Times New Roman',serif",color:"#000",border:"2px solid #1a2744",borderRadius:8,padding:"14px 18px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",borderBottom:"1.5px solid #1a2744",paddingBottom:8,marginBottom:10}}>
+                <div>
+                  <div style={{fontSize:9,letterSpacing:"0.15em",color:"#8B7536",fontFamily:"monospace"}}>KITCHEN PRO · SEMILAVORATO</div>
+                  <div style={{fontSize:17,fontWeight:700,marginTop:3}}>{printItem.nome}</div>
+                </div>
+                <img src={"https://api.qrserver.com/v1/create-qr-code/?size=64x64&data="+encodeURIComponent("LOTTO:"+printItem.lotto+"|"+printItem.nome)} alt="QR" style={{width:64,height:64,borderRadius:4}}/>
+              </div>
+              <div style={{fontSize:11,lineHeight:1.9}}>
+                <div><b>Lotto:</b> <span style={{fontFamily:"monospace"}}>{printItem.lotto}</span></div>
+                <div><b>Produzione:</b> {printItem.dataProd}</div>
+                <div style={{color:"#b00"}}><b>Scadenza:</b> {printItem.scadenza}</div>
+                {printItem.ingredienti.length>0&&<div style={{marginTop:6,fontSize:10}}><b>Ingredienti:</b> {printItem.ingredienti.map((i:any,ii:number)=><span key={ii}>{i.nome}{i.lotto?" (L."+i.lotto+")":""}{i.qty?" "+i.qty+i.unit:""}{ii<printItem.ingredienti.length-1?", ":""}</span>)}</div>}
+                {printItem.nota&&<div style={{marginTop:4,fontSize:10,fontStyle:"italic",color:"#666"}}>{printItem.nota}</div>}
+              </div>
+              <div style={{marginTop:8,paddingTop:6,borderTop:"1px solid #ddd",fontSize:8,color:"#aaa",fontFamily:"monospace",textAlign:"right"}}>{kitchen?.name||""}</div>
+            </div>
+            <div style={{display:"flex",gap:8,marginTop:12}}>
+              <button onClick={()=>{
+                const w=document.getElementById("etichetta-print-wrapper");
+                if(w){w.style.display="flex";}
+                setTimeout(()=>{window.print();setTimeout(()=>{if(w)w.style.display="none";},500);},200);
+              }} style={{flex:1,padding:"9px",borderRadius:9,border:"none",cursor:"pointer",background:"#1a2744",color:"#C9A84C",fontFamily:"monospace",fontSize:11,fontWeight:600}}>🖨 Stampa A6</button>
               <button onClick={()=>setPrintItem(null)} style={{flex:1,padding:"9px",borderRadius:9,border:"1px solid #ccc",cursor:"pointer",background:"transparent",color:"#666",fontFamily:"monospace",fontSize:11}}>Chiudi</button>
             </div>
           </div>

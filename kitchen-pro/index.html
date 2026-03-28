@@ -11,7 +11,21 @@
     html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
     body { overscroll-behavior-x: none; }
   </style>
-</head>
+
+  <style>
+    @media print {
+      @page { size: A6 landscape; margin: 6mm; }
+    }
+    #etichetta-print-wrapper { display: none; }
+  </style>
+  
+  <style>
+    @media print {
+      @page { size: A6 landscape; margin: 6mm; }
+    }
+    #etichetta-print-wrapper { display: none; }
+  </style>
+  </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
