@@ -4124,6 +4124,14 @@ function FatturaLottiView({ t, stockAdd, toast }) {
   const [sel, setSel] = useState<{[k:string]:boolean}>({});
   const [imgData, setImgData] = useState<{base64:string,mimeType:string}|null>(null);
   const [textInput, setTextInput] = useState("");
+  const FKEY = "fatture-storico";
+  const [storico, setStorico] = useState<any[]>(()=>{try{return JSON.parse(localStorage.getItem(FKEY)||"[]");}catch{return[];}});
+  const [showStorico, setShowStorico] = useState(false);
+  function saveStorico(prods:any[], fornitore:string) {
+    const entry = {id:genId(), data:todayDate(), at:nowISO(), fornitore, prodotti:prods};
+    const next = [entry, ...storico].slice(0,30);
+    setStorico(next); localStorage.setItem(FKEY, JSON.stringify(next));
+  }
 
   async function analizza() {
     if(!imgData&&!textInput.trim()){toast("Carica una foto o inserisci il testo","error");return;}
@@ -4163,6 +4171,8 @@ Se non trovi un campo mettilo null. Estrai TUTTI i prodotti che vedi.`;
         insertedDate:todayDate(),
       });
     });
+    const fornitore = toLoad[0]?.fornitore||"";
+    saveStorico(toLoad, fornitore);
     toast(`✓ ${toLoad.length} prodotti caricati in giacenza`,"success");
     setPreview([]); setSel({}); setImgData(null); setTextInput("");
   }
@@ -4219,6 +4229,37 @@ Se non trovi un campo mettilo null. Estrai TUTTI i prodotti che vedi.`;
           </button>
         </div>
       )}
+      {/* Storico fatture */}
+      <div style={{background:t.bgAlt,borderRadius:14,padding:"14px 16px",border:"1px solid "+t.div}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}} onClick={()=>setShowStorico(p=>!p)}>
+          <div className="mono" style={{fontSize:9,color:t.gold,letterSpacing:"0.1em"}}>STORICO FATTURE ({storico.length})</div>
+          <span style={{fontSize:12,color:t.inkMuted}}>{showStorico?"▲":"▼"}</span>
+        </div>
+        {showStorico&&(
+          <div style={{marginTop:10,display:"flex",flexDirection:"column",gap:8}}>
+            {storico.length===0&&<div style={{color:t.inkFaint,fontFamily:"var(--serif)",fontStyle:"italic",fontSize:12,textAlign:"center",padding:"12px"}}>Nessuna fattura caricata</div>}
+            {storico.map((f:any)=>(
+              <div key={f.id} style={{borderRadius:9,border:"1px solid "+t.div,overflow:"hidden"}}>
+                <div style={{padding:"8px 12px",background:t.bgCard,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
+                    <span style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:13,color:t.ink}}>{f.fornitore||"Fattura"}</span>
+                    <span className="mono" style={{fontSize:9,color:t.inkFaint,marginLeft:8}}>{f.data}</span>
+                  </div>
+                  <span className="mono" style={{fontSize:9,color:t.inkMuted}}>{f.prodotti.length} prodotti</span>
+                </div>
+                <div style={{padding:"6px 12px 10px",display:"flex",flexWrap:"wrap",gap:4}}>
+                  {f.prodotti.map((p:any,pi:number)=>(
+                    <span key={pi} style={{padding:"2px 8px",borderRadius:5,background:t.bgAlt,border:"1px solid "+t.div,fontFamily:"var(--mono)",fontSize:9,color:t.inkMuted}}>
+                      {p.nome}{p.lotto?" #"+p.lotto:""}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {storico.length>0&&<button onClick={()=>{setStorico([]);localStorage.removeItem(FKEY);}} style={{alignSelf:"flex-end",padding:"4px 12px",borderRadius:7,border:"1px solid "+t.div,cursor:"pointer",background:"transparent",color:t.danger,fontFamily:"var(--mono)",fontSize:9}}>Svuota storico</button>}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -6674,7 +6715,16 @@ function SemilavView({ t, kitchen, allItems, toast }) {
               <input placeholder="Ingrediente" value={ing.nome} onChange={e=>{const a=[...slForm.ingredienti];a[ii]={...a[ii],nome:e.target.value};setSlForm(p=>({...p,ingredienti:a}));}} style={{flex:2,minWidth:100,padding:"5px 8px",borderRadius:7,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontSize:12,fontFamily:"var(--serif)",outline:"none"}}/>
               <select value={ing.lotto} onChange={e=>{const a=[...slForm.ingredienti];a[ii]={...a[ii],lotto:e.target.value};setSlForm(p=>({...p,ingredienti:a}));}} style={{flex:1,minWidth:80,padding:"5px",borderRadius:7,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontSize:11,outline:"none"}}>
                 <option value="">Lotto (opz.)</option>
+                <optgroup label="Da stock">
                 {lots.map((x:any)=><option key={x.id} value={x.lot}>{x.name} — {x.lot}</option>)}
+                </optgroup>
+                {(()=>{
+                  const tre=Date.now()-3*86400000;
+                  const fatt=JSON.parse(localStorage.getItem("fatture-storico")||"[]");
+                  const recenti=fatt.filter((f:any)=>new Date(f.at).getTime()>tre);
+                  const lottiF=recenti.flatMap((f:any)=>f.prodotti.filter((p:any)=>p.lotto).map((p:any)=>({nome:p.nome,lotto:p.lotto,data:f.data})));
+                  return lottiF.length>0?<optgroup label="Da fatture recenti">{lottiF.map((l:any,li:number)=><option key={li} value={l.lotto}>{l.nome} — {l.lotto} ({l.data})</option>)}</optgroup>:null;
+                })()}
               </select>
               <input placeholder="Qty" value={ing.qty} onChange={e=>{const a=[...slForm.ingredienti];a[ii]={...a[ii],qty:e.target.value};setSlForm(p=>({...p,ingredienti:a}));}} style={{width:50,padding:"5px",borderRadius:7,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontSize:12,outline:"none"}}/>
               <select value={ing.unit} onChange={e=>{const a=[...slForm.ingredienti];a[ii]={...a[ii],unit:e.target.value};setSlForm(p=>({...p,ingredienti:a}));}} style={{width:50,padding:"5px",borderRadius:7,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontSize:11,outline:"none"}}>
