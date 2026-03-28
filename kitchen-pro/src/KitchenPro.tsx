@@ -4117,6 +4117,112 @@ function ShoppingView({ t }) {
    SPESA VIEW v2 — vista tabellare tipologia × frequenza
    Economato | Alimenti | Altro  ×  Giornaliero | Settimanale
    ════════════════════════════════════════════════════════ */
+function FatturaLottiView({ t, stockAdd, toast }) {
+  const fileRef = useRef<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [preview, setPreview] = useState<any[]>([]);
+  const [sel, setSel] = useState<{[k:string]:boolean}>({});
+  const [imgData, setImgData] = useState<{base64:string,mimeType:string}|null>(null);
+  const [textInput, setTextInput] = useState("");
+
+  async function analizza() {
+    if(!imgData&&!textInput.trim()){toast("Carica una foto o inserisci il testo","error");return;}
+    setLoading(true); setPreview([]); setSel({});
+    try {
+      const sys = `Sei un sistema OCR per cucine professionali. Analizza questa fattura/DDT e estrai TUTTI i prodotti con i loro lotti.
+Rispondi SOLO in JSON (no markdown): {"prodotti":[{"nome":"stringa","lotto":"stringa o null","qty":numero,"unit":"kg|g|l|ml|pz","scadenza":"YYYY-MM-DD o null","fornitore":"stringa o null"}]}
+Se non trovi un campo mettilo null. Estrai TUTTI i prodotti che vedi.`;
+      let result;
+      if(imgData) {
+        result = await callAI({systemPrompt:sys, userMessages:[
+          {type:"image",source:{type:"base64",media_type:imgData.mimeType,data:imgData.base64}},
+          {type:"text",text:"Estrai tutti i prodotti con lotti da questa fattura/DDT."},
+        ], maxTokens:2000, expectJSON:true, noCache:true});
+      } else {
+        result = await callAI({systemPrompt:sys, userContext:textInput, maxTokens:2000, expectJSON:true, noCache:true});
+      }
+      const prods = result?.prodotti||[];
+      if(!prods.length){toast("Nessun prodotto trovato","error");return;}
+      const initSel:{[k:string]:boolean}={};
+      prods.forEach((_:any,i:number)=>{initSel[i]=true;});
+      setPreview(prods); setSel(initSel);
+      toast(`${prods.length} prodotti estratti`,"success");
+    } catch(e:any) {
+      toast("Errore AI: "+e.message,"error");
+    } finally { setLoading(false); }
+  }
+
+  function carica() {
+    const toLoad = preview.filter((_,i)=>sel[i]);
+    if(!toLoad.length){toast("Seleziona almeno un prodotto","error");return;}
+    toLoad.forEach((p:any)=>{
+      stockAdd({
+        name:p.nome, quantity:p.qty||1, unit:p.unit||"pz",
+        location:"dry", lot:p.lotto||undefined,
+        expiresAt:p.scadenza?new Date(p.scadenza).toISOString():undefined,
+        insertedDate:todayDate(),
+      });
+    });
+    toast(`✓ ${toLoad.length} prodotti caricati in giacenza`,"success");
+    setPreview([]); setSel({}); setImgData(null); setTextInput("");
+  }
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:16}}>
+      <div style={{background:t.bgAlt,borderRadius:14,padding:"16px",border:"1px solid "+t.div}}>
+        <div className="mono" style={{fontSize:9,color:t.gold,letterSpacing:"0.1em",marginBottom:10}}>CARICA FATTURA O DDT</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
+          <input ref={fileRef} type="file" accept="image/*,application/pdf" style={{display:"none"}} onChange={e=>{
+            const f=e.target.files?.[0]; if(!f)return;
+            const r=new FileReader();
+            r.onload=ev=>{
+              const b64=(ev.target?.result as string).split(",")[1];
+              setImgData({base64:b64,mimeType:f.type==="application/pdf"?"image/jpeg":f.type});
+              toast("File caricato: "+f.name,"success");
+            };
+            r.readAsDataURL(f);
+          }}/>
+          <button onClick={()=>fileRef.current?.click()} style={{padding:"9px 18px",borderRadius:9,border:"1px solid "+t.div,cursor:"pointer",background:imgData?t.goldFaint:t.bgCard,color:imgData?t.gold:t.inkMuted,fontFamily:"var(--mono)",fontSize:10}}>
+            {imgData?"✓ File caricato":"📎 Foto/PDF"}
+          </button>
+          {imgData&&<button onClick={()=>setImgData(null)} style={{padding:"9px 12px",borderRadius:9,border:"none",cursor:"pointer",background:t.accentGlow,color:t.danger,fontFamily:"var(--mono)",fontSize:10}}>✕</button>}
+        </div>
+        <div className="mono" style={{fontSize:9,color:t.inkFaint,marginBottom:6}}>OPPURE INCOLLA IL TESTO</div>
+        <textarea value={textInput} onChange={e=>setTextInput(e.target.value)} placeholder="Incolla il testo della fattura/DDT..." rows={4} style={{width:"100%",padding:"8px 10px",borderRadius:8,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:11,resize:"vertical",outline:"none",boxSizing:"border-box"}}/>
+        <button onClick={analizza} disabled={loading||(!imgData&&!textInput.trim())} style={{marginTop:10,width:"100%",padding:"10px",borderRadius:10,border:"none",cursor:"pointer",background:loading?t.bgAlt:t.secondary,color:loading?t.inkMuted:"#fff",fontFamily:"var(--mono)",fontSize:11,fontWeight:600,transition:"all 0.2s"}}>
+          {loading?"⏳ Analisi in corso...":"✨ Analizza e Estrai Lotti"}
+        </button>
+      </div>
+
+      {preview.length>0&&(
+        <div style={{background:t.bgAlt,borderRadius:14,padding:"16px",border:"1px solid "+t.div,display:"flex",flexDirection:"column",gap:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div className="mono" style={{fontSize:9,color:t.gold,letterSpacing:"0.1em"}}>PRODOTTI ESTRATTI — seleziona da caricare</div>
+            <div style={{display:"flex",gap:6}}>
+              <button onClick={()=>{const s:{[k:string]:boolean}={};preview.forEach((_,i)=>{s[i]=true;});setSel(s);}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid "+t.div,cursor:"pointer",background:"transparent",color:t.inkMuted,fontFamily:"var(--mono)",fontSize:9}}>Tutti</button>
+              <button onClick={()=>setSel({})} style={{padding:"4px 10px",borderRadius:6,border:"1px solid "+t.div,cursor:"pointer",background:"transparent",color:t.inkMuted,fontFamily:"var(--mono)",fontSize:9}}>Nessuno</button>
+            </div>
+          </div>
+          {preview.map((p:any,i:number)=>(
+            <div key={i} onClick={()=>setSel(s=>({...s,[i]:!s[i]}))} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:9,border:"1px solid "+(sel[i]?t.gold:t.div),background:sel[i]?t.goldFaint:t.bgCard,cursor:"pointer",transition:"all 0.15s"}}>
+              <span style={{fontSize:14,color:sel[i]?t.gold:t.inkFaint}}>{sel[i]?"☑":"☐"}</span>
+              <div style={{flex:1}}>
+                <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:13,color:t.ink}}>{p.nome}</div>
+                <div className="mono" style={{fontSize:9,color:t.inkFaint,marginTop:2}}>
+                  {p.qty} {p.unit}{p.lotto?" · Lotto: "+p.lotto:""}{p.scadenza?" · Scad: "+p.scadenza:""}{p.fornitore?" · "+p.fornitore:""}
+                </div>
+              </div>
+            </div>
+          ))}
+          <button onClick={carica} style={{padding:"10px",borderRadius:10,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontFamily:"var(--mono)",fontSize:11,fontWeight:600}}>
+            ✓ Carica {Object.values(sel).filter(Boolean).length} prodotti in giacenza
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SpesaView({ t }) {
   const { kitchen, allItems, stockAdd, spesaV2Add, spesaV2Update, spesaV2Toggle, spesaV2Remove, spesaV2Clear, currentRole } = useK();
   const toast = useToast();
@@ -4171,7 +4277,7 @@ function SpesaView({ t }) {
     <div style={{display:"flex",flexDirection:"column",gap:20}}>
       {/* Tab header */}
       <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-        {[{k:"tabella",l:`📊 Vista Tabella (${totale})`},{k:"aggiungi",l:"+ Aggiungi"}].map(({k,l})=>(
+        {[{k:"tabella",l:`📊 Vista Tabella (${totale})`},{k:"aggiungi",l:"+ Aggiungi"},{k:"fattura",l:"📄 Fattura/DDT"}].map(({k,l})=>(
           <button key={k} onClick={()=>setTab(k)} style={{
             padding:"8px 16px",borderRadius:10,border:"none",cursor:"pointer",
             fontFamily:"var(--mono)",fontSize:10,letterSpacing:"0.06em",
@@ -4188,6 +4294,7 @@ function SpesaView({ t }) {
       </div>
 
       {/* Form aggiunta */}
+      {tab==="fattura"&&<FatturaLottiView t={t} stockAdd={stockAdd} toast={toast}/>}
       {(tab==="aggiungi"||!items.length)&&canEdit&&(
         <Card t={t} style={{padding:20}}>
           <div className="mono" style={{fontSize:8,letterSpacing:"0.14em",color:t.inkFaint,marginBottom:12}}>NUOVO ARTICOLO</div>
