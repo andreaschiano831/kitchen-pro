@@ -6689,139 +6689,197 @@ function SpttpView({ t }) {
 
 function SemilavView({ t, kitchen, allItems, toast }) {
   const SLKEY=`semilav-${kitchen?.id}`;
-  const lots=allItems().filter((x:any)=>x.lot);
+  const ALLERGENI_EU=["Glutine","Crostacei","Uova","Pesce","Arachidi","Soia","Latte","Frutta a guscio","Sedano","Senape","Semi di sesamo","Anidride solforosa","Lupini","Molluschi"];
+  const items=allItems();
+  const lots=items.filter((x:any)=>x.lot);
+  const preps=(kitchen?.preps||[]).filter((p:any)=>p.status!=="done");
+  const fattureStorico:any[]=(() => {try{return JSON.parse(localStorage.getItem("fatture-storico")||"[]");}catch{return[];}})();
+  const tre=Date.now()-3*86400000;
+  const lottiFatture=fattureStorico.filter((f:any)=>new Date(f.at).getTime()>tre).flatMap((f:any)=>f.prodotti.filter((p:any)=>p.lotto).map((p:any)=>({nome:p.nome,lotto:p.lotto,data:f.data,src:"fattura"})));
+
   const [slList,setSlList]=useState<any[]>(()=>{try{return JSON.parse(localStorage.getItem(SLKEY)||"[]");}catch{return[];}});
-  const [slForm,setSlForm]=useState({nome:"",dataProd:todayDate(),scadGiorni:"3",nota:"",ingredienti:[{nome:"",lotto:"",qty:"",unit:"kg"}]});
+  const emptyForm={nome:"",dataProd:todayDate(),scadGiorni:"3",nota:"",allergeni:[] as string[],ingredienti:[{nome:"",lotto:"",qty:"",unit:"kg"}]};
+  const [slForm,setSlForm]=useState<any>(emptyForm);
   const [showForm,setShowForm]=useState(false);
   const [printItem,setPrintItem]=useState<any>(null);
   const saveList=(l:any[])=>{setSlList(l);localStorage.setItem(SLKEY,JSON.stringify(l));};
+
+  function toggleAllergene(a:string){
+    setSlForm((p:any)=>({...p,allergeni:p.allergeni.includes(a)?p.allergeni.filter((x:string)=>x!==a):[...p.allergeni,a]}));
+  }
+
   return (
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <span style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:15,color:t.ink}}>Semilavorati registrati</span>
-        <button onClick={()=>setShowForm(p=>!p)} style={{padding:"7px 16px",borderRadius:9,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontFamily:"var(--mono)",fontSize:10}}>+ Nuovo</button>
+      {/* Header */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+        <span style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:15,color:t.ink}}>Semilavorati ({slList.length})</span>
+        <button onClick={()=>{setSlForm(emptyForm);setShowForm(p=>!p);}} style={{padding:"7px 16px",borderRadius:9,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontFamily:"var(--mono)",fontSize:10,fontWeight:600}}>{showForm?"✕ Chiudi":"+ Nuovo"}</button>
       </div>
+
+      {/* Form */}
       {showForm&&(
-        <div style={{background:t.bgAlt,borderRadius:14,padding:"16px",border:"1px solid "+t.div,display:"flex",flexDirection:"column",gap:10}}>
+        <div style={{background:t.bgAlt,borderRadius:14,padding:"16px",border:"1px solid "+t.div,display:"flex",flexDirection:"column",gap:12}}>
           <div className="mono" style={{fontSize:9,color:t.gold,letterSpacing:"0.1em"}}>NUOVO SEMILAVORATO</div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            <input placeholder="Nome semilavorato" value={slForm.nome} onChange={e=>setSlForm(p=>({...p,nome:e.target.value}))} style={{flex:2,minWidth:140,padding:"7px 10px",borderRadius:8,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontFamily:"var(--serif)",fontSize:13,outline:"none"}}/>
-            <input type="date" value={slForm.dataProd} onChange={e=>setSlForm(p=>({...p,dataProd:e.target.value}))} style={{padding:"7px 10px",borderRadius:8,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:12,outline:"none"}}/>
-            <input placeholder="Scad (giorni)" type="number" value={slForm.scadGiorni} onChange={e=>setSlForm(p=>({...p,scadGiorni:e.target.value}))} style={{width:100,padding:"7px 8px",borderRadius:8,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:12,outline:"none"}}/>
-          </div>
-          <div className="mono" style={{fontSize:9,color:t.inkMuted,marginTop:4}}>INGREDIENTI / LOTTI</div>
-          {slForm.ingredienti.map((ing,ii)=>(
-            <div key={ii} style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-              <input placeholder="Ingrediente" value={ing.nome} onChange={e=>{const a=[...slForm.ingredienti];a[ii]={...a[ii],nome:e.target.value};setSlForm(p=>({...p,ingredienti:a}));}} style={{flex:2,minWidth:100,padding:"5px 8px",borderRadius:7,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontSize:12,fontFamily:"var(--serif)",outline:"none"}}/>
-              <select value={ing.lotto} onChange={e=>{const a=[...slForm.ingredienti];a[ii]={...a[ii],lotto:e.target.value};setSlForm(p=>({...p,ingredienti:a}));}} style={{flex:1,minWidth:80,padding:"5px",borderRadius:7,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontSize:11,outline:"none"}}>
-                <option value="">Lotto (opz.)</option>
-                <optgroup label="Da stock">
-                {lots.map((x:any)=><option key={x.id} value={x.lot}>{x.name} — {x.lot}</option>)}
-                </optgroup>
-                {(()=>{
-                  const tre=Date.now()-3*86400000;
-                  const fatt=JSON.parse(localStorage.getItem("fatture-storico")||"[]");
-                  const recenti=fatt.filter((f:any)=>new Date(f.at).getTime()>tre);
-                  const lottiF=recenti.flatMap((f:any)=>f.prodotti.filter((p:any)=>p.lotto).map((p:any)=>({nome:p.nome,lotto:p.lotto,data:f.data})));
-                  return lottiF.length>0?<optgroup label="Da fatture recenti">{lottiF.map((l:any,li:number)=><option key={li} value={l.lotto}>{l.nome} — {l.lotto} ({l.data})</option>)}</optgroup>:null;
-                })()}
-              </select>
-              <input placeholder="Qty" value={ing.qty} onChange={e=>{const a=[...slForm.ingredienti];a[ii]={...a[ii],qty:e.target.value};setSlForm(p=>({...p,ingredienti:a}));}} style={{width:50,padding:"5px",borderRadius:7,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontSize:12,outline:"none"}}/>
-              <select value={ing.unit} onChange={e=>{const a=[...slForm.ingredienti];a[ii]={...a[ii],unit:e.target.value};setSlForm(p=>({...p,ingredienti:a}));}} style={{width:50,padding:"5px",borderRadius:7,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontSize:11,outline:"none"}}>
-                <option>kg</option><option>g</option><option>l</option><option>ml</option><option>pz</option>
-              </select>
-              <button onClick={()=>{const a=slForm.ingredienti.filter((_,j)=>j!==ii);setSlForm(p=>({...p,ingredienti:a.length?a:[{nome:"",lotto:"",qty:"",unit:"kg"}]}));}} style={{background:"none",border:"none",color:t.danger,cursor:"pointer",fontSize:16}}>x</button>
+
+          {/* Nome + date */}
+          <input placeholder="Nome semilavorato *" value={slForm.nome} onChange={e=>setSlForm((p:any)=>({...p,nome:e.target.value}))}
+            style={{width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontFamily:"var(--serif)",fontSize:14,outline:"none",boxSizing:"border-box"}}/>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            <div>
+              <div className="mono" style={{fontSize:8,color:t.inkFaint,marginBottom:3}}>DATA PRODUZIONE</div>
+              <input type="date" value={slForm.dataProd} onChange={e=>setSlForm((p:any)=>({...p,dataProd:e.target.value}))}
+                style={{width:"100%",padding:"7px 8px",borderRadius:8,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:12,outline:"none",boxSizing:"border-box"}}/>
             </div>
-          ))}
-          <button onClick={()=>setSlForm(p=>({...p,ingredienti:[...p.ingredienti,{nome:"",lotto:"",qty:"",unit:"kg"}]}))} style={{alignSelf:"flex-start",padding:"5px 12px",borderRadius:7,border:"1px solid "+t.div,cursor:"pointer",background:"transparent",color:t.inkMuted,fontFamily:"var(--mono)",fontSize:9}}>+ Ingrediente</button>
-          <textarea placeholder="Note (allergeni, conservazione...)" value={slForm.nota} onChange={e=>setSlForm(p=>({...p,nota:e.target.value}))} rows={2} style={{padding:"7px 10px",borderRadius:8,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontFamily:"var(--serif)",fontSize:12,resize:"vertical",outline:"none"}}/>
-          <div style={{display:"flex",gap:8}}>
+            <div>
+              <div className="mono" style={{fontSize:8,color:t.inkFaint,marginBottom:3}}>SCADENZA (giorni)</div>
+              <input type="number" min="1" value={slForm.scadGiorni} onChange={e=>setSlForm((p:any)=>({...p,scadGiorni:e.target.value}))}
+                style={{width:"100%",padding:"7px 8px",borderRadius:8,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:12,outline:"none",boxSizing:"border-box"}}/>
+            </div>
+          </div>
+
+          {/* Ingredienti */}
+          <div>
+            <div className="mono" style={{fontSize:8,color:t.inkMuted,marginBottom:6}}>INGREDIENTI E LOTTI</div>
+            {slForm.ingredienti.map((ing:any,ii:number)=>(
+              <div key={ii} style={{display:"grid",gridTemplateColumns:"2fr 2fr 60px 50px 28px",gap:5,marginBottom:6,alignItems:"center"}}>
+                <input placeholder="Ingrediente" value={ing.nome} onChange={e=>{const a=[...slForm.ingredienti];a[ii]={...a[ii],nome:e.target.value};setSlForm((p:any)=>({...p,ingredienti:a}));}}
+                  style={{padding:"6px 8px",borderRadius:7,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontSize:12,fontFamily:"var(--serif)",outline:"none"}}/>
+                <select value={ing.lotto} onChange={e=>{const a=[...slForm.ingredienti];a[ii]={...a[ii],lotto:e.target.value,nome:ing.nome||e.target.options[e.target.selectedIndex].text.split(" —")[0]};setSlForm((p:any)=>({...p,ingredienti:a}));}}
+                  style={{padding:"6px 4px",borderRadius:7,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontSize:11,outline:"none"}}>
+                  <option value="">Lotto —</option>
+                  {lots.length>0&&<optgroup label="📦 Stock">{lots.map((x:any)=><option key={x.id} value={x.lot}>{x.name} #{x.lot}</option>)}</optgroup>}
+                  {preps.length>0&&<optgroup label="📋 Prep">{preps.filter((p:any)=>p.lotto).map((p:any,pi:number)=><option key={pi} value={p.lotto}>{p.nome} #{p.lotto}</option>)}</optgroup>}
+                  {lottiFatture.length>0&&<optgroup label="📄 Fatture (72h)">{lottiFatture.map((l:any,li:number)=><option key={li} value={l.lotto}>{l.nome} #{l.lotto} ({l.data})</option>)}</optgroup>}
+                </select>
+                <input placeholder="Qty" value={ing.qty} onChange={e=>{const a=[...slForm.ingredienti];a[ii]={...a[ii],qty:e.target.value};setSlForm((p:any)=>({...p,ingredienti:a}));}}
+                  style={{padding:"6px 4px",borderRadius:7,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontSize:12,outline:"none",textAlign:"center"}}/>
+                <select value={ing.unit} onChange={e=>{const a=[...slForm.ingredienti];a[ii]={...a[ii],unit:e.target.value};setSlForm((p:any)=>({...p,ingredienti:a}));}}
+                  style={{padding:"6px 2px",borderRadius:7,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontSize:10,outline:"none"}}>
+                  <option>kg</option><option>g</option><option>l</option><option>ml</option><option>pz</option>
+                </select>
+                <button onClick={()=>{const a=slForm.ingredienti.filter((_:any,j:number)=>j!==ii);setSlForm((p:any)=>({...p,ingredienti:a.length?a:[{nome:"",lotto:"",qty:"",unit:"kg"}]}));}}
+                  style={{background:"none",border:"none",color:t.danger,cursor:"pointer",fontSize:16,padding:0,lineHeight:1}}>✕</button>
+              </div>
+            ))}
+            <button onClick={()=>setSlForm((p:any)=>({...p,ingredienti:[...p.ingredienti,{nome:"",lotto:"",qty:"",unit:"kg"}]}))}
+              style={{padding:"5px 12px",borderRadius:7,border:"1px solid "+t.div,cursor:"pointer",background:"transparent",color:t.inkMuted,fontFamily:"var(--mono)",fontSize:9}}>+ Ingrediente</button>
+          </div>
+
+          {/* Allergeni */}
+          <div>
+            <div className="mono" style={{fontSize:8,color:t.danger,marginBottom:6,letterSpacing:"0.08em"}}>ALLERGENI REG. UE 1169/2011</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+              {ALLERGENI_EU.map((a:string)=>(
+                <button key={a} onClick={()=>toggleAllergene(a)} style={{
+                  padding:"4px 9px",borderRadius:6,cursor:"pointer",fontFamily:"var(--mono)",fontSize:9,transition:"all 0.15s",
+                  background:slForm.allergeni.includes(a)?"#b0000022":t.bgCard,
+                  border:"1px solid "+(slForm.allergeni.includes(a)?t.danger:t.div),
+                  color:slForm.allergeni.includes(a)?t.danger:t.inkMuted,
+                  fontWeight:slForm.allergeni.includes(a)?700:400,
+                }}>{a}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Note */}
+          <textarea placeholder="Note (conservazione, istruzioni...)" value={slForm.nota} onChange={e=>setSlForm((p:any)=>({...p,nota:e.target.value}))} rows={2}
+            style={{padding:"7px 10px",borderRadius:8,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontFamily:"var(--serif)",fontSize:12,resize:"vertical",outline:"none"}}/>
+
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
             <button onClick={()=>{
               if(!slForm.nome.trim()){toast("Nome obbligatorio","error");return;}
               const scad=new Date(slForm.dataProd);scad.setDate(scad.getDate()+parseInt(slForm.scadGiorni||"3"));
-              const item={id:genId(),nome:slForm.nome.trim(),dataProd:slForm.dataProd,scadenza:scad.toISOString().slice(0,10),nota:slForm.nota,ingredienti:slForm.ingredienti.filter((x:any)=>x.nome.trim()),lotto:"KP-"+Date.now().toString(36).toUpperCase(),createdAt:nowISO()};
-              saveList([item,...slList]);
-              setSlForm({nome:"",dataProd:todayDate(),scadGiorni:"3",nota:"",ingredienti:[{nome:"",lotto:"",qty:"",unit:"kg"}]});
-              setShowForm(false);
-              toast("Semilavorato salvato","success");
-            }} style={{flex:1,padding:"8px",borderRadius:9,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontFamily:"var(--mono)",fontSize:10,fontWeight:600}}>Salva</button>
-            <button onClick={()=>setShowForm(false)} style={{flex:1,padding:"8px",borderRadius:9,border:"1px solid "+t.div,cursor:"pointer",background:"transparent",color:t.inkMuted,fontFamily:"var(--mono)",fontSize:10}}>Annulla</button>
+              const item={id:genId(),nome:slForm.nome.trim(),dataProd:slForm.dataProd,scadenza:scad.toISOString().slice(0,10),nota:slForm.nota,allergeni:slForm.allergeni,ingredienti:slForm.ingredienti.filter((x:any)=>x.nome.trim()),lotto:"KP-"+Date.now().toString(36).toUpperCase(),createdAt:nowISO()};
+              saveList([item,...slList]);setSlForm(emptyForm);setShowForm(false);toast("Semilavorato salvato","success");
+            }} style={{padding:"9px",borderRadius:9,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontFamily:"var(--mono)",fontSize:10,fontWeight:600}}>✓ Salva</button>
+            <button onClick={()=>{setSlForm(emptyForm);setShowForm(false);}} style={{padding:"9px",borderRadius:9,border:"1px solid "+t.div,cursor:"pointer",background:"transparent",color:t.inkMuted,fontFamily:"var(--mono)",fontSize:10}}>Annulla</button>
           </div>
         </div>
       )}
-      {slList.length===0&&!showForm&&<div style={{padding:"24px",color:t.inkFaint,fontFamily:"var(--serif)",fontStyle:"italic",textAlign:"center"}}>Nessun semilavorato registrato</div>}
-      {slList.map((sl:any,si:number)=>(
-        <div key={sl.id} style={{background:t.bgAlt,borderRadius:12,padding:"14px 16px",border:"1px solid "+t.div}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-            <div>
-              <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:14,color:t.ink,fontWeight:500}}>{sl.nome}</div>
-              <div className="mono" style={{fontSize:9,color:t.inkFaint,marginTop:3}}>Lotto: {sl.lotto} · Prod: {sl.dataProd} · Scad: {sl.scadenza}</div>
+
+      {/* Lista */}
+      {slList.length===0&&!showForm&&<div style={{padding:"32px",color:t.inkFaint,fontFamily:"var(--serif)",fontStyle:"italic",textAlign:"center"}}>Nessun semilavorato — premi + Nuovo</div>}
+      {slList.map((sl:any,si:number)=>{
+        const scadDate=new Date(sl.scadenza);
+        const oggi=new Date(todayDate());
+        const diffGg=Math.ceil((scadDate.getTime()-oggi.getTime())/86400000);
+        const scadColor=diffGg<0?t.danger:diffGg<=1?t.warning:diffGg<=3?"#E8A020":t.success;
+        return (
+          <div key={sl.id} style={{background:t.bgAlt,borderRadius:12,border:"1px solid "+t.div,overflow:"hidden"}}>
+            <div style={{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:14,color:t.ink,fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{sl.nome}</div>
+                <div className="mono" style={{fontSize:9,color:t.inkFaint,marginTop:3,display:"flex",flexWrap:"wrap",gap:6}}>
+                  <span>Lotto: {sl.lotto}</span>
+                  <span>Prod: {sl.dataProd}</span>
+                  <span style={{color:scadColor,fontWeight:600}}>Scad: {sl.scadenza} {diffGg<0?"⛔":diffGg<=1?"⚠️":""}</span>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:5,flexShrink:0}}>
+                <button onClick={()=>setPrintItem(sl)} style={{padding:"5px 10px",borderRadius:7,border:"none",cursor:"pointer",background:t.secondary,color:"#fff",fontFamily:"var(--mono)",fontSize:9}}>🖨</button>
+                <button onClick={()=>saveList(slList.filter((_:any,j:number)=>j!==si))} style={{padding:"5px 8px",borderRadius:7,border:"none",cursor:"pointer",background:t.accentGlow,color:t.danger,fontFamily:"var(--mono)",fontSize:9}}>✕</button>
+              </div>
             </div>
-            <div style={{display:"flex",gap:6}}>
-              <button onClick={()=>setPrintItem(sl)} style={{padding:"5px 10px",borderRadius:7,border:"none",cursor:"pointer",background:t.secondary,color:"#fff",fontFamily:"var(--mono)",fontSize:9}}>Stampa</button>
-              <button onClick={()=>saveList(slList.filter((_:any,j:number)=>j!==si))} style={{padding:"5px 8px",borderRadius:7,border:"none",cursor:"pointer",background:t.accentGlow,color:t.danger,fontFamily:"var(--mono)",fontSize:9}}>x</button>
-            </div>
+            {(sl.ingredienti.length>0||sl.allergeni?.length>0)&&(
+              <div style={{padding:"0 14px 12px",display:"flex",flexDirection:"column",gap:6}}>
+                {sl.ingredienti.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                  {sl.ingredienti.map((ing:any,ii:number)=>(
+                    <span key={ii} style={{padding:"2px 7px",borderRadius:5,background:t.bgCard,border:"1px solid "+t.div,fontFamily:"var(--mono)",fontSize:9,color:t.inkMuted}}>{ing.nome}{ing.lotto?" #"+ing.lotto:""}{ing.qty?" "+ing.qty+ing.unit:""}</span>
+                  ))}
+                </div>}
+                {sl.allergeni?.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:4,paddingTop:4,borderTop:"1px solid "+t.div}}>
+                  <span className="mono" style={{fontSize:8,color:t.danger,alignSelf:"center"}}>ALLERGENI:</span>
+                  {sl.allergeni.map((a:string,ai:number)=>(
+                    <span key={ai} style={{padding:"2px 7px",borderRadius:5,background:"#b0000015",border:"1px solid "+t.danger+"44",fontFamily:"var(--mono)",fontSize:9,color:t.danger}}>{a}</span>
+                  ))}
+                </div>}
+              </div>
+            )}
           </div>
-          {sl.ingredienti.length>0&&<div style={{marginTop:8,display:"flex",flexWrap:"wrap",gap:5}}>
-            {sl.ingredienti.map((ing:any,ii:number)=>(
-              <span key={ii} style={{padding:"3px 8px",borderRadius:5,background:t.bgCard,border:"1px solid "+t.div,fontFamily:"var(--mono)",fontSize:9,color:t.inkMuted}}>{ing.nome}{ing.lotto?" #"+ing.lotto:""} {ing.qty}{ing.unit}</span>
-            ))}
-          </div>}
-          {sl.nota&&<div style={{marginTop:6,fontSize:11,color:t.inkMuted,fontFamily:"var(--serif)",fontStyle:"italic"}}>{sl.nota}</div>}
-        </div>
-      ))}
+        );
+      })}
+
+      {/* Modal stampa */}
       {printItem&&(
         <div style={{position:"fixed",inset:0,zIndex:9000,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-          {/* Etichetta stampabile — visibile solo in print */}
           <div id="etichetta-print-wrapper" style={{display:"none",position:"fixed",inset:0,background:"#fff",zIndex:99999,alignItems:"center",justifyContent:"center"}}>
             <div style={{fontFamily:"'Times New Roman',serif",color:"#000",border:"3px solid #1a2744",borderRadius:6,padding:"14px 18px",width:320,margin:"auto",marginTop:20}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",borderBottom:"1.5px solid #1a2744",paddingBottom:8,marginBottom:10}}>
-                <div>
-                  <div style={{fontSize:9,letterSpacing:"0.18em",color:"#8B7536",fontFamily:"monospace",textTransform:"uppercase"}}>Kitchen Pro · Semilavorato</div>
-                  <div style={{fontSize:20,fontWeight:700,marginTop:3,lineHeight:1.2}}>{printItem.nome}</div>
-                </div>
+                <div><div style={{fontSize:9,letterSpacing:"0.18em",color:"#8B7536",fontFamily:"monospace"}}>KITCHEN PRO · SEMILAVORATO</div><div style={{fontSize:20,fontWeight:700,marginTop:3,lineHeight:1.2}}>{printItem.nome}</div></div>
                 <img src={"https://api.qrserver.com/v1/create-qr-code/?size=70x70&data="+encodeURIComponent("LOTTO:"+printItem.lotto+"|PROD:"+printItem.dataProd+"|SCAD:"+printItem.scadenza+"|"+printItem.nome)} alt="QR" style={{width:70,height:70,borderRadius:4}}/>
               </div>
-              <table style={{width:"100%",fontSize:11,lineHeight:1.9,borderCollapse:"collapse"}}>
-                <tbody>
-                  <tr><td style={{color:"#555",width:110,fontFamily:"monospace",fontSize:10}}>LOTTO</td><td style={{fontWeight:700,fontFamily:"monospace"}}>{printItem.lotto}</td></tr>
-                  <tr><td style={{color:"#555",fontFamily:"monospace",fontSize:10}}>PRODUZIONE</td><td>{printItem.dataProd}</td></tr>
-                  <tr><td style={{color:"#555",fontFamily:"monospace",fontSize:10,color:"#b00"}}>SCADENZA</td><td style={{fontWeight:700,color:"#b00"}}>{printItem.scadenza}</td></tr>
-                  {printItem.ingredienti.length>0&&<tr><td style={{color:"#555",fontFamily:"monospace",fontSize:10,verticalAlign:"top",paddingTop:4}}>INGREDIENTI</td><td style={{fontSize:10}}>{printItem.ingredienti.map((ing:any,ii:number)=><span key={ii}>{ing.nome}{ing.lotto?" (L."+ing.lotto+")":""}{ing.qty?" "+ing.qty+ing.unit:""}{ii<printItem.ingredienti.length-1?", ":""}</span>)}</td></tr>}
-                  {printItem.nota&&<tr><td style={{color:"#555",fontFamily:"monospace",fontSize:10,verticalAlign:"top"}}>NOTE</td><td style={{fontSize:10,fontStyle:"italic"}}>{printItem.nota}</td></tr>}
-                </tbody>
-              </table>
+              <table style={{width:"100%",fontSize:11,lineHeight:1.9,borderCollapse:"collapse"}}><tbody>
+                <tr><td style={{color:"#555",width:110,fontFamily:"monospace",fontSize:10}}>LOTTO</td><td style={{fontWeight:700,fontFamily:"monospace"}}>{printItem.lotto}</td></tr>
+                <tr><td style={{color:"#555",fontFamily:"monospace",fontSize:10}}>PRODUZIONE</td><td>{printItem.dataProd}</td></tr>
+                <tr><td style={{color:"#555",fontFamily:"monospace",fontSize:10,color:"#b00"}}>SCADENZA</td><td style={{fontWeight:700,color:"#b00"}}>{printItem.scadenza}</td></tr>
+                {printItem.ingredienti?.length>0&&<tr><td style={{color:"#555",fontFamily:"monospace",fontSize:10,verticalAlign:"top",paddingTop:4}}>INGREDIENTI</td><td style={{fontSize:10}}>{printItem.ingredienti.map((ing:any,ii:number)=><span key={ii}>{ing.nome}{ing.lotto?" (L."+ing.lotto+")":""}{ing.qty?" "+ing.qty+ing.unit:""}{ii<printItem.ingredienti.length-1?", ":""}</span>)}</td></tr>}
+                {printItem.allergeni?.length>0&&<tr><td style={{color:"#b00",fontFamily:"monospace",fontSize:10,fontWeight:700,verticalAlign:"top",paddingTop:4}}>ALLERGENI</td><td style={{fontSize:10,color:"#b00",fontWeight:600}}>{printItem.allergeni.join(", ")}</td></tr>}
+                {printItem.nota&&<tr><td style={{color:"#555",fontFamily:"monospace",fontSize:10,verticalAlign:"top"}}>NOTE</td><td style={{fontSize:10,fontStyle:"italic"}}>{printItem.nota}</td></tr>}
+              </tbody></table>
               <div style={{marginTop:8,paddingTop:6,borderTop:"1px solid #ccc",display:"flex",justifyContent:"space-between",fontSize:8,color:"#999",fontFamily:"monospace"}}>
-                <span>{kitchen?.name||"Kitchen Pro"}</span>
-                <span>Reg. {printItem.createdAt?.slice(0,10)||""}</span>
+                <span>{kitchen?.name||"Kitchen Pro"}</span><span>Reg. {printItem.createdAt?.slice(0,10)||""}</span>
               </div>
             </div>
           </div>
-          {/* Modal preview */}
-          <div style={{background:"#fff",borderRadius:14,padding:"20px",maxWidth:420,width:"100%",boxShadow:"0 20px 60px rgba(0,0,0,0.5)"}}>
+          <div style={{background:"#fff",borderRadius:14,padding:"20px",maxWidth:420,width:"100%",boxShadow:"0 20px 60px rgba(0,0,0,0.5)",maxHeight:"90vh",overflowY:"auto"}}>
             <div style={{fontFamily:"'Times New Roman',serif",color:"#000",border:"2px solid #1a2744",borderRadius:8,padding:"14px 18px"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",borderBottom:"1.5px solid #1a2744",paddingBottom:8,marginBottom:10}}>
-                <div>
-                  <div style={{fontSize:9,letterSpacing:"0.15em",color:"#8B7536",fontFamily:"monospace"}}>KITCHEN PRO · SEMILAVORATO</div>
-                  <div style={{fontSize:17,fontWeight:700,marginTop:3}}>{printItem.nome}</div>
-                </div>
+                <div><div style={{fontSize:9,letterSpacing:"0.15em",color:"#8B7536",fontFamily:"monospace"}}>KITCHEN PRO · SEMILAVORATO</div><div style={{fontSize:17,fontWeight:700,marginTop:3}}>{printItem.nome}</div></div>
                 <img src={"https://api.qrserver.com/v1/create-qr-code/?size=64x64&data="+encodeURIComponent("LOTTO:"+printItem.lotto+"|"+printItem.nome)} alt="QR" style={{width:64,height:64,borderRadius:4}}/>
               </div>
               <div style={{fontSize:11,lineHeight:1.9}}>
                 <div><b>Lotto:</b> <span style={{fontFamily:"monospace"}}>{printItem.lotto}</span></div>
                 <div><b>Produzione:</b> {printItem.dataProd}</div>
                 <div style={{color:"#b00"}}><b>Scadenza:</b> {printItem.scadenza}</div>
-                {printItem.ingredienti.length>0&&<div style={{marginTop:6,fontSize:10}}><b>Ingredienti:</b> {printItem.ingredienti.map((i:any,ii:number)=><span key={ii}>{i.nome}{i.lotto?" (L."+i.lotto+")":""}{i.qty?" "+i.qty+i.unit:""}{ii<printItem.ingredienti.length-1?", ":""}</span>)}</div>}
+                {printItem.ingredienti?.length>0&&<div style={{marginTop:6,fontSize:10}}><b>Ingredienti:</b> {printItem.ingredienti.map((i:any,ii:number)=><span key={ii}>{i.nome}{i.lotto?" (L."+i.lotto+")":""}{i.qty?" "+i.qty+i.unit:""}{ii<printItem.ingredienti.length-1?", ":""}</span>)}</div>}
+                {printItem.allergeni?.length>0&&<div style={{marginTop:6,fontSize:10,color:"#b00"}}><b>ALLERGENI:</b> {printItem.allergeni.join(", ")}</div>}
                 {printItem.nota&&<div style={{marginTop:4,fontSize:10,fontStyle:"italic",color:"#666"}}>{printItem.nota}</div>}
               </div>
               <div style={{marginTop:8,paddingTop:6,borderTop:"1px solid #ddd",fontSize:8,color:"#aaa",fontFamily:"monospace",textAlign:"right"}}>{kitchen?.name||""}</div>
             </div>
             <div style={{display:"flex",gap:8,marginTop:12}}>
-              <button onClick={()=>{
-                const w=document.getElementById("etichetta-print-wrapper");
-                if(w){w.style.display="flex";}
-                setTimeout(()=>{window.print();setTimeout(()=>{if(w)w.style.display="none";},500);},200);
-              }} style={{flex:1,padding:"9px",borderRadius:9,border:"none",cursor:"pointer",background:"#1a2744",color:"#C9A84C",fontFamily:"monospace",fontSize:11,fontWeight:600}}>🖨 Stampa A6</button>
+              <button onClick={()=>{const w=document.getElementById("etichetta-print-wrapper");if(w){w.style.display="flex";}setTimeout(()=>{window.print();setTimeout(()=>{if(w)w.style.display="none";},500);},200);}}
+                style={{flex:1,padding:"9px",borderRadius:9,border:"none",cursor:"pointer",background:"#1a2744",color:"#C9A84C",fontFamily:"monospace",fontSize:11,fontWeight:600}}>🖨 Stampa A6</button>
               <button onClick={()=>setPrintItem(null)} style={{flex:1,padding:"9px",borderRadius:9,border:"1px solid #ccc",cursor:"pointer",background:"transparent",color:"#666",fontFamily:"monospace",fontSize:11}}>Chiudi</button>
             </div>
           </div>
@@ -6830,6 +6888,7 @@ function SemilavView({ t, kitchen, allItems, toast }) {
     </div>
   );
 }
+
 
 function HaccpViewFull({ t }) {
   const { kitchen, allItems, currentRole } = useK();
