@@ -4117,6 +4117,85 @@ function ShoppingView({ t }) {
    SPESA VIEW v2 — vista tabellare tipologia × frequenza
    Economato | Alimenti | Altro  ×  Giornaliero | Settimanale
    ════════════════════════════════════════════════════════ */
+function ArchivioFatture({ t, storico, setStorico, FKEY, stockAdd, toast }) {
+  const [expanded, setExpanded] = React.useState<string|null>(null);
+  // Raggruppa per mese
+  const byMonth: {[k:string]:any[]} = {};
+  storico.forEach((f:any)=>{
+    const m = (f.dataFattura||f.data||"").slice(0,7);
+    if(!byMonth[m]) byMonth[m]=[];
+    byMonth[m].push(f);
+  });
+  const months = Object.keys(byMonth).sort((a,b)=>b.localeCompare(a));
+
+  function fmtMonth(m:string){
+    const [y,mo]=m.split("-");
+    const names=["","Gen","Feb","Mar","Apr","Mag","Giu","Lug","Ago","Set","Ott","Nov","Dic"];
+    return (names[parseInt(mo)]||mo)+" "+y;
+  }
+
+  const totFattura=(f:any)=>{
+    const t=f.prodotti.reduce((s:number,p:any)=>s+(p.prezzo_totale||p.prezzo_unitario*(p.qty||1)||0),0);
+    return t>0?t.toFixed(2):null;
+  };
+
+  return (
+    <div style={{background:t.bgAlt,borderRadius:14,border:"1px solid "+t.div,overflow:"hidden"}}>
+      <div style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:storico.length?"1px solid "+t.div:"none"}}>
+        <div className="mono" style={{fontSize:9,color:t.gold,letterSpacing:"0.1em"}}>ARCHIVIO FATTURE ({storico.length})</div>
+        {storico.length>0&&<button onClick={()=>{setStorico([]);localStorage.removeItem(FKEY);}} style={{padding:"3px 10px",borderRadius:6,border:"1px solid "+t.div,cursor:"pointer",background:"transparent",color:t.danger,fontFamily:"var(--mono)",fontSize:8}}>Svuota</button>}
+      </div>
+      {storico.length===0&&<div style={{padding:"20px",color:t.inkFaint,fontFamily:"var(--serif)",fontStyle:"italic",textAlign:"center",fontSize:12}}>Nessuna fattura — carica la prima</div>}
+      {months.map((m:string)=>(
+        <div key={m} style={{borderBottom:"1px solid "+t.div}}>
+          <div style={{padding:"8px 16px",background:t.bgCard,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span className="mono" style={{fontSize:10,color:t.secondary,fontWeight:600}}>{fmtMonth(m)}</span>
+            <span className="mono" style={{fontSize:9,color:t.inkFaint}}>{byMonth[m].length} fatture</span>
+          </div>
+          {byMonth[m].map((f:any)=>{
+            const isOpen=expanded===f.id;
+            const tot=totFattura(f);
+            return (
+              <div key={f.id}>
+                <div onClick={()=>setExpanded(isOpen?null:f.id)} style={{padding:"10px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",background:isOpen?t.bgAlt:"transparent",borderTop:"1px solid "+t.div+"44"}}>
+                  <span style={{fontSize:14}}>📄</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:13,color:t.ink,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{f.fornitore||"Fattura"}{f.numero?" #"+f.numero:""}</div>
+                    <div className="mono" style={{fontSize:9,color:t.inkFaint,marginTop:2}}>{f.dataFattura||f.data} · {f.prodotti.length} prodotti{tot?" · €"+tot:""}</div>
+                  </div>
+                  <span style={{fontSize:11,color:t.inkFaint,flexShrink:0}}>{isOpen?"▲":"▼"}</span>
+                </div>
+                {isOpen&&(
+                  <div style={{padding:"8px 16px 12px",display:"flex",flexDirection:"column",gap:6}}>
+                    {f.prodotti.map((p:any,pi:number)=>(
+                      <div key={pi} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:8,background:t.bgCard,border:"1px solid "+t.div}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:12,color:t.ink}}>{p.nome}</div>
+                          <div className="mono" style={{fontSize:9,color:t.inkFaint,marginTop:2,display:"flex",flexWrap:"wrap",gap:6}}>
+                            <span>{p.qty} {p.unit}</span>
+                            {p.lotto&&<span style={{color:t.gold}}>#{p.lotto}</span>}
+                            {p.scadenza&&<span>scad:{p.scadenza}</span>}
+                            {p.prezzo_unitario&&<span style={{color:t.success}}>€{p.prezzo_unitario}/{p.unit}</span>}
+                            {p.prezzo_totale&&<span style={{color:t.success,fontWeight:600}}>€{p.prezzo_totale}</span>}
+                          </div>
+                        </div>
+                        <button onClick={()=>{
+                          stockAdd({name:p.nome,quantity:p.qty||1,unit:p.unit||"pz",location:"dry",lot:p.lotto||undefined,expiresAt:p.scadenza?new Date(p.scadenza).toISOString():undefined,insertedDate:todayDate()});
+                          toast("✓ "+p.nome+" caricato","success");
+                        }} style={{padding:"4px 8px",borderRadius:6,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontFamily:"var(--mono)",fontSize:8,flexShrink:0,whiteSpace:"nowrap"}}>+ Stock</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function FatturaLottiView({ t, stockAdd, toast }) {
   const fileRef = useRef<any>(null);
   const [loading, setLoading] = useState(false);
@@ -4127,8 +4206,8 @@ function FatturaLottiView({ t, stockAdd, toast }) {
   const FKEY = "fatture-storico";
   const [storico, setStorico] = useState<any[]>(()=>{try{return JSON.parse(localStorage.getItem(FKEY)||"[]");}catch{return[];}});
   const [showStorico, setShowStorico] = useState(false);
-  function saveStorico(prods:any[], fornitore:string) {
-    const entry = {id:genId(), data:todayDate(), at:nowISO(), fornitore, prodotti:prods};
+  function saveStorico(prods:any[], meta:any) {
+    const entry = {id:genId(), data:todayDate(), at:nowISO(), fornitore:meta?.fornitore||"", numero:meta?.numero||"", dataFattura:meta?.dataFattura||todayDate(), prodotti:prods};
     const next = [entry, ...storico].slice(0,30);
     setStorico(next); localStorage.setItem(FKEY, JSON.stringify(next));
   }
@@ -4137,9 +4216,10 @@ function FatturaLottiView({ t, stockAdd, toast }) {
     if(!imgData&&!textInput.trim()){toast("Carica una foto o inserisci il testo","error");return;}
     setLoading(true); setPreview([]); setSel({});
     try {
-      const sys = `Sei un sistema OCR per cucine professionali. Analizza questa fattura/DDT e estrai TUTTI i prodotti con i loro lotti.
-Rispondi SOLO in JSON (no markdown): {"prodotti":[{"nome":"stringa","lotto":"stringa o null","qty":numero,"unit":"kg|g|l|ml|pz","scadenza":"YYYY-MM-DD o null","fornitore":"stringa o null"}]}
-Se non trovi un campo mettilo null. Estrai TUTTI i prodotti che vedi.`;
+      const sys = `Sei un sistema OCR esperto per cucine professionali stellate. Analizza questa fattura/DDT ed estrai TUTTI i prodotti.
+Rispondi SOLO in JSON valido (no markdown, no testo extra):
+{"fornitore":"nome fornitore o null","numero_fattura":"numero o null","data_fattura":"YYYY-MM-DD o null","prodotti":[{"nome":"stringa","lotto":"stringa o null","qty":numero,"unit":"kg|g|l|ml|pz","prezzo_unitario":numero_o_null,"prezzo_totale":numero_o_null,"scadenza":"YYYY-MM-DD o null"}]}
+Estrai TUTTI i prodotti visibili. Se un campo non è presente mettilo null.`;
       let result;
       if(imgData) {
         result = await callAI({systemPrompt:sys, userMessages:[
@@ -4150,6 +4230,8 @@ Se non trovi un campo mettilo null. Estrai TUTTI i prodotti che vedi.`;
         result = await callAI({systemPrompt:sys, userContext:textInput, maxTokens:2000, expectJSON:true, noCache:true});
       }
       const prods = result?.prodotti||[];
+      // Salva metadati fattura per uso in archivio
+      (window as any).__lastFatturaResult = result;
       if(!prods.length){toast("Nessun prodotto trovato","error");return;}
       const initSel:{[k:string]:boolean}={};
       prods.forEach((_:any,i:number)=>{initSel[i]=true;});
@@ -4171,8 +4253,9 @@ Se non trovi un campo mettilo null. Estrai TUTTI i prodotti che vedi.`;
         insertedDate:todayDate(),
       });
     });
-    const fornitore = toLoad[0]?.fornitore||"";
-    saveStorico(toLoad, fornitore);
+    const lastRes = (window as any).__lastFatturaResult||{};
+    const meta = { fornitore: lastRes?.fornitore||toLoad[0]?.fornitore||"", numero: lastRes?.numero_fattura||"", dataFattura: lastRes?.data_fattura||todayDate() };
+    saveStorico(toLoad, meta);
     toast(`✓ ${toLoad.length} prodotti caricati in giacenza`,"success");
     setPreview([]); setSel({}); setImgData(null); setTextInput("");
   }
@@ -4229,37 +4312,8 @@ Se non trovi un campo mettilo null. Estrai TUTTI i prodotti che vedi.`;
           </button>
         </div>
       )}
-      {/* Storico fatture */}
-      <div style={{background:t.bgAlt,borderRadius:14,padding:"14px 16px",border:"1px solid "+t.div}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}} onClick={()=>setShowStorico(p=>!p)}>
-          <div className="mono" style={{fontSize:9,color:t.gold,letterSpacing:"0.1em"}}>STORICO FATTURE ({storico.length})</div>
-          <span style={{fontSize:12,color:t.inkMuted}}>{showStorico?"▲":"▼"}</span>
-        </div>
-        {showStorico&&(
-          <div style={{marginTop:10,display:"flex",flexDirection:"column",gap:8}}>
-            {storico.length===0&&<div style={{color:t.inkFaint,fontFamily:"var(--serif)",fontStyle:"italic",fontSize:12,textAlign:"center",padding:"12px"}}>Nessuna fattura caricata</div>}
-            {storico.map((f:any)=>(
-              <div key={f.id} style={{borderRadius:9,border:"1px solid "+t.div,overflow:"hidden"}}>
-                <div style={{padding:"8px 12px",background:t.bgCard,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div>
-                    <span style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:13,color:t.ink}}>{f.fornitore||"Fattura"}</span>
-                    <span className="mono" style={{fontSize:9,color:t.inkFaint,marginLeft:8}}>{f.data}</span>
-                  </div>
-                  <span className="mono" style={{fontSize:9,color:t.inkMuted}}>{f.prodotti.length} prodotti</span>
-                </div>
-                <div style={{padding:"6px 12px 10px",display:"flex",flexWrap:"wrap",gap:4}}>
-                  {f.prodotti.map((p:any,pi:number)=>(
-                    <span key={pi} style={{padding:"2px 8px",borderRadius:5,background:t.bgAlt,border:"1px solid "+t.div,fontFamily:"var(--mono)",fontSize:9,color:t.inkMuted}}>
-                      {p.nome}{p.lotto?" #"+p.lotto:""}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
-            {storico.length>0&&<button onClick={()=>{setStorico([]);localStorage.removeItem(FKEY);}} style={{alignSelf:"flex-end",padding:"4px 12px",borderRadius:7,border:"1px solid "+t.div,cursor:"pointer",background:"transparent",color:t.danger,fontFamily:"var(--mono)",fontSize:9}}>Svuota storico</button>}
-          </div>
-        )}
-      </div>
+      {/* Archivio fatture calendario */}
+      <ArchivioFatture t={t} storico={storico} setStorico={setStorico} FKEY={FKEY} stockAdd={stockAdd} toast={toast}/>
     </div>
   );
 }
