@@ -1308,7 +1308,7 @@ function LuxSelect({ value, onChange, children, t, style:sx={} }) {
 
 function VoiceBtn({ t, onResult }) {
   const speech = useSpeech(onResult);
-  if(!speech.supported) return null;
+  if(!speech.supported) return <span style={{fontSize:9,color:"rgba(255,255,255,0.3)",padding:"0 4px",cursor:"not-allowed"}} title="Audio non supportato">🎤</span>;
   return (
     <button onClick={speech.listening?speech.stop:speech.start} style={{
       width:34,height:34,borderRadius:"50%",border:"none",cursor:"pointer",
