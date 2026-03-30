@@ -6905,7 +6905,7 @@ function SemilavView({ t, kitchen, allItems, toast }) {
               <table style={{width:"100%",fontSize:11,lineHeight:1.9,borderCollapse:"collapse"}}><tbody>
                 <tr><td style={{color:"#555",width:110,fontFamily:"monospace",fontSize:10}}>LOTTO</td><td style={{fontWeight:700,fontFamily:"monospace"}}>{printItem.lotto}</td></tr>
                 <tr><td style={{color:"#555",fontFamily:"monospace",fontSize:10}}>PRODUZIONE</td><td>{printItem.dataProd}</td></tr>
-                <tr><td style={{color:"#555",fontFamily:"monospace",fontSize:10,color:"#b00"}}>SCADENZA</td><td style={{fontWeight:700,color:"#b00"}}>{printItem.scadenza}</td></tr>
+                <tr><td style={{fontFamily:"monospace",fontSize:10,color:"#b00"}}>SCADENZA</td><td style={{fontWeight:700,color:"#b00"}}>{printItem.scadenza}</td></tr>
                 {printItem.ingredienti?.length>0&&<tr><td style={{color:"#555",fontFamily:"monospace",fontSize:10,verticalAlign:"top",paddingTop:4}}>INGREDIENTI</td><td style={{fontSize:10}}>{printItem.ingredienti.map((ing:any,ii:number)=><span key={ii}>{ing.nome}{ing.lotto?" (L."+ing.lotto+")":""}{ing.qty?" "+ing.qty+ing.unit:""}{ii<printItem.ingredienti.length-1?", ":""}</span>)}</td></tr>}
                 {printItem.allergeni?.length>0&&<tr><td style={{color:"#b00",fontFamily:"monospace",fontSize:10,fontWeight:700,verticalAlign:"top",paddingTop:4}}>ALLERGENI</td><td style={{fontSize:10,color:"#b00",fontWeight:600}}>{printItem.allergeni.join(", ")}</td></tr>}
                 {printItem.nota&&<tr><td style={{color:"#555",fontFamily:"monospace",fontSize:10,verticalAlign:"top"}}>NOTE</td><td style={{fontSize:10,fontStyle:"italic"}}>{printItem.nota}</td></tr>}
