@@ -748,24 +748,39 @@ function AutocompleteInput({ value, onChange, onSelect, placeholder, t, style={}
 
 function useSpeech(onResult) {
   const [listening, setListening] = useState(false);
-  const recRef = useRef(null);
-  const supported = typeof window!=="undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+  const [errMsg, setErrMsg] = useState("");
+  const recRef = useRef<any>(null);
+  const supported = typeof window!=="undefined" && ("SpeechRecognition" in (window as any) || "webkitSpeechRecognition" in (window as any));
 
-  const start = useCallback(()=>{
-    if(!supported||listening) return;
-    const SR = window.SpeechRecognition||window.webkitSpeechRecognition;
-    const r = new SR(); r.lang="it-IT"; r.interimResults=false; r.maxAlternatives=1;
-    r.onresult = e => { try { onResult(e.results[0][0].transcript); }catch{} };
-    r.onerror = () => setListening(false);
+  function doStart() {
+    setErrMsg("");
+    const SR = (window as any).SpeechRecognition||(window as any).webkitSpeechRecognition;
+    const r = new SR();
+    r.lang="it-IT"; r.interimResults=false; r.maxAlternatives=1; r.continuous=false;
+    r.onresult = (e:any) => { try { onResult(e.results[0][0].transcript); } catch{} };
+    r.onerror = (e:any) => {
+      setListening(false);
+      if(e.error==="not-allowed") setErrMsg("Permesso microfono negato. Impostazioni Safari > Microfono.");
+      else if(e.error==="no-speech") setErrMsg("Nessun audio rilevato.");
+      else setErrMsg("Errore microfono: "+e.error);
+    };
     r.onend = () => setListening(false);
     recRef.current = r;
-    try { r.start(); setListening(true); } catch { setListening(false); }
-  },[supported,listening,onResult]);
+    try { r.start(); setListening(true); } catch { setListening(false); setErrMsg("Impossibile avviare il microfono."); }
+  }
+
+  const start = useCallback(()=>{
+    if(listening) return;
+    if(navigator.mediaDevices?.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({audio:true}).then(()=>doStart()).catch(()=>setErrMsg("Permesso microfono negato."));
+    } else { doStart(); }
+  },[listening,onResult]);
 
   const stop = useCallback(()=>{ recRef.current?.stop(); setListening(false); },[]);
   useEffect(()=>()=>recRef.current?.abort(),[]);
-  return { listening, start, stop, supported };
+  return { listening, start, stop, supported, errMsg };
 }
+
 
 
 /* ════════════════════════════════════════════════════════
@@ -1308,8 +1323,9 @@ function LuxSelect({ value, onChange, children, t, style:sx={} }) {
 
 function VoiceBtn({ t, onResult }) {
   const speech = useSpeech(onResult);
-  if(!speech.supported) return <span style={{fontSize:9,color:"rgba(255,255,255,0.3)",padding:"0 4px",cursor:"not-allowed"}} title="Audio non supportato">🎤</span>;
+  if(!speech.supported) return <span style={{fontSize:9,color:"rgba(255,255,255,0.3)",padding:"0 4px",cursor:"not-allowed"}} title="Audio non supportato su questo browser">🎤✕</span>;
   return (
+  <div style={{position:"relative",display:"inline-flex"}}>
     <button onClick={speech.listening?speech.stop:speech.start} style={{
       width:34,height:34,borderRadius:"50%",border:"none",cursor:"pointer",
       background:speech.listening?`linear-gradient(135deg,${t.accent},${t.accentDeep})`:`${t.div}`,
@@ -1317,6 +1333,8 @@ function VoiceBtn({ t, onResult }) {
       flexShrink:0,transition:"all 0.2s",
       animation:speech.listening?"pulse 1s ease-in-out infinite":"none",
     }} title={speech.listening?"Stop":"Parla"}>🎤</button>
+  {speech.errMsg&&<div style={{position:"absolute",bottom:"calc(100% + 6px)",right:0,background:"#b00",color:"#fff",padding:"6px 10px",borderRadius:8,fontSize:10,fontFamily:"var(--mono)",whiteSpace:"nowrap",zIndex:9999,maxWidth:280,wordBreak:"break-word"}}>{speech.errMsg}</div>}
+  </div>
   );
 }
 
