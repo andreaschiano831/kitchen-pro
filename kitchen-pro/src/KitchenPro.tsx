@@ -3931,7 +3931,7 @@ Non inventare nulla che non sia nel documento.`;
           <div>
             {todo.length===0 && (
               <div style={{padding:"24px 22px",color:t.inkFaint,fontSize:12,fontFamily:"var(--serif)",fontStyle:"italic",textAlign:"center"}}>
-                ✓ Tutto completato
+                {tasks.length===0?"Nessuna preparazione — aggiungi con + o AI":"✓ Tutto completato"}
               </div>
             )}
             {todo.map((task,i)=>{
@@ -7816,7 +7816,7 @@ DATI CUCINA: ${ctx}`;
   return (
     <div style={{
       position:"fixed",zIndex:8000,
-      bottom:"var(--ai-bottom,90px)",right:"var(--ai-right,24px)",
+      bottom:"var(--ai-bottom,90px)",right:0,
       width:"min(480px,100vw)",
       height:"min(520px,calc(100dvh - 80px))",
       borderRadius:"clamp(0px,16px,16px)",overflow:"hidden",
@@ -8837,7 +8837,7 @@ function KitchenProInner() {
         {/* Content */}
         <main style={{
           flex:1,
-          padding:isMobile?"14px 14px 24px":"28px 36px 48px",
+          padding:isMobile?"10px 8px 80px":"28px 36px 48px",
           overflow:"auto",
         }} key={section}>
           <div style={{animation:ready?"cardIn 0.45s cubic-bezier(0.4,0,0.2,1) both":"none",width:"100%",minWidth:0}}>
