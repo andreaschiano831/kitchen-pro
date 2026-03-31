@@ -6779,36 +6779,11 @@ function SemilavView({ t, kitchen, allItems, toast }) {
   const lottiFatture=fattureStorico.filter((f:any)=>new Date(f.at).getTime()>tre).flatMap((f:any)=>f.prodotti.filter((p:any)=>p.lotto).map((p:any)=>({nome:p.nome,lotto:p.lotto,data:f.data,src:"fattura"})));
 
   const [slList,setSlList]=useState<any[]>(()=>{try{return JSON.parse(localStorage.getItem(SLKEY)||"[]");}catch{return[];}});
-  const emptyForm={nome:"",dataProd:todayDate(),scadGiorni:"3",nota:"",allergeni:[] as string[],categoria:"frigo",ingredienti:[{nome:"",lotto:"",qty:"",unit:"kg"}]};
+  const emptyForm={nome:"",dataProd:todayDate(),scadGiorni:"3",nota:"",allergeni:[] as string[],ingredienti:[{nome:"",lotto:"",qty:"",unit:"kg"}]};
   const [slForm,setSlForm]=useState<any>(emptyForm);
   const [showForm,setShowForm]=useState(false);
   const [printItem,setPrintItem]=useState<any>(null);
   const saveList=(l:any[])=>{setSlList(l);localStorage.setItem(SLKEY,JSON.stringify(l));};
-
-  function rinnovaLotti(sl:any) {
-    const allFatture:any[]=(() => {try{return JSON.parse(localStorage.getItem("fatture-storico")||"[]");}catch{return[];}})();
-    const sorted=[...allFatture].sort((a:any,b:any)=>new Date(b.at).getTime()-new Date(a.at).getTime());
-    let aggiornati=0;
-    const nuoviIng=sl.ingredienti.map((ing:any)=>{
-      for(const f of sorted){
-        const match=f.prodotti.find((p:any)=>p.lotto&&(
-          p.nome.toLowerCase().includes(ing.nome.toLowerCase().split(" ")[0])||
-          ing.nome.toLowerCase().includes(p.nome.toLowerCase().split(" ")[0])
-        ));
-        if(match){aggiornati++;return {...ing,lotto:match.lotto};}
-      }
-      const sm=items.find((x:any)=>x.lot&&x.name.toLowerCase().includes(ing.nome.toLowerCase().split(" ")[0]));
-      if(sm){aggiornati++;return {...ing,lotto:sm.lot};}
-      return ing;
-    });
-    const scad=new Date();scad.setDate(scad.getDate()+3);
-    const updated={...sl,ingredienti:nuoviIng,dataProd:todayDate(),scadenza:scad.toISOString().slice(0,10),lotto:"KP-"+Date.now().toString(36).toUpperCase()};
-    saveList(slList.map((x:any)=>x.id===sl.id?updated:x));
-    toast(aggiornati>0?"Rinnovo lotti: "+aggiornati+" aggiornati":"Nessun lotto trovato nelle fatture","success");
-  }
-
-  const CATCOL:any={frigo:"#1a5276",freezer:"#1a3a6b",banco:"#1e6b3a",dry:"#7d5a1e",default:"#1a2744"};
-  const CATLAB:any={frigo:"Frigo 0-4 C",freezer:"Congelato -18 C",banco:"Banco Servizio",dry:"Dispensa",default:"Cucina"};
 
   function toggleAllergene(a:string){
     setSlForm((p:any)=>({...p,allergeni:p.allergeni.includes(a)?p.allergeni.filter((x:string)=>x!==a):[...p.allergeni,a]}));
@@ -6841,16 +6816,6 @@ function SemilavView({ t, kitchen, allItems, toast }) {
               <input type="number" min="1" value={slForm.scadGiorni} onChange={e=>setSlForm((p:any)=>({...p,scadGiorni:e.target.value}))}
                 style={{width:"100%",padding:"7px 8px",borderRadius:8,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:12,outline:"none",boxSizing:"border-box"}}/>
             </div>
-          </div>
-          <div>
-            <div className="mono" style={{fontSize:8,color:t.inkFaint,marginBottom:3}}>CONSERVAZIONE</div>
-            <select value={slForm.categoria} onChange={e=>setSlForm((p:any)=>({...p,categoria:e.target.value}))}
-              style={{width:"100%",padding:"7px 8px",borderRadius:8,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:12,outline:"none"}}>
-              <option value="frigo">Frigo (0-4 C)</option>
-              <option value="freezer">Congelato (-18 C)</option>
-              <option value="banco">Banco Servizio</option>
-              <option value="dry">Dispensa</option>
-            </select>
           </div>
 
           {/* Ingredienti */}
@@ -6905,7 +6870,7 @@ function SemilavView({ t, kitchen, allItems, toast }) {
             <button onClick={()=>{
               if(!slForm.nome.trim()){toast("Nome obbligatorio","error");return;}
               const scad=new Date(slForm.dataProd);scad.setDate(scad.getDate()+parseInt(slForm.scadGiorni||"3"));
-              const item={id:genId(),nome:slForm.nome.trim(),dataProd:slForm.dataProd,scadenza:scad.toISOString().slice(0,10),nota:slForm.nota,allergeni:slForm.allergeni,ingredienti:slForm.ingredienti.filter((x:any)=>x.nome.trim()),lotto:"KP-"+Date.now().toString(36).toUpperCase(),categoria:slForm.categoria||"frigo",createdAt:nowISO()};
+              const item={id:genId(),nome:slForm.nome.trim(),dataProd:slForm.dataProd,scadenza:scad.toISOString().slice(0,10),nota:slForm.nota,allergeni:slForm.allergeni,ingredienti:slForm.ingredienti.filter((x:any)=>x.nome.trim()),lotto:"KP-"+Date.now().toString(36).toUpperCase(),createdAt:nowISO()};
               saveList([item,...slList]);setSlForm(emptyForm);setShowForm(false);toast("Semilavorato salvato","success");
             }} style={{padding:"9px",borderRadius:9,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontFamily:"var(--mono)",fontSize:10,fontWeight:600}}>✓ Salva</button>
             <button onClick={()=>{setSlForm(emptyForm);setShowForm(false);}} style={{padding:"9px",borderRadius:9,border:"1px solid "+t.div,cursor:"pointer",background:"transparent",color:t.inkMuted,fontFamily:"var(--mono)",fontSize:10}}>Annulla</button>
@@ -6921,7 +6886,7 @@ function SemilavView({ t, kitchen, allItems, toast }) {
         const diffGg=Math.ceil((scadDate.getTime()-oggi.getTime())/86400000);
         const scadColor=diffGg<0?t.danger:diffGg<=1?t.warning:diffGg<=3?"#E8A020":t.success;
         return (
-          <div key={sl.id} style={{background:t.bgAlt,borderRadius:12,border:"2px solid "+(CATCOL[sl.categoria||"default"]||CATCOL.default),overflow:"hidden"}}>
+          <div key={sl.id} style={{background:t.bgAlt,borderRadius:12,border:"1px solid "+t.div,overflow:"hidden"}}>
             <div style={{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:14,color:t.ink,fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{sl.nome}</div>
@@ -6932,7 +6897,6 @@ function SemilavView({ t, kitchen, allItems, toast }) {
                 </div>
               </div>
               <div style={{display:"flex",gap:5,flexShrink:0}}>
-                <button onClick={()=>rinnovaLotti(sl)} style={{padding:"5px 10px",borderRadius:7,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontFamily:"var(--mono)",fontSize:9}} title="Aggiorna lotti">🔄</button>
                 <button onClick={()=>setPrintItem(sl)} style={{padding:"5px 10px",borderRadius:7,border:"none",cursor:"pointer",background:t.secondary,color:"#fff",fontFamily:"var(--mono)",fontSize:9}}>🖨</button>
                 <button onClick={()=>saveList(slList.filter((_:any,j:number)=>j!==si))} style={{padding:"5px 8px",borderRadius:7,border:"none",cursor:"pointer",background:t.accentGlow,color:t.danger,fontFamily:"var(--mono)",fontSize:9}}>✕</button>
               </div>
@@ -6960,7 +6924,7 @@ function SemilavView({ t, kitchen, allItems, toast }) {
       {printItem&&(
         <div style={{position:"fixed",inset:0,zIndex:9000,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
           <div id="etichetta-print-wrapper" style={{display:"none",position:"fixed",inset:0,background:"#fff",zIndex:99999,alignItems:"center",justifyContent:"center"}}>
-            <div style={{fontFamily:"'Times New Roman',serif",color:"#000",border:"3px solid "+(CATCOL[printItem.categoria||"default"]||CATCOL.default),borderRadius:6,padding:"14px 18px",width:320,margin:"auto",marginTop:20}}>
+            <div style={{fontFamily:"'Times New Roman',serif",color:"#000",border:"3px solid #1a2744",borderRadius:6,padding:"14px 18px",width:320,margin:"auto",marginTop:20}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",borderBottom:"1.5px solid #1a2744",paddingBottom:8,marginBottom:10}}>
                 <div><div style={{fontSize:9,letterSpacing:"0.18em",color:"#8B7536",fontFamily:"monospace"}}>KITCHEN PRO · SEMILAVORATO</div><div style={{fontSize:20,fontWeight:700,marginTop:3,lineHeight:1.2}}>{printItem.nome}</div></div>
                 <img src={"https://api.qrserver.com/v1/create-qr-code/?size=70x70&data="+encodeURIComponent("LOTTO:"+printItem.lotto+"|PROD:"+printItem.dataProd+"|SCAD:"+printItem.scadenza+"|"+printItem.nome)} alt="QR" style={{width:70,height:70,borderRadius:4}}/>
