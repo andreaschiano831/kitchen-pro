@@ -1395,20 +1395,6 @@ function ApiKeySetup({ t }) {
     } catch(e:any){
       setTestStatus("fail"); setTestMsg("✗ Errore rete: "+e.message);
     }
-  },
-        body: JSON.stringify({
-          model:"claude-haiku-4-5-20251001",
-          max_tokens:10,
-          messages:[{role:"user",content:"ping"}]
-        })
-      });
-      if(res.ok||res.status===200){ setTestStatus("ok"); setTestMsg("✓ Chiave valida! AI pronto."); }
-      else if(res.status===401){ setTestStatus("fail"); setTestMsg("✗ Chiave non valida o scaduta (401)."); }
-      else if(res.status===400){ setTestStatus("ok"); setTestMsg("✓ Chiave accettata (400 = formato richiesta, non la key)."); }
-      else { setTestStatus("fail"); setTestMsg(`✗ Errore ${res.status}. Riprova.`); }
-    } catch(e:any){
-      setTestStatus("fail"); setTestMsg("✗ Errore rete: "+e.message);
-    }
   }
   return (
     <div style={{borderRadius:14,border:`1px solid ${t.div}`,background:t.bgCard,padding:20,marginBottom:16}}>
