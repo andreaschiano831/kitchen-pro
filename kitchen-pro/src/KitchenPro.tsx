@@ -4283,7 +4283,7 @@ Estrai TUTTI i prodotti visibili. Se un campo non è presente mettilo null.`;
             const r=new FileReader();
             r.onload=ev=>{
               const b64=(ev.target?.result as string).split(",")[1];
-              setImgData({base64:b64,mimeType:f.type==="application/pdf"?"image/jpeg":f.type});
+              setImgData({base64:b64,mimeType:f.type});
               toast("File caricato: "+f.name,"success");
             };
             r.readAsDataURL(f);

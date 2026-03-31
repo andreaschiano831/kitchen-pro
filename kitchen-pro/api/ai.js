@@ -13,11 +13,7 @@ export default async function handler(req, res) {
     const systemText = body.system || "";
     const messages = body.messages || [];
     const maxTokens = body.max_tokens || 1024;
-
-    // Detect se la risposta deve essere JSON
-    const wantsJSON = systemText.includes("JSON") || systemText.includes("json") ||
-      (messages[0]?.content && typeof messages[0].content === "string" &&
-       messages[0].content.includes("JSON"));
+    const wantsJSON = systemText.includes("JSON") || systemText.includes("json");
 
     // Traduci content Claude → parts Gemini
     let parts = [];
@@ -25,9 +21,18 @@ export default async function handler(req, res) {
       const content = messages[0].content;
       if (Array.isArray(content)) {
         for (const p of content) {
-          if (p.type === "text") parts.push({ text: p.text });
-          else if (p.type === "image" && p.source?.type === "base64")
-            parts.push({ inline_data: { mime_type: p.source.media_type, data: p.source.data } });
+          if (p.type === "text") {
+            parts.push({ text: p.text });
+          } else if (p.type === "image" && p.source?.type === "base64") {
+            const mime = p.source.media_type;
+            if (mime === "application/pdf") {
+              // PDF → inline_data con mime corretto
+              parts.push({ inline_data: { mime_type: "application/pdf", data: p.source.data } });
+            } else {
+              // Immagine normale
+              parts.push({ inline_data: { mime_type: mime, data: p.source.data } });
+            }
+          }
         }
       } else if (typeof content === "string") {
         parts.push({ text: content });
@@ -61,8 +66,7 @@ export default async function handler(req, res) {
     }
 
     let text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    // Pulizia markdown se Gemini wrappa il JSON
-    if (wantsJSON) text = text.replace(/^```(?:json)?\n?/,"").replace(/\n?```$/,"").trim();
+    if (wantsJSON) text = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
 
     return res.status(200).json({
       content: [{ type: "text", text }],
