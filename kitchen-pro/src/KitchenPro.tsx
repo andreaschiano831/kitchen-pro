@@ -1379,14 +1379,23 @@ function ApiKeySetup({ t }) {
     localStorage.setItem("kp-api-key", k);
     setTestStatus("testing"); setTestMsg("Test in corso…");
     try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${localStorage.getItem("kp-api-key")||""}`, {
+      const res = await fetch("/api/ai", {
         method:"POST",
-        headers:{
-          "Content-Type":"application/json",
-          "x-api-key": k,
-          "anthropic-version":"2023-06-01",
-          "anthropic-dangerous-direct-browser-access":"true",
-        },
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          system:"Rispondi solo con: ok",
+          messages:[{role:"user",content:"ping"}],
+          max_tokens:10,
+        })
+      });
+      const data = await res.json();
+      if(res.ok && data?.content?.[0]?.text){ setTestStatus("ok"); setTestMsg("✓ AI funzionante! Gemini risponde."); }
+      else if(data?.error?.includes("API_KEY")){ setTestStatus("fail"); setTestMsg("✗ GEMINI_API_KEY non configurata su Vercel."); }
+      else { setTestStatus("fail"); setTestMsg("✗ Errore: "+(data?.error||res.status)); }
+    } catch(e:any){
+      setTestStatus("fail"); setTestMsg("✗ Errore rete: "+e.message);
+    }
+  },
         body: JSON.stringify({
           model:"claude-haiku-4-5-20251001",
           max_tokens:10,
