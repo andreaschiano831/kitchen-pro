@@ -4248,11 +4248,12 @@ function ArchivioFatture({ t, storico, setStorico, FKEY, stockAdd, toast }) {
   // Raggruppa per mese
   const byFattura:{[k:string]:any[]}={};
   ingredienti.forEach((ing:any)=>{ const k=ing.fatturaId||"unknown"; if(!byFattura[k]) byFattura[k]=[]; byFattura[k].push(ing); });
-  const byMonth: {[k:string]:any[]} = {};
-  storico.forEach((f:any)=>{
-    const m = (f.dataFattura||f.data||"").slice(0,7);
+  const byMonth:{[k:string]:string[]}={};
+  Object.keys(byFattura).forEach(fid=>{
+    const first=byFattura[fid][0];
+    const m=(first?.dataFattura||"").slice(0,7)||"senza-data";
     if(!byMonth[m]) byMonth[m]=[];
-    byMonth[m].push(f);
+    byMonth[m].push(fid);
   });
   const months = Object.keys(byMonth).sort((a,b)=>b.localeCompare(a));
 
