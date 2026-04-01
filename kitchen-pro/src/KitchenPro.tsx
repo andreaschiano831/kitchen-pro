@@ -1125,6 +1125,7 @@ async function callAI({ systemPrompt, userContext=null, maxTokens=1024,
     }
 
     const data = await res.json();
+    console.log("AI raw response:", JSON.stringify(data).slice(0,300));
     const geminiText = data.candidates?.[0]?.content?.parts?.[0]?.text||"";
     const content = data.content || data.result?.content || [];
     const text = (geminiText || content.map((b:any)=>b.text||"").join("")).trim();
