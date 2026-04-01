@@ -4285,6 +4285,7 @@ function ArchivioFatture({ t, storico, setStorico, FKEY, stockAdd, toast }) {
                   <span style={{fontSize:14}}>📄</span>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:13,color:t.ink}}>{first?.fornitore||"Fattura"}{first?.numeroFattura?" #"+first.numeroFattura:""}</div>
+                  {first?.imgFattura&&isOpen&&<img src={"data:"+first.imgFattura.mimeType+";base64,"+first.imgFattura.base64} alt="fattura" style={{width:"100%",borderRadius:8,marginTop:8,maxHeight:300,objectFit:"contain"}}/>}
                     <div className="mono" style={{fontSize:9,color:t.inkFaint,marginTop:2}}>{first?.dataFattura} · {ings.length} ingredienti{tot>0?" · €"+tot.toFixed(2):""}</div>
                   </div>
                   <span style={{fontSize:11,color:t.inkFaint}}>{isOpen?"▲":"▼"}</span>
