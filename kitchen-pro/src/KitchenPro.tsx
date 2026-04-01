@@ -6989,7 +6989,13 @@ function SemilavView({ t, kitchen, allItems, toast }) {
   const items=allItems();
   const lots=items.filter((x:any)=>x.lot);
   const preps=(kitchen?.preps||[]).filter((p:any)=>p.status!=="done");
-  const ingredientiArch=(kitchen?.ingredienti||[]).filter((x:any)=>x.lotto);
+  // Ingredienti ultima settimana con lotto, divisi per fornitore
+  const settimana = Date.now() - 7*86400000;
+  const ingredientiArch=(kitchen?.ingredienti||[])
+    .filter((x:any)=>x.lotto && new Date(x.createdAt||0).getTime()>settimana)
+    .sort((a:any,b:any)=>new Date(b.createdAt||0).getTime()-new Date(a.createdAt||0).getTime());
+  const fornArchivio:{[k:string]:any[]}={};
+  ingredientiArch.forEach((i:any)=>{ const k=i.fornitore||"-"; if(!fornArchivio[k]) fornArchivio[k]=[]; fornArchivio[k].push(i); });
 
   const [slList,setSlList]=useState<any[]>(()=>{try{return JSON.parse(localStorage.getItem(SLKEY)||"[]");}catch{return[];}});
   const emptyForm={nome:"",dataProd:todayDate(),scadGiorni:"3",nota:"",allergeni:[] as string[],categoria:"frigo",ingredienti:[{nome:"",lotto:"",qty:"",unit:"kg"}]};
@@ -7078,7 +7084,7 @@ function SemilavView({ t, kitchen, allItems, toast }) {
                   <option value="">Lotto —</option>
                   {lots.length>0&&<optgroup label="📦 Stock">{lots.map((x:any)=><option key={x.id} value={x.lot}>{x.name} #{x.lot}</option>)}</optgroup>}
                   {preps.length>0&&<optgroup label="📋 Prep">{preps.filter((p:any)=>p.lotto).map((p:any,pi:number)=><option key={pi} value={p.lotto}>{p.nome} #{p.lotto}</option>)}</optgroup>}
-                  {ingredientiArch.length>0&&<optgroup label="📄 Archivio Ingredienti">{ingredientiArch.map((i:any)=><option key={i.id} value={i.lotto}>{i.nome} #{i.lotto} ({i.dataFattura})</option>)}</optgroup>}
+                  {Object.keys(fornArchivio).map((forn:string)=><optgroup key={forn} label={"📄 "+forn}>{fornArchivio[forn].map((i:any)=><option key={i.id} value={i.lotto}>{i.nome} #{i.lotto} ({i.dataFattura})</option>)}</optgroup>)}
                 </select>
                 <input placeholder="Qty" value={ing.qty} onChange={e=>{const a=[...slForm.ingredienti];a[ii]={...a[ii],qty:e.target.value};setSlForm((p:any)=>({...p,ingredienti:a}));}}
                   style={{padding:"6px 4px",borderRadius:7,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontSize:12,outline:"none",textAlign:"center"}}/>
