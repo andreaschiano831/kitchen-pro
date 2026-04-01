@@ -4231,7 +4231,7 @@ function FatturaLottiView({ t, stockAdd, toast }) {
     try {
       const sys = `Sei un sistema OCR esperto per cucine professionali stellate. Analizza questa fattura/DDT ed estrai TUTTI i prodotti.
 Rispondi SOLO in JSON valido (no markdown, no testo extra):
-{"fornitore":"nome fornitore o null","numero_fattura":"numero o null","data_fattura":"YYYY-MM-DD o null","prodotti":[{"nome":"stringa","lotto":"stringa o null","qty":numero,"unit":"kg|g|l|ml|pz","prezzo_unitario":numero_o_null,"prezzo_totale":numero_o_null,"scadenza":"YYYY-MM-DD o null"}]}
+{"fornitore":"stringa","numero_fattura":"stringa","data_fattura":"YYYY-MM-DD","prodotti":[{"nome":"stringa","lotto":"stringa o null","qty":1.5,"unit":"kg","prezzo_unitario":3.50,"prezzo_totale":10.50,"scadenza":"2026-04-05"}]}
 Estrai TUTTI i prodotti visibili. Se un campo non è presente mettilo null.`;
       let result;
       if(imgData) {
