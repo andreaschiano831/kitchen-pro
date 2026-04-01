@@ -1,5 +1,5 @@
 const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
-const MODEL = "gemini-2.0-flash-exp";
+const MODEL = "gemini-2.0-flash";
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -30,12 +30,10 @@ export default async function handler(req, res) {
     }
     if (!parts.length) parts = [{ text: "Analizza e rispondi." }];
 
-    // Prependi system come testo se presente
-    if (systemText) parts.unshift({ text: "SISTEMA: " + systemText + "\n\n" });
-
     const hasPDF = parts.some(p => p.inline_data?.mime_type === "application/pdf");
 
     const geminiBody = {
+      system_instruction: systemText ? { parts: [{ text: systemText }] } : undefined,
       contents: [{ role: "user", parts }],
       generationConfig: {
         maxOutputTokens: Math.min(maxTokens, 8192),
@@ -52,11 +50,14 @@ export default async function handler(req, res) {
     });
 
     const data = await upstream.json();
-    console.log("Gemini status:", upstream.status, "model:", MODEL);
 
     if (!upstream.ok || data?.error) {
       const msg = data?.error?.message || `Gemini error ${upstream.status}`;
-      console.error("Gemini error detail:", JSON.stringify(data?.error));
+      console.error("Gemini error:", JSON.stringify(data?.error));
+      // Quota esaurita — messaggio chiaro
+      if (data?.error?.code === 429) {
+        return res.status(429).json({ error: "Quota giornaliera Gemini esaurita. Riprova domani o vai su aistudio.google.com per aumentare il limite." });
+      }
       return res.status(500).json({ error: msg });
     }
 
@@ -69,7 +70,6 @@ export default async function handler(req, res) {
       id: "gemini-proxy", model: MODEL, role: "assistant",
     });
   } catch (e) {
-    console.error("Proxy error:", e);
     return res.status(500).json({ error: e.message });
   }
 }
