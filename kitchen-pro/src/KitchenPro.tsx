@@ -4346,14 +4346,9 @@ Rispondi SOLO in JSON valido (no markdown, no testo extra):
 {"fornitore":"NOME FORNITORE","numero_fattura":"NUM","data_fattura":"2026-01-15","prodotti":[{"nome":"NOME PRODOTTO REALE","lotto":"LOT123 oppure null","qty":5,"unit":"kg","prezzo_unitario":3.50,"prezzo_totale":17.50,"scadenza":"2026-04-05 oppure null"}]}
 Estrai TUTTI i prodotti visibili. Se un campo non è presente mettilo null.`;
       let result;
-      if(imgData) {
-        result = await callAI({systemPrompt:sys, userMessages:[
-          {type:"image",source:{type:"base64",media_type:imgData.mimeType,data:imgData.base64}},
-          {type:"text",text:"Estrai tutti i prodotti con lotti da questa fattura/DDT."},
-        ], maxTokens:2000, expectJSON:true, noCache:true});
-      } else {
-        result = await callAI({systemPrompt:sys, userContext:textInput, maxTokens:2000, expectJSON:true, noCache:true});
-      }
+      // Groq non supporta vision — usa sempre testo (OCR gia fatto da Tesseract)
+      const inputTxt = textInput.trim()||(imgData?"(immagine caricata, analizza)":"");
+      result = await callAI({systemPrompt:sys, userContext:inputTxt, maxTokens:2000, expectJSON:true, noCache:true});
       const prods = result?.prodotti||[];
       // Salva metadati fattura per uso in archivio
       (window as any).__lastFatturaResult = result;
