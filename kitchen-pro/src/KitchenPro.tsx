@@ -4366,8 +4366,10 @@ Estrai TUTTI i prodotti visibili. Se un campo non è presente mettilo null.`;
     const lastRes2 = (window as any).__lastFatturaResult||{};
     const fatturaId = genId();
     const fatturaImg = imgData ? {base64:imgData.base64,mimeType:imgData.mimeType} : null;
+    const fatturaImg = imgData ? {base64:imgData.base64,mimeType:imgData.mimeType} : null;
     toLoad.forEach((p:any)=>{
       ingredienteAdd({
+        imgFattura: fatturaImg,
         imgFattura: fatturaImg,
         fatturaId,
         fornitore: lastRes2?.fornitore||"",
