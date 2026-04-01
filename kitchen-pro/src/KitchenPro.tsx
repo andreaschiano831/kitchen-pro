@@ -4462,7 +4462,7 @@ Estrai TUTTI i prodotti visibili. Se un campo non è presente mettilo null.`;
             </div>
           ))}
           <button onClick={carica} style={{padding:"10px",borderRadius:10,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontFamily:"var(--mono)",fontSize:11,fontWeight:600}}>
-            ✓ Carica {Object.values(sel).filter(Boolean).length} prodotti in giacenza
+            ✓ Salva {Object.values(sel).filter(Boolean).length} ingredienti in archivio
           </button>
         </div>
       )}
