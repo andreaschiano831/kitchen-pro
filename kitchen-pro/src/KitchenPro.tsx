@@ -3871,9 +3871,18 @@ Non inventare nulla che non sia nel documento.`;
               </LuxSelect>
             </div>
           </div>
-          {/* Riga 3: lotto */}
-          <div style={{marginBottom:10}}>
-            <LuxInput value={manualLot} onChange={e=>setManualLot(e.target.value)} placeholder="Lotto (opzionale)" t={t}/>
+          {/* Riga 3: lotto con suggerimenti da archivio */}
+          <div style={{marginBottom:10}}>(()=>{
+            const ingLotti=(kitchen?.ingredienti||[]).filter((x:any)=>x.lotto);
+            return <>
+              <input value={manualLot} onChange={e=>setManualLot(e.target.value)}
+                list="lotti-suggerimenti" placeholder="Lotto (opzionale)"
+                style={{width:"100%",padding:"8px 12px",borderRadius:9,border:"1px solid "+t.div,background:t.bgAlt,color:t.ink,fontFamily:"var(--mono)",fontSize:12,outline:"none",boxSizing:"border-box"}}/>
+              <datalist id="lotti-suggerimenti">
+                {ingLotti.map((i:any)=><option key={i.id} value={i.lotto}>{i.nome} — {i.fornitore}</option>)}
+              </datalist>
+            </>;
+          })()}
           </div>
           {/* Riga 4: scadenza rapida */}
           <div style={{marginBottom:6}}>
