@@ -4301,6 +4301,7 @@ function ArchivioFatture({ t, storico, setStorico, FKEY, stockAdd, toast }) {
 }
 
 function FatturaLottiView({ t, stockAdd, toast }) {
+  const { ingredienteAdd } = useK();
   const fileRef = useRef<any>(null);
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<any[]>([]);
