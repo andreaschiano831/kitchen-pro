@@ -4367,21 +4367,13 @@ Estrai TUTTI i prodotti visibili. Se un campo non è presente mettilo null.`;
   function carica() {
     const toLoad = preview.filter((_,i)=>sel[i]);
     if(!toLoad.length){toast("Seleziona almeno un prodotto","error");return;}
-    const lastRes2 = (window as any).__lastFatturaResult||{};
-    const fatturaId = genId();
     toLoad.forEach((p:any)=>{
-      ingredienteAdd({
-        fatturaId,
-        fornitore: lastRes2?.fornitore||"",
-        dataFattura: lastRes2?.data_fattura||todayDate(),
-        numeroFattura: lastRes2?.numero_fattura||"",
-        nome: p.nome, lotto: p.lotto||null,
-        qty: p.qty||1, unit: p.unit||"pz",
-        prezzoUnitario: p.prezzo_unitario||null,
-        prezzoTotale: p.prezzo_totale||null,
-        scadenza: p.scadenza||null, usato: false,
+      stockAdd({
+        name:p.nome, quantity:p.qty||1, unit:p.unit||"pz",
+        location:p.location||"fridge", lot:p.lotto||undefined,
+        expiresAt:p.scadenza?new Date(p.scadenza).toISOString():undefined,
+        insertedDate:todayDate(),
       });
-    });
     });
     const lastRes = (window as any).__lastFatturaResult||{};
     const meta = { fornitore: lastRes?.fornitore||toLoad[0]?.fornitore||"", numero: lastRes?.numero_fattura||"", dataFattura: lastRes?.data_fattura||todayDate() };
