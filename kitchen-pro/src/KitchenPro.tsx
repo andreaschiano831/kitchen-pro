@@ -123,7 +123,7 @@ function ensureKitchen(k) {
     // v3 — nuovi array
     preparazioni:[], mepItems:[],
     ordini:[], spesaV2:[],
-    tempLogs:[], lots:[], ricette:[],
+    tempLogs:[], lots:[], ricette:[], ingredienti:[],
     wasteLog:[], tickets:[],
     service:null,
     piatti:[], calendarNotes:[],
@@ -151,6 +151,17 @@ function reducer(state, action) {
       return { ...state, kitchens: mapK(action.kitchenId, k => ({...k, members:k.members.filter(m=>m.id!==action.memberId)})), selectedMemberId: state.selectedMemberId===action.memberId?undefined:state.selectedMemberId };
     case "PAR_CATEGORY":
       return { ...state, kitchens: mapK(action.kitchenId, k => ({...k, parByCategory:{...k.parByCategory,[action.key]:action.par}})) };
+    case "INGREDIENTE_ADD": {
+      const k2=state.kitchens.find(k=>k.id===action.kitchenId);
+      return {...state, kitchens:state.kitchens.map(k=>k.id===action.kitchenId
+        ? {...k, ingredienti:[action.item,...(k.ingredienti||[])]}
+        : k)};
+    }
+    case "INGREDIENTE_REMOVE": {
+      return {...state, kitchens:state.kitchens.map(k=>k.id===action.kitchenId
+        ? {...k, ingredienti:(k.ingredienti||[]).filter((x:any)=>x.id!==action.id)}
+        : k)};
+    }
     case "STOCK_ADD":
       return { ...state, kitchens: mapK(action.kitchenId, k => { const loc=action.item.location; return setStock(k,loc,[action.item,...mapStock(k,loc)]); }) };
     case "ITEM_ADJUST":
@@ -361,6 +372,8 @@ function KitchenProvider({ children }) {
 
       setParCategory: (key, par) => { const k=kid(); if(k)dispatch({type:"PAR_CATEGORY",kitchenId:k,key,par:Math.max(0,Number(par)||0)}); },
 
+      ingredienteAdd: (item:any) => { const k=kid(); if(k) dispatch({type:"INGREDIENTE_ADD",kitchenId:k,item:{...item,id:genId(),createdAt:nowISO()}}); },
+      ingredienteRemove: (id:string) => { const k=kid(); if(k) dispatch({type:"INGREDIENTE_REMOVE",kitchenId:k,id}); },
       stockAdd: (item) => {
         if(API_URL && getToken()) apiFetch("/stock",{method:"POST",body:JSON.stringify(item)}).catch(console.warn);
         const k=kid(); if(!k)return;
