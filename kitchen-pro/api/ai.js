@@ -1,6 +1,18 @@
 const GROQ_KEY = process.env.GROQ_API_KEY || "";
 const MODEL = "llama-3.1-8b-instant";
 
+function extractJSON(text) {
+  // Trova il primo { e traccia le parentesi per trovare il JSON completo
+  const start = text.indexOf("{");
+  if (start === -1) return text;
+  let depth = 0;
+  for (let i = start; i < text.length; i++) {
+    if (text[i] === "{") depth++;
+    else if (text[i] === "}") { depth--; if (depth === 0) return text.slice(start, i + 1); }
+  }
+  return text.slice(start);
+}
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
@@ -32,17 +44,13 @@ export default async function handler(req, res) {
       body: JSON.stringify({ model: MODEL, messages: groqMessages, max_tokens: maxTokens, temperature: 0.1 }),
     });
     const data = await upstream.json();
-    console.log("Groq status:", upstream.status);
     if (!upstream.ok || data?.error) {
       return res.status(500).json({ error: data?.error?.message || `Groq error ${upstream.status}` });
     }
     let text = data.choices?.[0]?.message?.content || "";
     if (!text) return res.status(500).json({ error: "Risposta vuota" });
-    // Estrai JSON se Groq aggiunge testo prima/dopo
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) text = jsonMatch[0];
-    // Rimuovi markdown code blocks
-    text = text.replace(/^```(?:json)?[\r\n]*/,"").replace(/[\r\n]*```$/,"").trim();
+    // Estrai JSON con parser bilanciato
+    text = extractJSON(text);
     return res.status(200).json({ content: [{ type: "text", text }], role: "assistant" });
   } catch (e) {
     return res.status(500).json({ error: e.message });
