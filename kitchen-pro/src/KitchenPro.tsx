@@ -1131,7 +1131,7 @@ async function callAI({ systemPrompt, userContext=null, maxTokens=1024,
     if(!text) throw new Error("AI: risposta vuota");
 
     const result = expectJSON
-      ? JSON.parse(text.replace(/```json\n?|```\n?/g,"").trim())
+      ? (()=>{ try { const c=text.replace(/^```(?:json)?\n?/,"").replace(/\n?```$/,"").trim(); const s=c.indexOf("{"); const e=c.lastIndexOf("}"); return JSON.parse(s>=0&&e>s?c.slice(s,e+1):c); } catch { return text; } })()
       : text;
     if(cacheKey) _AI_CACHE.set(cacheKey, {result, ts:Date.now()});
     return result;
