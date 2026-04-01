@@ -4382,11 +4382,10 @@ Estrai TUTTI i prodotti visibili. Se un campo non è presente mettilo null.`;
         scadenza: p.scadenza||null, usato: false,
       });
     });
-    });
     const lastRes = (window as any).__lastFatturaResult||{};
     const meta = { fornitore: lastRes?.fornitore||toLoad[0]?.fornitore||"", numero: lastRes?.numero_fattura||"", dataFattura: lastRes?.data_fattura||todayDate() };
     saveStorico(toLoad, meta);
-    toast(`✓ ${toLoad.length} prodotti caricati in giacenza`,"success");
+    toast(`✓ ${toLoad.length} ingredienti salvati in archivio`,"success");
     setPreview([]); setSel({}); setImgData(null); setTextInput("");
   }
 
