@@ -4430,6 +4430,7 @@ Estrai TUTTI i prodotti visibili. Se un campo non è presente mettilo null.`;
               const ocrText = result.data.text;
               if(ocrText.trim().length > 10){
                 setTextInput(ocrText);
+                setImgData(null);
                 toast("Testo estratto! Premi Analizza.","success");
               } else {
                 toast("OCR: poco testo trovato. Incolla manualmente.","error");
