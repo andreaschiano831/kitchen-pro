@@ -4138,59 +4138,51 @@ function ArchivioFatture({ t, storico, setStorico, FKEY, stockAdd, toast }) {
 
   function fmtMonth(m:string){
     const [y,mo]=m.split("-");
-    const names=["","Gen","Feb","Mar","Apr","Mag","Giu","Lug","Ago","Set","Ott","Nov","Dic"];
     return (names[parseInt(mo)]||mo)+" "+y;
   }
-
-  const totFattura=(f:any)=>{
-    const t=f.prodotti.reduce((s:number,p:any)=>s+(p.prezzo_totale||p.prezzo_unitario*(p.qty||1)||0),0);
-    return t>0?t.toFixed(2):null;
-  };
-
+    const names=["","Gen","Feb","Mar","Apr","Mag","Giu","Lug","Ago","Set","Ott","Nov","Dic"];
   return (
     <div style={{background:t.bgAlt,borderRadius:14,border:"1px solid "+t.div,overflow:"hidden"}}>
-      <div style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:storico.length?"1px solid "+t.div:"none"}}>
-        <div className="mono" style={{fontSize:9,color:t.gold,letterSpacing:"0.1em"}}>ARCHIVIO FATTURE ({storico.length})</div>
-        {storico.length>0&&<button onClick={()=>{setStorico([]);localStorage.removeItem(FKEY);}} style={{padding:"3px 10px",borderRadius:6,border:"1px solid "+t.div,cursor:"pointer",background:"transparent",color:t.danger,fontFamily:"var(--mono)",fontSize:8}}>Svuota</button>}
+      <div style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:ingredienti.length?"1px solid "+t.div:"none"}}>
+        <div className="mono" style={{fontSize:9,color:t.gold,letterSpacing:"0.1em"}}>ARCHIVIO INGREDIENTI ({ingredienti.length})</div>
       </div>
-      {storico.length===0&&<div style={{padding:"20px",color:t.inkFaint,fontFamily:"var(--serif)",fontStyle:"italic",textAlign:"center",fontSize:12}}>Nessuna fattura — carica la prima</div>}
+      {ingredienti.length===0&&<div style={{padding:"20px",color:t.inkFaint,fontFamily:"var(--serif)",fontStyle:"italic",textAlign:"center",fontSize:12}}>Nessun ingrediente — carica una fattura</div>}
       {months.map((m:string)=>(
         <div key={m} style={{borderBottom:"1px solid "+t.div}}>
           <div style={{padding:"8px 16px",background:t.bgCard,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <span className="mono" style={{fontSize:10,color:t.secondary,fontWeight:600}}>{fmtMonth(m)}</span>
             <span className="mono" style={{fontSize:9,color:t.inkFaint}}>{byMonth[m].length} fatture</span>
           </div>
-          {byMonth[m].map((f:any)=>{
-            const isOpen=expanded===f.id;
-            const tot=totFattura(f);
+          {(byMonth[m] as string[]).map((fid:string)=>{
+            const ings=byFattura[fid]||[];
+            const first=ings[0];
+            const isOpen=expanded===fid;
+            const tot=ings.reduce((s:number,ing:any)=>s+(ing.prezzoTotale||0),0);
             return (
-              <div key={f.id}>
-                <div onClick={()=>setExpanded(isOpen?null:f.id)} style={{padding:"10px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",background:isOpen?t.bgAlt:"transparent",borderTop:"1px solid "+t.div+"44"}}>
+              <div key={fid}>
+                <div onClick={()=>setExpanded(isOpen?null:fid)} style={{padding:"10px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",background:isOpen?t.bgAlt:"transparent",borderTop:"1px solid "+t.div+"44"}}>
                   <span style={{fontSize:14}}>📄</span>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:13,color:t.ink,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{f.fornitore||"Fattura"}{f.numero?" #"+f.numero:""}</div>
-                    <div className="mono" style={{fontSize:9,color:t.inkFaint,marginTop:2}}>{f.dataFattura||f.data} · {f.prodotti.length} prodotti{tot?" · €"+tot:""}</div>
+                    <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:13,color:t.ink}}>{first?.fornitore||"Fattura"}{first?.numeroFattura?" #"+first.numeroFattura:""}</div>
+                    <div className="mono" style={{fontSize:9,color:t.inkFaint,marginTop:2}}>{first?.dataFattura} · {ings.length} ingredienti{tot>0?" · €"+tot.toFixed(2):""}</div>
                   </div>
-                  <span style={{fontSize:11,color:t.inkFaint,flexShrink:0}}>{isOpen?"▲":"▼"}</span>
+                  <span style={{fontSize:11,color:t.inkFaint}}>{isOpen?"▲":"▼"}</span>
                 </div>
                 {isOpen&&(
                   <div style={{padding:"8px 16px 12px",display:"flex",flexDirection:"column",gap:6}}>
-                    {f.prodotti.map((p:any,pi:number)=>(
-                      <div key={pi} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:8,background:t.bgCard,border:"1px solid "+t.div}}>
+                    {ings.map((ing:any)=>(
+                      <div key={ing.id} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderRadius:9,background:t.bgCard,border:"1px solid "+t.div}}>
                         <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:12,color:t.ink}}>{p.nome}</div>
+                          <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:12,color:t.ink}}>{ing.nome}</div>
                           <div className="mono" style={{fontSize:9,color:t.inkFaint,marginTop:2,display:"flex",flexWrap:"wrap",gap:6}}>
-                            <span>{p.qty} {p.unit}</span>
-                            {p.lotto&&<span style={{color:t.gold}}>#{p.lotto}</span>}
-                            {p.scadenza&&<span>scad:{p.scadenza}</span>}
-                            {p.prezzo_unitario&&<span style={{color:t.success}}>€{p.prezzo_unitario}/{p.unit}</span>}
-                            {p.prezzo_totale&&<span style={{color:t.success,fontWeight:600}}>€{p.prezzo_totale}</span>}
+                            <span>{ing.qty} {ing.unit}</span>
+                            {ing.lotto&&<span style={{color:t.gold}}>#{ing.lotto}</span>}
+                            {ing.scadenza&&<span>scad:{ing.scadenza}</span>}
+                            {ing.prezzoUnitario&&<span style={{color:t.success}}>€{ing.prezzoUnitario}/{ing.unit}</span>}
+                            {ing.prezzoTotale&&<span style={{color:t.success,fontWeight:600}}>€{ing.prezzoTotale}</span>}
                           </div>
                         </div>
-                        <button onClick={()=>{
-                          stockAdd({name:p.nome,quantity:p.qty||1,unit:p.unit||"pz",location:"dry",lot:p.lotto||undefined,expiresAt:p.scadenza?new Date(p.scadenza).toISOString():undefined,insertedDate:todayDate()});
-                          toast("✓ "+p.nome+" caricato","success");
-                        }} style={{padding:"4px 8px",borderRadius:6,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontFamily:"var(--mono)",fontSize:8,flexShrink:0,whiteSpace:"nowrap"}}>+ Stock</button>
+                        <button onClick={()=>ingredienteRemove(ing.id)} style={{padding:"4px 6px",borderRadius:6,border:"none",cursor:"pointer",background:t.accentGlow,color:t.danger,fontFamily:"var(--mono)",fontSize:8}}>✕</button>
                       </div>
                     ))}
                   </div>
@@ -4200,126 +4192,6 @@ function ArchivioFatture({ t, storico, setStorico, FKEY, stockAdd, toast }) {
           })}
         </div>
       ))}
-    </div>
-  );
-}
-
-function GiacenzaFornitori({ t, spesaV2Add, toast, items }) {
-  const FKEY = "fatture-storico";
-  const [storico, setStorico] = React.useState<any[]>(()=>{try{return JSON.parse(localStorage.getItem(FKEY)||"[]");}catch{return[];}});
-  const [expanded, setExpanded] = React.useState<string|null>(null);
-  const [search, setSearch] = React.useState("");
-  const [catFilter, setCatFilter] = React.useState("tutti");
-
-  // Raggruppa per fornitore
-  const byFornitore:{[k:string]:any[]} = {};
-  storico.forEach((f:any)=>{
-    const k = f.fornitore||"Fornitore sconosciuto";
-    if(!byFornitore[k]) byFornitore[k]=[];
-    byFornitore[k].push(f);
-  });
-
-  // Tutti i prodotti flat con fornitore
-  const allProdotti = storico.flatMap((f:any)=>
-    (f.prodotti||[]).map((p:any)=>({...p, fornitore:f.fornitore||"—", dataFattura:f.dataFattura||f.data, fatturaId:f.id}))
-  ).filter((p:any)=>!search||p.nome.toLowerCase().includes(search.toLowerCase()));
-
-  // Controlla se sotto par rispetto alle giacenze
-  function inStock(nome:string) {
-    return (items||[]).find((x:any)=>x.name.toLowerCase().includes(nome.toLowerCase().split(" ")[0]));
-  }
-
-  function aggiungiASpesa(p:any) {
-    spesaV2Add(p.nome, p.qty||1, p.unit||"pz", "alimenti", "giornaliero", p.lotto?"lotto:"+p.lotto:"");
-    toast("✓ "+p.nome+" aggiunto alla lista spesa","success");
-  }
-
-  const fornitori = Object.keys(byFornitore).sort();
-
-  return (
-    <div style={{display:"flex",flexDirection:"column",gap:14}}>
-      {/* Header */}
-      <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Cerca articolo..." style={{flex:1,minWidth:120,padding:"8px 12px",borderRadius:9,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontFamily:"var(--serif)",fontSize:13,outline:"none"}}/>
-        <span className="mono" style={{fontSize:9,color:t.inkFaint}}>{storico.length} fatture · {allProdotti.length} articoli</span>
-      </div>
-
-      {storico.length===0&&(
-        <div style={{padding:"32px",textAlign:"center",color:t.inkFaint,fontFamily:"var(--serif)",fontStyle:"italic"}}>
-          Nessuna fattura — carica una fattura dal tab 📄 Fattura/DDT
-        </div>
-      )}
-
-      {/* Vista per fornitore */}
-      {search ? (
-        <div style={{display:"flex",flexDirection:"column",gap:6}}>
-          {allProdotti.map((p:any,pi:number)=>{
-            const stock = inStock(p.nome);
-            const sottoScorta = stock && stock.quantity < (stock.parLevel||0);
-            return (
-              <div key={pi} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderRadius:10,background:t.bgAlt,border:"1px solid "+(sottoScorta?t.danger:t.div)}}>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:13,color:t.ink}}>{p.nome}</div>
-                  <div className="mono" style={{fontSize:9,color:t.inkFaint,marginTop:2,display:"flex",flexWrap:"wrap",gap:6}}>
-                    <span style={{color:t.secondary}}>{p.fornitore}</span>
-                    <span>{p.qty} {p.unit}</span>
-                    {p.lotto&&<span style={{color:t.gold}}>#{p.lotto}</span>}
-                    {p.scadenza&&<span>scad:{p.scadenza}</span>}
-                    {p.prezzo_unitario&&<span style={{color:t.success}}>€{p.prezzo_unitario}/{p.unit}</span>}
-                    {sottoScorta&&<span style={{color:t.danger,fontWeight:700}}>⚠ SOTTO PAR</span>}
-                  </div>
-                </div>
-                <button onClick={()=>aggiungiASpesa(p)} style={{padding:"5px 10px",borderRadius:7,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontFamily:"var(--mono)",fontSize:9,whiteSpace:"nowrap"}}>+ Spesa</button>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {fornitori.map((forn:string)=>{
-            const fatture = byFornitore[forn];
-            const allProds = fatture.flatMap((f:any)=>(f.prodotti||[]).map((p:any)=>({...p,dataFattura:f.dataFattura||f.data})));
-            const isOpen = expanded===forn;
-            const totaleSpeso = fatture.reduce((s:number,f:any)=>s+(f.prodotti||[]).reduce((s2:number,p:any)=>s2+(p.prezzo_totale||0),0),0);
-            return (
-              <div key={forn} style={{borderRadius:12,border:"1px solid "+t.div,overflow:"hidden"}}>
-                <div onClick={()=>setExpanded(isOpen?null:forn)} style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",background:isOpen?t.bgAlt:t.bgCard}}>
-                  <span style={{fontSize:16}}>🏪</span>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:14,color:t.ink,fontWeight:500}}>{forn}</div>
-                    <div className="mono" style={{fontSize:9,color:t.inkFaint,marginTop:2}}>{fatture.length} fatture · {allProds.length} articoli{totaleSpeso>0?" · €"+totaleSpeso.toFixed(2):""}</div>
-                  </div>
-                  <span style={{fontSize:11,color:t.inkFaint}}>{isOpen?"▲":"▼"}</span>
-                </div>
-                {isOpen&&(
-                  <div style={{padding:"8px 12px 12px",display:"flex",flexDirection:"column",gap:6}}>
-                    {allProds.map((p:any,pi:number)=>{
-                      const stock = inStock(p.nome);
-                      const sottoScorta = stock && stock.quantity < (stock.parLevel||0);
-                      return (
-                        <div key={pi} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:8,background:t.bgCard,border:"1px solid "+(sottoScorta?t.danger+"44":t.div)}}>
-                          <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:12,color:t.ink}}>{p.nome}</div>
-                            <div className="mono" style={{fontSize:9,color:t.inkFaint,marginTop:2,display:"flex",flexWrap:"wrap",gap:5}}>
-                              <span>{p.qty} {p.unit}</span>
-                              {p.lotto&&<span style={{color:t.gold}}>#{p.lotto}</span>}
-                              {p.scadenza&&<span>scad:{p.scadenza}</span>}
-                              {p.prezzo_unitario&&<span style={{color:t.success}}>€{p.prezzo_unitario}/{p.unit}</span>}
-                              {sottoScorta&&<span style={{color:t.danger,fontWeight:700}}>⚠ SOTTO PAR</span>}
-                              <span className="mono" style={{fontSize:8,color:t.inkFaint}}>{p.dataFattura}</span>
-                            </div>
-                          </div>
-                          <button onClick={()=>aggiungiASpesa(p)} style={{padding:"4px 8px",borderRadius:6,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontFamily:"var(--mono)",fontSize:8,whiteSpace:"nowrap",flexShrink:0}}>+ Spesa</button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
@@ -6925,9 +6797,7 @@ function SemilavView({ t, kitchen, allItems, toast }) {
   const items=allItems();
   const lots=items.filter((x:any)=>x.lot);
   const preps=(kitchen?.preps||[]).filter((p:any)=>p.status!=="done");
-  const fattureStorico:any[]=(() => {try{return JSON.parse(localStorage.getItem("fatture-storico")||"[]");}catch{return[];}})();
-  const tre=Date.now()-3*86400000;
-  const lottiFatture=fattureStorico.filter((f:any)=>new Date(f.at).getTime()>tre).flatMap((f:any)=>f.prodotti.filter((p:any)=>p.lotto).map((p:any)=>({nome:p.nome,lotto:p.lotto,data:f.data,src:"fattura"})));
+  const ingredientiArch=(kitchen?.ingredienti||[]).filter((x:any)=>x.lotto);
 
   const [slList,setSlList]=useState<any[]>(()=>{try{return JSON.parse(localStorage.getItem(SLKEY)||"[]");}catch{return[];}});
   const emptyForm={nome:"",dataProd:todayDate(),scadGiorni:"3",nota:"",allergeni:[] as string[],categoria:"frigo",ingredienti:[{nome:"",lotto:"",qty:"",unit:"kg"}]};
@@ -7016,7 +6886,7 @@ function SemilavView({ t, kitchen, allItems, toast }) {
                   <option value="">Lotto —</option>
                   {lots.length>0&&<optgroup label="📦 Stock">{lots.map((x:any)=><option key={x.id} value={x.lot}>{x.name} #{x.lot}</option>)}</optgroup>}
                   {preps.length>0&&<optgroup label="📋 Prep">{preps.filter((p:any)=>p.lotto).map((p:any,pi:number)=><option key={pi} value={p.lotto}>{p.nome} #{p.lotto}</option>)}</optgroup>}
-                  {lottiFatture.length>0&&<optgroup label="📄 Fatture (72h)">{lottiFatture.map((l:any,li:number)=><option key={li} value={l.lotto}>{l.nome} #{l.lotto} ({l.data})</option>)}</optgroup>}
+                  {ingredientiArch.length>0&&<optgroup label="📄 Archivio Ingredienti">{ingredientiArch.map((i:any)=><option key={i.id} value={i.lotto}>{i.nome} #{i.lotto} ({i.dataFattura})</option>)}</optgroup>}
                 </select>
                 <input placeholder="Qty" value={ing.qty} onChange={e=>{const a=[...slForm.ingredienti];a[ii]={...a[ii],qty:e.target.value};setSlForm((p:any)=>({...p,ingredienti:a}));}}
                   style={{padding:"6px 4px",borderRadius:7,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontSize:12,outline:"none",textAlign:"center"}}/>
