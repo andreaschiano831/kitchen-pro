@@ -4201,6 +4201,126 @@ function ArchivioFatture({ t, storico, setStorico, FKEY, stockAdd, toast }) {
   );
 }
 
+function GiacenzaFornitori({ t, spesaV2Add, toast, items }) {
+  const FKEY = "fatture-storico";
+  const [storico, setStorico] = React.useState<any[]>(()=>{try{return JSON.parse(localStorage.getItem(FKEY)||"[]");}catch{return[];}});
+  const [expanded, setExpanded] = React.useState<string|null>(null);
+  const [search, setSearch] = React.useState("");
+  const [catFilter, setCatFilter] = React.useState("tutti");
+
+  // Raggruppa per fornitore
+  const byFornitore:{[k:string]:any[]} = {};
+  storico.forEach((f:any)=>{
+    const k = f.fornitore||"Fornitore sconosciuto";
+    if(!byFornitore[k]) byFornitore[k]=[];
+    byFornitore[k].push(f);
+  });
+
+  // Tutti i prodotti flat con fornitore
+  const allProdotti = storico.flatMap((f:any)=>
+    (f.prodotti||[]).map((p:any)=>({...p, fornitore:f.fornitore||"—", dataFattura:f.dataFattura||f.data, fatturaId:f.id}))
+  ).filter((p:any)=>!search||p.nome.toLowerCase().includes(search.toLowerCase()));
+
+  // Controlla se sotto par rispetto alle giacenze
+  function inStock(nome:string) {
+    return (items||[]).find((x:any)=>x.name.toLowerCase().includes(nome.toLowerCase().split(" ")[0]));
+  }
+
+  function aggiungiASpesa(p:any) {
+    spesaV2Add(p.nome, p.qty||1, p.unit||"pz", "alimenti", "giornaliero", p.lotto?"lotto:"+p.lotto:"");
+    toast("✓ "+p.nome+" aggiunto alla lista spesa","success");
+  }
+
+  const fornitori = Object.keys(byFornitore).sort();
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      {/* Header */}
+      <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Cerca articolo..." style={{flex:1,minWidth:120,padding:"8px 12px",borderRadius:9,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontFamily:"var(--serif)",fontSize:13,outline:"none"}}/>
+        <span className="mono" style={{fontSize:9,color:t.inkFaint}}>{storico.length} fatture · {allProdotti.length} articoli</span>
+      </div>
+
+      {storico.length===0&&(
+        <div style={{padding:"32px",textAlign:"center",color:t.inkFaint,fontFamily:"var(--serif)",fontStyle:"italic"}}>
+          Nessuna fattura — carica una fattura dal tab 📄 Fattura/DDT
+        </div>
+      )}
+
+      {/* Vista per fornitore */}
+      {search ? (
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          {allProdotti.map((p:any,pi:number)=>{
+            const stock = inStock(p.nome);
+            const sottoScorta = stock && stock.quantity < (stock.parLevel||0);
+            return (
+              <div key={pi} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderRadius:10,background:t.bgAlt,border:"1px solid "+(sottoScorta?t.danger:t.div)}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:13,color:t.ink}}>{p.nome}</div>
+                  <div className="mono" style={{fontSize:9,color:t.inkFaint,marginTop:2,display:"flex",flexWrap:"wrap",gap:6}}>
+                    <span style={{color:t.secondary}}>{p.fornitore}</span>
+                    <span>{p.qty} {p.unit}</span>
+                    {p.lotto&&<span style={{color:t.gold}}>#{p.lotto}</span>}
+                    {p.scadenza&&<span>scad:{p.scadenza}</span>}
+                    {p.prezzo_unitario&&<span style={{color:t.success}}>€{p.prezzo_unitario}/{p.unit}</span>}
+                    {sottoScorta&&<span style={{color:t.danger,fontWeight:700}}>⚠ SOTTO PAR</span>}
+                  </div>
+                </div>
+                <button onClick={()=>aggiungiASpesa(p)} style={{padding:"5px 10px",borderRadius:7,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontFamily:"var(--mono)",fontSize:9,whiteSpace:"nowrap"}}>+ Spesa</button>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {fornitori.map((forn:string)=>{
+            const fatture = byFornitore[forn];
+            const allProds = fatture.flatMap((f:any)=>(f.prodotti||[]).map((p:any)=>({...p,dataFattura:f.dataFattura||f.data})));
+            const isOpen = expanded===forn;
+            const totaleSpeso = fatture.reduce((s:number,f:any)=>s+(f.prodotti||[]).reduce((s2:number,p:any)=>s2+(p.prezzo_totale||0),0),0);
+            return (
+              <div key={forn} style={{borderRadius:12,border:"1px solid "+t.div,overflow:"hidden"}}>
+                <div onClick={()=>setExpanded(isOpen?null:forn)} style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",background:isOpen?t.bgAlt:t.bgCard}}>
+                  <span style={{fontSize:16}}>🏪</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:14,color:t.ink,fontWeight:500}}>{forn}</div>
+                    <div className="mono" style={{fontSize:9,color:t.inkFaint,marginTop:2}}>{fatture.length} fatture · {allProds.length} articoli{totaleSpeso>0?" · €"+totaleSpeso.toFixed(2):""}</div>
+                  </div>
+                  <span style={{fontSize:11,color:t.inkFaint}}>{isOpen?"▲":"▼"}</span>
+                </div>
+                {isOpen&&(
+                  <div style={{padding:"8px 12px 12px",display:"flex",flexDirection:"column",gap:6}}>
+                    {allProds.map((p:any,pi:number)=>{
+                      const stock = inStock(p.nome);
+                      const sottoScorta = stock && stock.quantity < (stock.parLevel||0);
+                      return (
+                        <div key={pi} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:8,background:t.bgCard,border:"1px solid "+(sottoScorta?t.danger+"44":t.div)}}>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:12,color:t.ink}}>{p.nome}</div>
+                            <div className="mono" style={{fontSize:9,color:t.inkFaint,marginTop:2,display:"flex",flexWrap:"wrap",gap:5}}>
+                              <span>{p.qty} {p.unit}</span>
+                              {p.lotto&&<span style={{color:t.gold}}>#{p.lotto}</span>}
+                              {p.scadenza&&<span>scad:{p.scadenza}</span>}
+                              {p.prezzo_unitario&&<span style={{color:t.success}}>€{p.prezzo_unitario}/{p.unit}</span>}
+                              {sottoScorta&&<span style={{color:t.danger,fontWeight:700}}>⚠ SOTTO PAR</span>}
+                              <span className="mono" style={{fontSize:8,color:t.inkFaint}}>{p.dataFattura}</span>
+                            </div>
+                          </div>
+                          <button onClick={()=>aggiungiASpesa(p)} style={{padding:"4px 8px",borderRadius:6,border:"none",cursor:"pointer",background:t.gold,color:"#fff",fontFamily:"var(--mono)",fontSize:8,whiteSpace:"nowrap",flexShrink:0}}>+ Spesa</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FatturaLottiView({ t, stockAdd, toast }) {
   const fileRef = useRef<any>(null);
   const [loading, setLoading] = useState(false);
@@ -4386,7 +4506,7 @@ function SpesaView({ t }) {
     <div style={{display:"flex",flexDirection:"column",gap:20}}>
       {/* Tab header */}
       <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-        {[{k:"tabella",l:`📊 Vista Tabella (${totale})`},{k:"aggiungi",l:"+ Aggiungi"},{k:"fattura",l:"📄 Fattura/DDT"}].map(({k,l})=>(
+        {[{k:"tabella",l:`📊 Vista Tabella (${totale})`},{k:"aggiungi",l:"+ Aggiungi"},{k:"fattura",l:"📄 Fattura/DDT"},{k:"fornitori",l:"🏪 Fornitori"}].map(({k,l})=>(
           <button key={k} onClick={()=>setTab(k)} style={{
             padding:"8px 16px",borderRadius:10,border:"none",cursor:"pointer",
             fontFamily:"var(--mono)",fontSize:10,letterSpacing:"0.06em",
@@ -4404,6 +4524,7 @@ function SpesaView({ t }) {
 
       {/* Form aggiunta */}
       {tab==="fattura"&&<FatturaLottiView t={t} stockAdd={stockAdd} toast={toast}/>}
+      {tab==="fornitori"&&<GiacenzaFornitori t={t} spesaV2Add={spesaV2Add} toast={toast} items={items}/>}
       {(tab==="aggiungi"||!items.length)&&canEdit&&(
         <Card t={t} style={{padding:20}}>
           <div className="mono" style={{fontSize:8,letterSpacing:"0.14em",color:t.inkFaint,marginBottom:12}}>NUOVO ARTICOLO</div>
