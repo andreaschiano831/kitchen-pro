@@ -1,5 +1,5 @@
 const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
-const MODEL = "gemini-1.5-flash-latest";
+const MODEL = "gemini-2.0-flash";
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -52,7 +52,7 @@ export default async function handler(req, res) {
       },
     };
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1/models/${MODEL}:generateContent?key=${GEMINI_KEY}`;
     const upstream = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
