@@ -4124,6 +4124,8 @@ function ShoppingView({ t }) {
    Economato | Alimenti | Altro  ×  Giornaliero | Settimanale
    ════════════════════════════════════════════════════════ */
 function ArchivioFatture({ t, storico, setStorico, FKEY, stockAdd, toast }) {
+  const { kitchen, ingredienteRemove } = useK();
+  const ingredienti = kitchen?.ingredienti||[];
   const [expanded, setExpanded] = React.useState<string|null>(null);
   // Raggruppa per mese
   const byMonth: {[k:string]:any[]} = {};
