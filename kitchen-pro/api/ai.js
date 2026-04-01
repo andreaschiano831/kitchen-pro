@@ -46,9 +46,14 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: data?.error?.message || `Groq error ${upstream.status}` });
     }
 
-    const text = data.choices?.[0]?.message?.content || "";
-    if (!text) return res.status(500).json({ error: "Risposta vuota da Groq" });
-
+    let text = data.choices?.[0]?.message?.content || "";
+    // Estrai JSON se presente nel testo
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) text = jsonMatch[0];
+    // Rimuovi markdown
+    text = text.replace(/^```(?:json)?
+?/, "").replace(/
+?```$/, "").trim();
     return res.status(200).json({ content: [{ type: "text", text }], role: "assistant" });
   } catch (e) {
     console.error("Proxy error:", e.message);
