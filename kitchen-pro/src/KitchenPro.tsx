@@ -4245,6 +4245,8 @@ function ArchivioFatture({ t, storico, setStorico, FKEY, stockAdd, toast }) {
   const ingredienti = kitchen?.ingredienti||[];
   const [expanded, setExpanded] = React.useState<string|null>(null);
   // Raggruppa per mese
+  const byFattura:{[k:string]:any[]}={};
+  ingredienti.forEach((ing:any)=>{ const k=ing.fatturaId||"unknown"; if(!byFattura[k]) byFattura[k]=[]; byFattura[k].push(ing); });
   const byMonth: {[k:string]:any[]} = {};
   storico.forEach((f:any)=>{
     const m = (f.dataFattura||f.data||"").slice(0,7);
