@@ -4390,15 +4390,38 @@ Estrai TUTTI i prodotti visibili. Se un campo non è presente mettilo null.`;
       <div style={{background:t.bgAlt,borderRadius:14,padding:"16px",border:"1px solid "+t.div}}>
         <div className="mono" style={{fontSize:9,color:t.gold,letterSpacing:"0.1em",marginBottom:10}}>CARICA FATTURA O DDT</div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
-          <input ref={fileRef} type="file" accept="image/*,application/pdf" style={{display:"none"}} onChange={e=>{
-            const f=e.target.files?.[0]; if(!f)return;
-            const r=new FileReader();
-            r.onload=ev=>{
-              const b64=(ev.target?.result as string).split(",")[1];
-              setImgData({base64:b64,mimeType:f.type});
-              toast("File caricato: "+f.name,"success");
-            };
-            r.readAsDataURL(f);
+          <input ref={fileRef} type="file" accept="image/*,application/pdf" style={{display:"none"}} onChange={async e=>{
+            const f=e.target.files?.[0]; if(!f) return;
+            if(f.type==="application/pdf"){
+              toast("Elaborazione PDF...","success");
+              try {
+                if(!(window as any).pdfjsLib){
+                  await new Promise<void>((res,rej)=>{
+                    const s=document.createElement("script");
+                    s.src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+                    s.onload=()=>{ (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; res(); };
+                    s.onerror=()=>rej(new Error("PDF.js load failed"));
+                    document.head.appendChild(s);
+                  });
+                }
+                const pdfLib=(window as any).pdfjsLib;
+                const ab=await f.arrayBuffer();
+                const pdf=await pdfLib.getDocument({data:ab}).promise;
+                const page=await pdf.getPage(1);
+                const vp=page.getViewport({scale:2});
+                const canvas=document.createElement("canvas");
+                canvas.width=vp.width; canvas.height=vp.height;
+                const ctx2=canvas.getContext("2d");
+                await page.render({canvasContext:ctx2,viewport:vp}).promise;
+                const b64=canvas.toDataURL("image/jpeg",0.9).split(",")[1];
+                setImgData({base64:b64,mimeType:"image/jpeg"});
+                toast("PDF pronto: "+f.name,"success");
+              } catch(err:any){ toast("Errore PDF — usa il testo: "+err.message,"error"); }
+            } else {
+              const r=new FileReader();
+              r.onload=ev=>{ const b64=(ev.target?.result as string).split(",")[1]; setImgData({base64:b64,mimeType:f.type}); toast("File caricato: "+f.name,"success"); };
+              r.readAsDataURL(f);
+            }
           }}/>
           <button onClick={()=>fileRef.current?.click()} style={{padding:"9px 18px",borderRadius:9,border:"1px solid "+t.div,cursor:"pointer",background:imgData?t.goldFaint:t.bgCard,color:imgData?t.gold:t.inkMuted,fontFamily:"var(--mono)",fontSize:10}}>
             {imgData?"✓ File caricato":"📎 Foto/PDF"}
