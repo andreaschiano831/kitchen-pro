@@ -53,7 +53,7 @@ export default async function handler(req, res) {
       groqMessages.push({ role: "user", content: textContent || "Analizza e rispondi." });
     }
 
-    const model = hasRealImage ? "llama-3.2-11b-vision-preview" : "llama-3.3-70b-versatile";
+    const model = hasRealImage ? "llama-3.2-90b-vision-preview" : "llama-3.3-70b-versatile";
     const upstream = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_KEY}` },
