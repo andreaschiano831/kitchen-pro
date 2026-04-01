@@ -3105,7 +3105,17 @@ function InventoryView({ t }) {
                 <option key={s.key} value={s.key}>{s.icon} {s.label}</option>
               ))}
             </LuxSelect>
-            <LuxInput value={fLot} onChange={e=>setFLot(e.target.value)} placeholder="Lotto (HACCP)" t={t}/>
+            <input value={fLot} onChange={e=>setFLot(e.target.value)}
+              list="lotti-arch-inv" placeholder="Lotto (HACCP)"
+              style={{width:"100%",padding:"8px 12px",borderRadius:9,border:"1px solid "+t.div,background:t.bgAlt,color:t.ink,fontFamily:"var(--mono)",fontSize:12,outline:"none",boxSizing:"border-box"}}/>
+            <datalist id="lotti-arch-inv">
+              {(kitchen?.ingredienti||[]).filter((x:any)=>x.lotto).map((ing:any)=>(
+                <option key={ing.id} value={ing.lotto}>{ing.nome} — {ing.fornitore}</option>
+              ))}
+              {(kitchen?.semiLav||kitchen?.semilavorati||[]).filter((s:any)=>s.lotto).map((s:any)=>(
+                <option key={s.id} value={s.lotto}>{s.nome} (semilavorato)</option>
+              ))}
+            </datalist>
             <div style={{display:'flex',gap:4,flexWrap:'wrap',marginBottom:4}}>
               {[1,2,3,5,7,10,14,21,31].map(d=>{
                 const dt=new Date();dt.setDate(dt.getDate()+d);
