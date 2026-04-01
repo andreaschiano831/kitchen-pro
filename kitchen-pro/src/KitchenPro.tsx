@@ -4347,8 +4347,9 @@ Rispondi SOLO in JSON valido (no markdown, no testo extra):
 Estrai TUTTI i prodotti visibili. Se un campo non è presente mettilo null.`;
       let result;
       // Groq non supporta vision — usa sempre testo (OCR gia fatto da Tesseract)
-      const inputTxt = (textInput.trim()||(imgData?"(immagine caricata, analizza)":"")).slice(0,3000);
-      result = await callAI({systemPrompt:sys, userContext:inputTxt, maxTokens:1500, expectJSON:true, noCache:true});
+      const inputTxt = textInput.trim()||(imgData?"(immagine caricata, analizza)":"");
+      result = await callAI({systemPrompt:sys, userContext:inputTxt, maxTokens:2000, expectJSON:false, noCache:true});
+      if(typeof result==="string"){const s=result.indexOf("{");const e=result.lastIndexOf("}");if(s>=0&&e>s)result=JSON.parse(result.slice(s,e+1));}
       const prods = result?.prodotti||[];
       // Salva metadati fattura per uso in archivio
       (window as any).__lastFatturaResult = result;
