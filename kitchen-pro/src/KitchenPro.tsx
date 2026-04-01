@@ -435,12 +435,12 @@ function KitchenProvider({ children }) {
       ordineUpdate: (id, patch) => { const k=kid(); if(k)dispatch({type:"ORDINE_UPDATE",kitchenId:k,id,patch}); },
       confermRicezione: (ordineId, ricezioni) => { const k=kid(); if(k)dispatch({type:"RICEZIONE_CONFERMATA",kitchenId:k,ordineId,ricezioni}); },
       // ── SPESA V2 ──────────────────────────────────
-      spesaV2Add: (nome, qty, unit, tipologia, frequenza, note) => {
+      spesaV2Add: (nome, qty, unit, tipologia, frequenza, note, fornitore="") => {
         const k=kid(); if(!k||!nome.trim()) return;
         dispatch({type:"SPESA_V2_ADD", kitchenId:k, item:{
           id:genId(), nome:nome.trim(), quantita:Number(qty)||1, unitaMisura:unit||"pz",
           tipologia:tipologia||"alimenti", frequenza:frequenza||"giornaliero",
-          note:note||null, checked:false, createdAt:nowISO(),
+          note:note||null, fornitore:fornitore||null, checked:false, createdAt:nowISO(),
         }});
       },
       spesaV2Update: (id,patch) => { const k=kid(); if(k)dispatch({type:"SPESA_V2_UPDATE",kitchenId:k,id,patch}); },
@@ -4158,7 +4158,7 @@ function GiacenzaFornitori({ t, spesaV2Add, toast, items }) {
   }
 
   function aggiungiASpesa(ing:any) {
-    spesaV2Add(ing.nome, ing.qty||1, ing.unit||"pz", "alimenti", "giornaliero", ing.lotto?"lotto:"+ing.lotto:"");
+    spesaV2Add(ing.nome, ing.qty||1, ing.unit||"pz", "alimenti", "giornaliero", ing.lotto?"lotto:"+ing.lotto:"", ing.fornitore||"" );
     toast("+ "+ing.nome+" in lista spesa","success");
   }
 
