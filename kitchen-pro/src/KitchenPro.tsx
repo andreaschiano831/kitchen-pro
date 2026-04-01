@@ -1098,15 +1098,7 @@ async function callAI({ systemPrompt, userContext=null, maxTokens=1024,
     if(!sk) throw new Error("Configura API key Gemini nelle Impostazioni → 🤖 AI");
   }
 
-  const userText = userMessages
-    ? userMessages.map((p:any)=>typeof p==="string"?p:(p.text||"")).join("\n")
-    : (ctx||"Analizza e rispondi.");
-  const body: any = isGemini ? {
-    system_instruction:{parts:[{text:systemPrompt}]},
-    contents:[{role:"user",parts:[{text:userText}]}],
-    generationConfig:{maxOutputTokens:maxTokens,temperature:0.3},
-  } : {
-    model:"claude-haiku-4-5-20251001",
+  const body: any = {
     max_tokens: maxTokens,
     system: systemPrompt,
     messages: userMessages
