@@ -4286,7 +4286,7 @@ Estrai TUTTI i prodotti visibili. Se un campo non è presente mettilo null.`;
           {imgData&&<button onClick={()=>setImgData(null)} style={{padding:"9px 12px",borderRadius:9,border:"none",cursor:"pointer",background:t.accentGlow,color:t.danger,fontFamily:"var(--mono)",fontSize:10}}>✕</button>}
         </div>
         <div className="mono" style={{fontSize:9,color:t.inkFaint,marginBottom:6}}>OPPURE INCOLLA IL TESTO</div>
-        <textarea value={textInput} onChange={e=>setTextInput(e.target.value)} placeholder="Incolla il testo della fattura/DDT..." rows={4} style={{width:"100%",padding:"8px 10px",borderRadius:8,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:11,resize:"vertical",outline:"none",boxSizing:"border-box"}}/>
+        <textarea value={textInput} onChange={e=>setTextInput(e.target.value)} placeholder="Incolla testo fattura o DDT. Es: Cozze vive 5kg lotto COZ001 scad 03/04/2026 euro 3.20" rows={4} style={{width:"100%",padding:"8px 10px",borderRadius:8,border:"1px solid "+t.div,background:t.bgCard,color:t.ink,fontFamily:"var(--mono)",fontSize:11,resize:"vertical",outline:"none",boxSizing:"border-box"}}/>
         <button onClick={analizza} disabled={loading||(!imgData&&!textInput.trim())} style={{marginTop:10,width:"100%",padding:"10px",borderRadius:10,border:"none",cursor:"pointer",background:loading?t.bgAlt:t.secondary,color:loading?t.inkMuted:"#fff",fontFamily:"var(--mono)",fontSize:11,fontWeight:600,transition:"all 0.2s"}}>
           {loading?"⏳ Analisi in corso...":"✨ Analizza e Estrai Lotti"}
         </button>
