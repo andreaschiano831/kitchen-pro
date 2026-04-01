@@ -4547,7 +4547,7 @@ function SpesaView({ t }) {
     <div style={{display:"flex",flexDirection:"column",gap:20}}>
       {/* Tab header */}
       <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-        {[{k:"tabella",l:`📊 Vista Tabella (${totale})`},{k:"aggiungi",l:"+ Aggiungi"},{k:"fattura",l:"📄 Fattura/DDT"},{k:"fornitori",l:"🏪 Fornitori"}].map(({k,l})=>(
+        {[{k:"tabella",l:`📊 Vista Tabella (${totale})`},{k:"perfornitore",l:"🏪 Per Fornitore"},{k:"aggiungi",l:"+ Aggiungi"},{k:"fattura",l:"📄 Fattura/DDT"},{k:"fornitori",l:"📦 Ingredienti"}].map(({k,l})=>(
           <button key={k} onClick={()=>setTab(k)} style={{
             padding:"8px 16px",borderRadius:10,border:"none",cursor:"pointer",
             fontFamily:"var(--mono)",fontSize:10,letterSpacing:"0.06em",
