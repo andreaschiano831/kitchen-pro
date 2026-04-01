@@ -4365,8 +4365,10 @@ Estrai TUTTI i prodotti visibili. Se un campo non è presente mettilo null.`;
     if(!toLoad.length){toast("Seleziona almeno un prodotto","error");return;}
     const lastRes2 = (window as any).__lastFatturaResult||{};
     const fatturaId = genId();
+    const fatturaImg = imgData ? {base64:imgData.base64,mimeType:imgData.mimeType} : null;
     toLoad.forEach((p:any)=>{
       ingredienteAdd({
+        imgFattura: fatturaImg,
         fatturaId,
         fornitore: lastRes2?.fornitore||"",
         dataFattura: lastRes2?.data_fattura||todayDate(),
@@ -8906,7 +8908,7 @@ function KitchenProInner() {
 
         {/* Nav */}
         <nav style={{flex:1,padding:"16px 10px",display:"flex",flexDirection:"column",gap:4}}>
-          {NAV.map(n=>{
+          {[...MAIN_NAV,...DRAWER_NAV.map(n=>({...n,icon:"·"}))].map(n=>{
             const active=section===n.key;
             return (
               <button key={n.key} onClick={()=>setSection(n.key)} style={{
