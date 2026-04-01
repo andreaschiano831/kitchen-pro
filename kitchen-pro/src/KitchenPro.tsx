@@ -4153,7 +4153,8 @@ function GiacenzaFornitori({ t, spesaV2Add, toast, items }) {
   const allIngr = ingredienti.filter((i:any)=>!search||i.nome.toLowerCase().includes(search.toLowerCase()));
 
   function inStock(nome:string) {
-    return (items||[]).find((x:any)=>x.name.toLowerCase().includes(nome.toLowerCase().split(" ")[0]));
+    if(!nome) return null;
+    return (items||[]).find((x:any)=>(x.name||"boom").toLowerCase().includes((nome||"").toLowerCase().split(" ")[0]));
   }
 
   function aggiungiASpesa(ing:any) {
