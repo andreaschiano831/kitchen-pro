@@ -4253,7 +4253,7 @@ Estrai TUTTI i prodotti visibili. Se un campo non è presente mettilo null.`;
     toLoad.forEach((p:any)=>{
       stockAdd({
         name:p.nome, quantity:p.qty||1, unit:p.unit||"pz",
-        location:"dry", lot:p.lotto||undefined,
+        location:p.location||"fridge", lot:p.lotto||undefined,
         expiresAt:p.scadenza?new Date(p.scadenza).toISOString():undefined,
         insertedDate:todayDate(),
       });
@@ -4306,8 +4306,17 @@ Estrai TUTTI i prodotti visibili. Se un campo non è presente mettilo null.`;
               <span style={{fontSize:14,color:sel[i]?t.gold:t.inkFaint}}>{sel[i]?"☑":"☐"}</span>
               <div style={{flex:1}}>
                 <div style={{fontFamily:"var(--serif)",fontStyle:"italic",fontSize:13,color:t.ink}}>{p.nome}</div>
-                <div className="mono" style={{fontSize:9,color:t.inkFaint,marginTop:2}}>
-                  {p.qty} {p.unit}{p.lotto?" · Lotto: "+p.lotto:""}{p.scadenza?" · Scad: "+p.scadenza:""}{p.fornitore?" · "+p.fornitore:""}
+                <div className="mono" style={{fontSize:9,color:t.inkFaint,marginTop:2,display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}}>
+                  <span>{p.qty} {p.unit}</span>
+                  {p.lotto&&<span style={{color:t.gold}}>#{p.lotto}</span>}
+                  {p.scadenza&&<span>scad:{p.scadenza}</span>}
+                  {p.prezzo_totale&&<span style={{color:t.success}}>€{p.prezzo_totale}</span>}
+                  <select value={p.location||"fridge"} onChange={e=>{const n=[...preview];n[i]={...n[i],location:e.target.value};setPreview(n);}} onClick={ev=>ev.stopPropagation()} style={{padding:"2px 4px",borderRadius:5,border:"1px solid "+t.div,background:t.bgAlt,color:t.ink,fontSize:9,fontFamily:"var(--mono)",outline:"none"}}>
+                    <option value="fridge">Frigo</option>
+                    <option value="freezer">Freezer</option>
+                    <option value="dry">Dispensa</option>
+                    <option value="counter">Banco</option>
+                  </select>
                 </div>
               </div>
             </div>
