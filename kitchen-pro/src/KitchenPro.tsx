@@ -2343,7 +2343,7 @@ function PreparazioniView({ t, hideForm=false }) {
             <AutocompleteInput value={form.nome} onChange={e=>setForm(p=>({...p,nome:e.target.value}))}
               onSelect={p=>{setForm(q=>({...q,nome:p.n,unit:p.u||q.unit}));saveCustomPrep(p.n);}}
               placeholder="Nome preparazione (autocomplete)" t={t} style={{gridColumn:"1/-1"}}
-              catalog={PREP_CATALOG} extraSuggestions={customPrepsL||[]}/>
+              catalog={PREP_CATALOG} extraSuggestions={[...(customPrepsL||[]),...(kitchen?.ingredienti||[]).map((i:any)=>i.nome).filter(Boolean),...(JSON.parse(localStorage.getItem("semilav-"+kitchen?.id)||"[]")).map((s:any)=>s.nome).filter(Boolean)]}/>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
               <LuxInput value={form.qty} onChange={e=>setForm(p=>({...p,qty:e.target.value}))} type="number" placeholder="Qtà" t={t}/>
               <LuxSelect value={form.unit} onChange={e=>setForm(p=>({...p,unit:e.target.value}))} t={t}>
