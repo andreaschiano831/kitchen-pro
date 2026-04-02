@@ -3086,7 +3086,7 @@ function InventoryView({ t }) {
                   if(p.shelf){const d=new Date();d.setDate(d.getDate()+p.shelf);setFExpiry(d.toISOString().slice(0,10));}
                   saveCustomProd(p.n);}}
                 placeholder="Nome prodotto (autocomplete)" t={t} style={{flex:1}}
-                catalog={PRODUCT_CATALOG} extraSuggestions={customProdsL}
+                catalog={PRODUCT_CATALOG} extraSuggestions={[...customProdsL,...(kitchen?.ingredienti||[]).map((i:any)=>i.nome).filter(Boolean),...(JSON.parse(localStorage.getItem("semilav-"+kitchen?.id)||"[]")).map((s:any)=>s.nome).filter(Boolean)]}
                 filterMacro={macroFilter==="all"?"":macroFilter}/>
               <VoiceBtn t={t} onResult={r=>setFName(r)}/>
             </div>
